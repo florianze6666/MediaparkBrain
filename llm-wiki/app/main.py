@@ -734,7 +734,7 @@ def ask_form(request: Request):
         ctx(
             request,
             question="",
-            answer=None,
+            antwort=None,
             snippets=[],
             llm_configured=llm.is_configured(),
         ),
@@ -746,14 +746,15 @@ def ask_submit(request: Request, question: str = Form(...)):
     user = access.current_user(request)
     # US-7: Rechte-Filter VOR der Trefferauswahl, das LLM sieht nur Erlaubtes.
     snippets = wiki.search_snippets(question, user)
-    answer = llm.ask_llm(question, snippets)
+    # Paket 10: Fakten mit woertlichem Beleg, belegt nur gegen diese Snippets.
+    antwort = llm.ask_llm(question, snippets)
     return templates.TemplateResponse(
         request,
         "ask.html",
         ctx(
             request,
             question=question,
-            answer=answer,
+            antwort=antwort,
             snippets=snippets,
             llm_configured=llm.is_configured(),
         ),

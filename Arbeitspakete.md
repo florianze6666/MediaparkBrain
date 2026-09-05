@@ -27,7 +27,8 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
 | 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | 🟡 In Arbeit |
 | 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
-| 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | ⬜ Offen |
+| 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | 🟡 In Arbeit |
+| 11 | Belegzitate zu jeder Bewertung in der Projektbewertung | Florian | ⬜ Offen |
 
 ---
 
@@ -242,7 +243,7 @@ Frontmatter-Schema aus Paket 1 und den Ablageort aus Paket 7. Paket 6 zählt die
 
 ## 10. Quellenzitat zu jeder Antwort im „Frag das Wiki" — Florian
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit
 
 **Ziel:** Keine Aussage ohne Beleg. Zu jedem Fakt, den das Wiki liefert, steht **darüber** eine
 Zitatbox mit dem wörtlichen Satz aus dem Originaldokument, aus dem dieser Fakt stammt.
@@ -280,6 +281,42 @@ filtert. Die Seitenzahl als Belegstelle kommt aus Paket 8. Für die Experten-Age
 ist das die Vorarbeit: deren `assessment` soll später genauso belegt sein.
 
 ---
+
+## 11. Belegzitate zu jeder Bewertung in der Projektbewertung — Florian
+
+**Zustand:** ⬜ Offen
+
+**Ziel:** Dasselbe Prinzip wie Paket 10, eine Ebene höher: Zu **jeder** der vier Experten-Bewertungen
+werden die Textstellen angezeigt, die zu genau diesem Score geführt haben — wörtlich aus den
+Projektunterlagen. Nicht mehr als die **fünf relevantesten** je Bewertung.
+
+**Ausgangslage:** `evaluation.evaluate_proposal` liefert je Rolle Status, Score, Begründung und
+fehlende Informationen. Die Begründung ist Fließtext: Wer den Score anzweifelt, kann nicht
+nachsehen, worauf er beruht. Bei einer Portfolio-Entscheidung über sechsstellige Beträge ist das
+zu wenig — `PLAN.md` §10 verlangt ausdrücklich „die wesentlichen Informationsquellen".
+
+**Umfang**
+- Das Ausgabeschema je Rolle bekommt ein Feld `belege`: eine Liste von wörtlichen Zitaten aus dem
+  Projekttext, jeweils mit Herkunft (Dateiname, bei PDFs die Seitenzahl aus Paket 8).
+- **Höchstens fünf Belege je Rolle**, nach Relevanz für genau diese Bewertung geordnet — der
+  Beleg, der den Score am stärksten trägt, steht oben. Fünf sind lesbar; eine vollständige
+  Fundstellenliste liest niemand.
+- **Zitatprüfung wie in Paket 10:** Ein Beleg wird nur angezeigt, wenn er wörtlich im
+  Projekttext vorkommt. Die Prüffunktion aus Paket 10 wird wiederverwendet, nicht neu gebaut.
+- Darstellung in `proposal_evaluation.html` wie im Wiki: Zitatbox über der Begründung,
+  typografische Anführungszeichen, Serifenschrift, linker Balken.
+- Status **INFORMATION FEHLT** braucht keine Belege — dort steht ja gerade nichts. Die bereits
+  vorhandene Liste `fehlende_informationen` bleibt, wie sie ist.
+
+**Fertig wenn**
+- Jede der vier Rollenbewertungen zeigt bis zu fünf wörtliche Belegzitate mit Herkunft.
+- Ein Beleg, der nicht wörtlich in den Projektunterlagen steht, erscheint nicht.
+- Eine Bewertung mit Status INFORMATION FEHLT zeigt keine Belege, sondern weiter die fehlenden
+  Informationen.
+
+**Schnittstellen:** Nutzt die Zitatprüfung aus Paket 10 und den Projekttext aus
+`evaluation._project_text`. Die Seitenzahl als Belegstelle kommt aus Paket 8. Für `PLAN.md` §8
+ist das der letzte Baustein: Damit ist das `assessment` jedes Experten-Agenten belegt.
 
 ## Reihenfolge und Abhängigkeiten
 

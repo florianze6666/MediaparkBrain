@@ -14,24 +14,26 @@ source_documents:
 classification: internal
 ---
 
-# MAX – Marketing Automation
+# Projektvorschlag
 
-## Projektübersicht
+Dieses Dokument folgt der in PLAN.md, Abschnitt 2 ("Eingangspunkt: Projektvorschlag")
+definierten Mindeststruktur, damit der Completeness Check je Feld prüfen kann, ob eine
+Angabe vorliegt oder eine Informationslücke besteht.
 
-- Projekt-Nummer: BC-2026-0358.2
-- Programm: Company 1 – Marketing Technology
-- Projektmanager: Marketing Automation Product Lead
-- Projekt-Sponsor: VP Marketing
-- Partner: Company 1 - Customer Marketing
-- Strategisches Ziel: Customer / Customer Centric
-- Start (FY): 2026
-- Go-Live (FY): 2027
-- Betroffene Länder: CORP, FR, HR, IN, IT, NL, PT, RO, RS, UA
+## Projektname
 
-## Beschreibung & Zielsetzung
+MAX – Marketing Automation
+
+## Beschreibung des vorgeschlagenen Vorhabens
 
 Ermöglicht automatisierte, massenhaft personalisierte 1:1-Kampagnen in 9 zusätzlichen
 Ländern und liefert höhere Öffnungsraten sowie Umsatz pro kontaktiertem Kunden.
+
+Eingesetzte Software/Lösung: Marketing-Automation-Plattform (SaaS) mit Landing-Page-,
+M-App- und PIM-Integration (siehe "Relevante Anbieter-/Produktinformationen" unten für
+den Stand der Informationen dazu).
+
+## Zielsetzung des Projekts
 
 **Objective (OKR/VCP):** Automatisierte 1:1-personalisierte Kampagnen ermöglichen.
 
@@ -45,8 +47,30 @@ zusätzlicher Umsatzbeitrag ggü. Kontrollgruppe.
 - Fertigstellung Landing Page und Launch in Türkei, Kasachstan und Belgien
 
 Hinweis: Der Kick-off-/Go-live-Länderplan (u. a. Türkei, Kasachstan, Belgien, Indien,
-Rumänien) geht über die im Charter-Kopf gelisteten "Affected Countries" hinaus bzw. weicht
-davon ab — mögliche Inkonsistenz zwischen Feldern im Quelldokument.
+Rumänien) geht über die im Charter-Kopf gelisteten "Affected Countries" hinaus bzw.
+weicht davon ab — mögliche Inkonsistenz zwischen Feldern im Quelldokument.
+
+## Fachlicher und organisatorischer Nutzen
+
+**Fachlicher Nutzen:** Schnellerer Kampagnenlaunch; konsistente kundenzentrierte
+Kommunikation; wiederverwendbares Rollout-Muster über Länder hinweg; verbessertes
+Messen und Lernen aus Kampagnen; siehe auch quantifizierte Benefits unten.
+
+**Organisatorischer Nutzen:** *Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
+## Betroffene Geschäftsprozesse
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* (Naheliegend wäre der
+Marketing-Kampagnenprozess, dies ist jedoch nicht explizit als Prozess benannt.)
+
+## Betroffene Organisationseinheiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Bekannt sind lediglich:
+
+- Partner: Company 1 - Customer Marketing
+- Projekt-Sponsor: VP Marketing
+- Betroffene Länder (Charter-Kopf): CORP, FR, HR, IN, IT, NL, PT, RO, RS, UA
+  (siehe Inkonsistenz-Hinweis oben zum abweichenden Länderplan im Fließtext)
 
 ## Business Case
 
@@ -74,7 +98,7 @@ davon ab — mögliche Inkonsistenz zwischen Feldern im Quelldokument.
 | 2034 | 130.000 | 1.280.000 | 1.150.000 |
 | 2035 | 130.000 | 1.280.000 | 1.150.000 |
 
-## Kostenaufstellung (Detail)
+## Erwartete Kosten
 
 **One-off (2026):**
 
@@ -94,7 +118,7 @@ davon ab — mögliche Inkonsistenz zwischen Feldern im Quelldokument.
 | SC 30 - SaaS (extern) | 80.000 | Marketing automation SaaS / messaging services |
 | SC 30 - Maint. for ext. SW Licenses (extern) | 25.000 | External maintenance and integration support |
 
-## Nutzenaufstellung (Detail)
+## Erwarteter wirtschaftlicher Nutzen
 
 **Sales Benefits (ab 2027):** 300.000 € (2027) → 700.000 € (2028) → 1.100.000 €/p.a. ab
 2029 — Incremental sales from personalised 1:1 campaigns.
@@ -108,24 +132,53 @@ davon ab — mögliche Inkonsistenz zwischen Feldern im Quelldokument.
 Kommunikation; wiederverwendbares Rollout-Muster über Länder hinweg; verbessertes Messen
 und Lernen aus Kampagnen.
 
+## Geplante Laufzeit bzw. Einführungszeitraum
+
+Start (FY): 2026, Go-Live (FY): 2027, mehrstufiger Länder-Rollout (Kick-off →
+Go-Live → Landing-Page-Launch, siehe Deliverables oben). Business Case ist bis 2035
+durchgerechnet. Eine explizite Projektlaufzeit über 2035 hinaus ist *nicht in den
+Quelldokumenten enthalten — Informationslücke.*
+
+## Bekannte technische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke* im Sinne einer expliziten
+Auflistung. Implizit genannt werden M-App- und PIM-Integration als Deliverables, jedoch
+nicht als benannte Abhängigkeit beschrieben.
+
+## Bekannte organisatorische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
 ## Risikoanalyse
 
 *Nicht in den Quelldokumenten enthalten — Informationslücke.*
 
-## Abhängigkeiten (technisch/organisatorisch)
+## Begründung, warum das Projekt für die Organisation vorteilhaft ist
 
-*Nicht in den Quelldokumenten enthalten — Informationslücke.* (M-App- und
-PIM-Integration werden als Deliverables genannt, aber nicht als Abhängigkeiten
-beschrieben.)
+Keine eigenständige Begründung im Quelldokument; implizit ableitbar aus Business Case
+(ROI 8,64, Payback ≈ 16 Monate) — der stärkste Business Case aller vier Projekte. Eine
+explizite strategische Begründung *fehlt — Informationslücke.*
 
-## Offene Punkte / Informationslücken
+## Relevante Anbieter-, Produkt- bzw. Projektinformationen
 
-- Keine explizite Risikoanalyse in Project Charter oder Business Case vorhanden.
-- Keine strukturierten Angaben zu technischen/organisatorischen Abhängigkeiten (nur
-  implizit über genannte Deliverables wie M-App- und PIM-Integration).
-- Keine explizite Nennung betroffener Geschäftsprozesse oder Organisationseinheiten
-  (nur betroffene Länder sind dokumentiert).
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Es werden nur generische
+Kategorien genannt ("Marketing automation SaaS / messaging services", "PIM /
+landing-page integration licences and tooling"), keine konkreten Anbieter- oder
+Produktnamen.
+
+## Offene Punkte / Informationslücken (Zusammenfassung)
+
+- Organisatorischer Nutzen nicht spezifiziert.
+- Betroffene Geschäftsprozesse nicht benannt.
+- Betroffene Organisationseinheiten nicht benannt (nur Länder, mit Inkonsistenz s. u.).
 - Widersprüchliche Länderangaben zwischen "Affected Countries" im Charter-Kopf und dem
-  im Fließtext beschriebenen Kick-off-/Go-live-Länderplan (s. o.).
+  im Fließtext beschriebenen Kick-off-/Go-live-Länderplan.
+- Keine explizite Projektlaufzeit über den Business-Case-Horizont (2035) hinaus.
+- Technische Abhängigkeiten nur implizit über Deliverables (M-App/PIM), nicht explizit
+  dokumentiert.
+- Keine organisatorischen Abhängigkeiten dokumentiert.
+- Keine Risikoanalyse vorhanden.
+- Keine explizite strategische Begründung vorhanden.
+- Keine konkreten Anbieter-/Produktnamen genannt.
 - Business Case als "fictional example" gekennzeichnet; Firmenname als "Company 1"
   anonymisiert.

@@ -14,26 +14,28 @@ source_documents:
 classification: internal
 ---
 
-# M:COMPANION | Becoming a Daily Shopping Companion
+# Projektvorschlag
 
-## Projektübersicht
+Dieses Dokument folgt der in PLAN.md, Abschnitt 2 ("Eingangspunkt: Projektvorschlag")
+definierten Mindeststruktur, damit der Completeness Check je Feld prüfen kann, ob eine
+Angabe vorliegt oder eine Informationslücke besteht.
 
-- Projekt-Nummer: BC-2026-0387.3
-- Programm: Company 1 – Digital Customer Experience
-- Projektmanager: Digital Product Lead
-- Projekt-Sponsor: VP Customer Experience
-- Partner: Customer Experience & Digital Commerce
-- Strategisches Ziel: Customer / Customer Value
-- Start (FY): 2026
-- Go-Live (FY): 2027
-- Betroffene Länder: CORP, DE, ES, FR, NL, PT, TR
+## Projektname
 
-## Beschreibung & Zielsetzung
+M:COMPANION | Becoming a Daily Shopping Companion
+
+## Beschreibung des vorgeschlagenen Vorhabens
 
 Die M:Companion App ist der mobile Kontaktpunkt für Kunden. Neben Funktionen wie
 Sortimentsdurchsuchung, Verfügbarkeitsprüfung, digitaler Kundenkarte, Einkaufslisten und
 Rechnungseinsicht bietet sie einen neuen Kommunikationskanal für personalisierte
 Informationen (u. a. Push-Benachrichtigungen), den es bei Company 1 bisher nicht gab.
+
+Eingesetzte Software/Lösung: native Mobile-App (M:Companion) mit Anbindung an
+Analytics-Tooling für Push-Kommunikation und Kundenanalyse (siehe auch "Relevante
+Anbieter-/Produktinformationen" unten).
+
+## Zielsetzung des Projekts
 
 **Objective (OKR/VCP):** Weniger Aufwand für Company 1 und die Kunden.
 
@@ -42,6 +44,33 @@ an der Kasse; Vermeidung von Rechnungsdrucken.
 
 **Geplante Deliverables:** Einkaufsliste wird für 80 % der gekauften Artikel von App-Nutzern
 verwendet.
+
+## Fachlicher und organisatorischer Nutzen
+
+**Fachlicher Nutzen:** Höhere Kundenzufriedenheit und -bindung; einheitlicher mobiler
+Kontaktpunkt; skalierbarer Kanal für personalisierte Kommunikation; besserer digitaler
+Kundeneinblick; siehe auch quantifizierte Sales-/Cost-Benefits unter "Erwarteter
+wirtschaftlicher Nutzen".
+
+**Organisatorischer Nutzen:** *Nicht in den Quelldokumenten enthalten — Informationslücke.*
+(Keine Aussage dazu, wie sich interne Abläufe, Rollen oder Zuständigkeiten durch das
+Projekt verändern.)
+
+## Betroffene Geschäftsprozesse
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* (Charter und Business Case
+benennen nur betroffene Länder, keine konkreten Geschäftsprozesse wie z. B. Checkout,
+Kundenservice oder Rechnungsstellung als Prozesse.)
+
+## Betroffene Organisationseinheiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Bekannt sind lediglich:
+
+- Partner/Owner: Customer Experience & Digital Commerce
+- Projekt-Sponsor: VP Customer Experience
+- Betroffene Länder: CORP, DE, ES, FR, NL, PT, TR
+
+Konkrete Organisationseinheiten (Abteilungen, Business Units) sind nicht benannt.
 
 ## Business Case
 
@@ -71,7 +100,7 @@ verwendet.
 | 2034 | 75.000 | 730.000 | 655.000 |
 | 2035 | 75.000 | 730.000 | 655.000 |
 
-## Kostenaufstellung (Detail)
+## Erwartete Kosten
 
 **One-off (2026):**
 
@@ -92,7 +121,7 @@ verwendet.
 | SC 30 - SaaS (extern) | 30.000 | SaaS for push communication and customer analytics |
 | SC 30 - Maint. for ext. SW Licenses (extern) | 20.000 | External maintenance for mobile components |
 
-## Nutzenaufstellung (Detail)
+## Erwarteter wirtschaftlicher Nutzen
 
 **Sales Benefits (ab 2027, p.a.):**
 
@@ -109,20 +138,47 @@ verwendet.
 mobiler Kontaktpunkt; skalierbarer Kanal für personalisierte Kommunikation; besserer
 digitaler Kundeneinblick.
 
+## Geplante Laufzeit bzw. Einführungszeitraum
+
+Start (FY): 2026, Go-Live (FY): 2027. Business Case ist bis 2035 durchgerechnet.
+Eine explizite Projektlaufzeit (Enddatum bzw. Betriebsdauer über 2035 hinaus) ist
+*nicht in den Quelldokumenten enthalten — Informationslücke.*
+
+## Bekannte technische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
+## Bekannte organisatorische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
 ## Risikoanalyse
 
 *Nicht in den Quelldokumenten enthalten — Informationslücke.*
 
-## Abhängigkeiten (technisch/organisatorisch)
+## Begründung, warum das Projekt für die Organisation vorteilhaft ist
 
-*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+Keine eigenständige Begründung im Quelldokument; implizit ableitbar aus Business Case
+(ROI 3,16, Payback ≈ 20 Monate) und den unter "Zielsetzung" und "Erwarteter
+wirtschaftlicher Nutzen" genannten Effekten. Eine explizite strategische Begründung
+*fehlt — Informationslücke.*
 
-## Offene Punkte / Informationslücken
+## Relevante Anbieter-, Produkt- bzw. Projektinformationen
 
-- Keine explizite Risikoanalyse in Project Charter oder Business Case vorhanden.
-- Keine Angaben zu technischen Abhängigkeiten (z. B. Schnittstellen, Systemlandschaft).
-- Keine Angaben zu organisatorischen Abhängigkeiten.
-- Keine explizite Nennung betroffener Geschäftsprozesse oder Organisationseinheiten
-  (nur betroffene Länder sind dokumentiert).
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Es werden nur generische
+Kategorien genannt ("Software licences / analytics tooling", "SaaS for push
+communication and customer analytics"), keine konkreten Anbieter- oder Produktnamen.
+
+## Offene Punkte / Informationslücken (Zusammenfassung)
+
+- Organisatorischer Nutzen nicht spezifiziert.
+- Betroffene Geschäftsprozesse nicht benannt.
+- Betroffene Organisationseinheiten nicht benannt (nur Länder).
+- Keine explizite Projektlaufzeit über den Business-Case-Horizont (2035) hinaus.
+- Keine technischen Abhängigkeiten dokumentiert.
+- Keine organisatorischen Abhängigkeiten dokumentiert.
+- Keine Risikoanalyse vorhanden.
+- Keine explizite strategische Begründung vorhanden.
+- Keine konkreten Anbieter-/Produktnamen genannt.
 - Business Case als "fictional example" gekennzeichnet; Firmenname als "Company 1"
   anonymisiert.

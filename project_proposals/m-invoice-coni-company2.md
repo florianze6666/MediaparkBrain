@@ -14,27 +14,27 @@ source_documents:
 classification: internal
 ---
 
-# M:INVOICE – CONI (Consolidated Invoices) — Company 2
+# Projektvorschlag
 
-## Projektübersicht
+Dieses Dokument folgt der in PLAN.md, Abschnitt 2 ("Eingangspunkt: Projektvorschlag")
+definierten Mindeststruktur, damit der Completeness Check je Feld prüfen kann, ob eine
+Angabe vorliegt oder eine Informationslücke besteht.
 
-- Projekt-Nummer: BC-2026-0412.1
-- Programm: Company 2 – Digital Customer Experience
-- Projektmanager: Invoice Product Lead
-- Projekt-Sponsor: VP Finance & Customer Services
-- Partner: Company 2 (Operating)
-- Strategisches Ziel: Customer / Customer Value
-- Start (FY): 2026
-- Go-Live (FY): 2027
-- Betroffene Länder: BE, CORP, DE, ES, FR, HR, HU, IT, NL, PL, PT
+## Projektname
 
-## Beschreibung & Zielsetzung
+M:INVOICE – CONI (Consolidated Invoices) — Company 2
+
+## Beschreibung des vorgeschlagenen Vorhabens
 
 Viele Kunden, insbesondere Großkunden, erwarten eine regelmäßige (z. B. monatliche)
 Sammelrechnung mit allen Packlisten des Zeitraums. Das vermeidet administrativen
-Aufwand beim Kunden und ist ein wirksames Marketinginstrument für Company 2. Der
-Projektumfang ist eine neu gestaltete CONI-Lösung auf Basis des strategischen
-Kunden-Rechnungsarchivs, die in mehreren Ländern aktiviert werden soll.
+Aufwand beim Kunden und ist ein wirksames Marketinginstrument für Company 2.
+
+Eingesetzte Software/Lösung: neu gestaltete CONI-Lösung auf Basis des strategischen
+Kunden-Rechnungsarchivs (Dokumenten-/Archivsoftware, siehe Kostenaufstellung), die in
+mehreren Ländern aktiviert werden soll.
+
+## Zielsetzung des Projekts
 
 **Objective (OKR/VCP):** OBJ-888 — Wir bieten alle Lösungen rund um Kundenrechnungen an.
 
@@ -44,6 +44,28 @@ Anzahl konsolidierter Rechnungen pro Monat in ES von 0 auf 500.
 
 **Geplante Deliverables:** Einführung von CONI im 3. Land (Spanien); Implementierung von
 NVP-Features.
+
+## Fachlicher und organisatorischer Nutzen
+
+**Fachlicher Nutzen:** Verbesserter Service für Großkunden; harmonisierter
+Rechnungsprozess über Länder hinweg; stärkere Compliance und Nachvollziehbarkeit durch
+ein strategisches Rechnungsarchiv; siehe auch quantifizierte Benefits unten.
+
+**Organisatorischer Nutzen:** *Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
+## Betroffene Geschäftsprozesse
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* (Naheliegend wäre der
+Rechnungsstellungs-/Fakturierungsprozess sowie Kundenservice-Prozesse für
+Rechnungsanfragen, dies ist jedoch nicht explizit als Prozess benannt.)
+
+## Betroffene Organisationseinheiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Bekannt sind lediglich:
+
+- Partner: Company 2 (Operating)
+- Projekt-Sponsor: VP Finance & Customer Services
+- Betroffene Länder: BE, CORP, DE, ES, FR, HR, HU, IT, NL, PL, PT
 
 ## Business Case
 
@@ -71,7 +93,7 @@ NVP-Features.
 | 2034 | 85.000 | 430.000 | 345.000 |
 | 2035 | 85.000 | 430.000 | 345.000 |
 
-## Kostenaufstellung (Detail)
+## Erwartete Kosten
 
 **One-off (2026):**
 
@@ -95,7 +117,7 @@ NVP-Features.
 Anmerkung: Die Kostenstruktur ist bis auf abweichende Depreciation-/Capital-Employed-Werte
 (sichtbar im Jahresverlauf) identisch zum Company-1-Pendant.
 
-## Nutzenaufstellung (Detail)
+## Erwarteter wirtschaftlicher Nutzen
 
 **Sales Benefits (ab 2027):** 80.000 € (2027), steigend auf 180.000 €/p.a. ab 2028 —
 Retention / revenue protection for large customers requiring consolidated invoices.
@@ -110,21 +132,48 @@ Retention / revenue protection for large customers requiring consolidated invoic
 Rechnungsprozess über Länder hinweg; stärkere Compliance und Nachvollziehbarkeit durch
 ein strategisches Rechnungsarchiv.
 
+## Geplante Laufzeit bzw. Einführungszeitraum
+
+Start (FY): 2026, Go-Live (FY): 2027. Business Case ist bis 2035 durchgerechnet.
+Eine explizite Projektlaufzeit über 2035 hinaus ist *nicht in den Quelldokumenten
+enthalten — Informationslücke.*
+
+## Bekannte technische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
+## Bekannte organisatorische Abhängigkeiten
+
+*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+
 ## Risikoanalyse
 
 *Nicht in den Quelldokumenten enthalten — Informationslücke.*
 
-## Abhängigkeiten (technisch/organisatorisch)
+## Begründung, warum das Projekt für die Organisation vorteilhaft ist
 
-*Nicht in den Quelldokumenten enthalten — Informationslücke.*
+Keine eigenständige Begründung im Quelldokument; implizit ableitbar aus Business Case
+(ROI 2,33, Payback ≈ 24 Monate) und dem in der Beschreibung genannten Argument, dass
+Sammelrechnungen ein "wirksames Marketinginstrument" seien. Eine explizite strategische
+Begründung *fehlt — Informationslücke.*
 
-## Offene Punkte / Informationslücken
+## Relevante Anbieter-, Produkt- bzw. Projektinformationen
 
-- Keine explizite Risikoanalyse in Project Charter oder Business Case vorhanden.
-- Keine Angaben zu technischen Abhängigkeiten (z. B. Schnittstellen, Systemlandschaft).
-- Keine Angaben zu organisatorischen Abhängigkeiten.
-- Keine explizite Nennung betroffener Geschäftsprozesse oder Organisationseinheiten
-  (nur betroffene Länder sind dokumentiert).
+*Nicht in den Quelldokumenten enthalten — Informationslücke.* Es werden nur generische
+Kategorien genannt ("Document / archive software licences", "SaaS / document
+services"), keine konkreten Anbieter- oder Produktnamen.
+
+## Offene Punkte / Informationslücken (Zusammenfassung)
+
+- Organisatorischer Nutzen nicht spezifiziert.
+- Betroffene Geschäftsprozesse nicht benannt.
+- Betroffene Organisationseinheiten nicht benannt (nur Länder).
+- Keine explizite Projektlaufzeit über den Business-Case-Horizont (2035) hinaus.
+- Keine technischen Abhängigkeiten dokumentiert.
+- Keine organisatorischen Abhängigkeiten dokumentiert.
+- Keine Risikoanalyse vorhanden.
+- Keine explizite strategische Begründung vorhanden.
+- Keine konkreten Anbieter-/Produktnamen genannt.
 - Es existiert eine nahezu identische Parallelvariante dieses Projekts für "Company 1"
   ([[m-invoice-coni-company1]]) mit demselben Projekt-Charter-Text, aber abweichenden
   Kostenparametern — bei einer Portfolio-Bewertung ggf. auf Dopplung/Abgrenzung achten.

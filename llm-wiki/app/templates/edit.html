@@ -1,4 +1,4 @@
-﻿{% extends "layout.html" %}
+{% extends "layout.html" %}
 {% block title %}{{ "Bearbeiten" if page else "Wissen hochladen" }}{% endblock %}
 {% block content %}
   <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -24,15 +24,20 @@
         <span>Angelegt von <strong>{{ page.meta.erstellt_von | user_name }}</strong>{% if page.meta.erstellt_am %} am {{ page.meta.erstellt_am | ts }}{% endif %}</span>
       {% endif %}
       <span>Bearbeitet als <strong>{{ user_name }}</strong></span>
+      <span>Ablage: <code>pages/{{ page.meta.domaene }}/{% if page.meta.vertraulichkeit == "vertraulich" %}vertraulich/{% endif %}{{ page.slug }}.md</code></span>
     </div>
   {% else %}
     <div class="page-meta"><span>Wird angelegt als <strong>{{ user_name }}</strong></span></div>
   {% endif %}
-
-  {% set meta = page.meta if page else none %}
+  {% if error %}
+    <p class="hint error">{{ error }}</p>
+  {% endif %}
+  {# draft: bei abgelehntem Anlegen (409) die Eingaben zurueckspiegeln #}
+  {% set form = page if page else (draft if draft is defined and draft else none) %}
+  {% set meta = form.meta if form else none %}
   <form method="post" action="{% if page %}/wiki/{{ slug }}/edit{% else %}/new{% endif %}" class="edit-form">
     <label>Titel
-      <input type="text" name="title" value="{{ page.title if page else '' }}" required placeholder="Titel des Dokuments / der Seite">
+      <input type="text" name="title" value="{{ form.title if form else '' }}" required placeholder="Titel des Dokuments / der Seite">
     </label>
     <div class="form-row">
       <label>Vertraulichkeit
@@ -50,6 +55,7 @@
           <option value="{{ d }}" {% if (meta.domaene if meta else 'allgemein') == d %}selected{% endif %}>{{ d }}</option>
           {% endfor %}
         </select>
+        <span class="field-hint">Domänenwechsel verschiebt die Datei in den Ordner der Domäne</span>
       </label>
     </div>
     <label>Empfänger
@@ -57,7 +63,7 @@
       <span class="field-hint">nur bei vertraulich, Nutzer oder Gruppen, komma-getrennt</span>
     </label>
     <label>Inhalt (Markdown)
-      <textarea name="content" rows="18" required placeholder="Hier Text eingeben oder oben 'Dokument hochladen ...' klicken...">{{ page.content if page else '' }}</textarea>
+      <textarea name="content" rows="18" required placeholder="Hier Text eingeben oder oben 'Dokument hochladen ...' klicken...">{{ form.content if form else '' }}</textarea>
     </label>
     <div class="form-actions">
       <button type="submit" class="btn">Speichern</button>

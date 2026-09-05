@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import FINANCE_TEXT
+from tests.conftest import FINANCE_TEXT, as_user
 
 pytestmark = pytest.mark.security
 
@@ -29,7 +29,7 @@ def after_form(html: str) -> str:
 
 
 def test_mitarbeiter_bekommt_nichts_aus_finance(client):
-    r = client.post("/ask", cookies={"mpb_user": "mitarbeiter"}, data={"question": QUESTION})
+    r = client.post("/ask", cookies=as_user("mitarbeiter"), data={"question": QUESTION})
     assert r.status_code == 200
     assert "Suche als" in r.text and "Mitarbeiter" in r.text
     assert "Kein ANTHROPIC_API_KEY gesetzt" in r.text  # wirklich Roh-Kontext, kein LLM
@@ -40,7 +40,7 @@ def test_mitarbeiter_bekommt_nichts_aus_finance(client):
 
 
 def test_cfo_bekommt_finance(client):
-    r = client.post("/ask", cookies={"mpb_user": "cfo"}, data={"question": QUESTION})
+    r = client.post("/ask", cookies=as_user("cfo"), data={"question": QUESTION})
     assert r.status_code == 200
     body = after_form(r.text)
     assert "Budget Finance" in body

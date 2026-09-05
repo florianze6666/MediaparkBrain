@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 import re
@@ -53,6 +53,7 @@ def build_fallback_header(
         "projekt": clean_title,
         "geschaeftsbereich": "-",
         "vertraulichkeit": vertraulichkeit,
+        "domaene": domaene,
         "informationsdomaene": [domaene],
         "ablageort": "projektlaufwerk",
         "erstellt_von": user_id,

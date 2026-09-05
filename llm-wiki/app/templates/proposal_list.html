@@ -7,16 +7,18 @@
       <a href="/proposals/new">+ Neuer Vorschlag</a>
     </div>
   </div>
+  <p class="page-meta"><span>Angezeigt als <strong>{{ user_name }}</strong> — nur Vorschläge, die du lesen darfst.</span></p>
   {% if proposals %}
-    <ul class="page-list proposal-list">
+    <ul class="proposal-cards">
       {% for p in proposals %}
-      <li>
-        <a href="/proposals/{{ p.slug }}">{{ p.project_name }}</a>
-        <span class="hint-inline">eingereicht am {{ p.submitted_at }}</span>
+      <li class="proposal-card">
+        <a class="proposal-title" href="/proposals/{{ p.slug }}">{{ p.project_name }}</a>
+        {% if p.submitted_at %}<span class="hint-inline">eingereicht am {{ p.submitted_at }}</span>{% endif %}
+        {% with meta=p.meta, rolle=p.rolle, kompakt=true %}{% include "_herkunft.html" %}{% endwith %}
       </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p>Noch keine Projektvorschläge eingereicht. <a href="/proposals/new">Ersten Vorschlag einreichen</a>.</p>
+    <p>Keine Projektvorschläge sichtbar. <a href="/proposals/new">Vorschlag einreichen</a>.</p>
   {% endif %}
 {% endblock %}

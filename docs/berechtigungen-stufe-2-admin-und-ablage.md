@@ -56,6 +56,13 @@ llm-wiki/pages/
 - `list_pages(user)` liest **nur Ordner**, deren Domäne der Nutzer lesen darf, und wendet danach
   `decide` pro Seite an (Vertraulichkeit, Empfänger). `search_snippets(query, user)` nutzt genau diese
   Liste. Zwei Schranken, dieselbe Regel.
+- **`allgemein` ist die Lobby:** diesen Ordner betritt jeder, auch der Gast. Fremde Ordner werden
+  nie geöffnet, auch nicht, um nach öffentlich markierten Seiten zu suchen. Das Label `oeffentlich`
+  erweitert nie die Ordnerrechte (Label verschärft nur). Eine öffentliche Seite, die jeder sehen soll,
+  gehört nach `allgemein/`.
+- **Schreiben nur, wo man lesen darf** (`access.can_write`): Seiten und Vorschläge können nur in
+  Domänen angelegt oder verschoben werden, die der Autor lesen darf. Sonst könnte ein Mitarbeiter
+  Text in das Wissen des CFO-Agenten einschleusen, ohne es je zu sehen (Prompt-Injection-Vektor).
 
 ### Metadaten für Projektvorschläge (Frontmatter in `project_proposals/<slug>.md`)
 
@@ -120,6 +127,45 @@ Der mtime-Cache aus Stufe 1 sorgt dafür, dass die Änderung sofort gilt.
 - **Paket 7 (Ablage):** Ein Ablageort aus dem Korpus ist ab jetzt einfach eine Domäne mit Ordner.
   Frank kann Domänen im Admin-Dashboard anlegen.
 - **Paket 4 (Bewertung):** Vorschläge über `proposals.list_proposals(user)` lesen, nie ungefiltert.
+
+## Sicherheitsbetrachtung (Sicht IT-Security)
+
+**Schutzziel:** Nur wer eine Information lesen darf, bekommt sie, auch nicht über Umwege wie Suche,
+Sprachmodell, Statistik, Dateisystem oder Fehlermeldungen. Und niemand kann in Wissen schreiben, das
+er nicht lesen darf.
+
+### Schranken, die im Code stehen und durch Tests (`pytest -m security`) abgesichert sind
+
+| Schranke | Wo | Was sie verhindert |
+|----------|-----|--------------------|
+| Ordner-Schranke | `wiki.list_pages`, `proposals.list_proposals` | Fremde Ordner werden nie geöffnet; eine falsch beschriftete Datei im falschen Ordner erreicht nie den Kontext |
+| `decide` pro Dokument | `access.decide`, `can_read` | Vertraulichkeit und Empfänger innerhalb lesbarer Ordner |
+| Vorfilter vor Top-k | `wiki.search_snippets` | Das Sprachmodell sieht keinen Text, den der Fragende nicht sehen darf |
+| Write ⊆ Read | `access.can_write`, `main.require_writable` | Einschleusen von Text in fremde Domänen (Prompt-Injection über die Wissensbasis) |
+| Signierter Identitäts-Cookie | `access.sign_user` / `verify_user`, HMAC-SHA256 mit `MPB_SECRET` | Rollenwechsel durch Editieren des Cookies im Browser |
+| Slug-Validierung | `wiki.is_valid_slug`, in Wiki und Vorschlägen | Path-Traversal über die URL auf Dateien außerhalb der Ablage |
+| Einheitliche 404 | `main.not_found_handler` | Unterscheidung „gibt es nicht" vs. „darfst du nicht" |
+| Admin ohne Leserecht | `permissions.yaml`, `decide` unverändert | Rechteverwaltung heißt nicht Zugriff auf Inhalte (Gewaltenteilung) |
+| Änderungsprotokoll | `permissions-changelog.md` | Rechteänderungen ohne Spur |
+| Kein Selbst-Aussperren | `/admin/users/save` | Verlust des letzten Admins |
+
+### Bekannte Restrisiken (bewusst, für den Demonstrator)
+
+1. **Das Login ist eine Auswahl, kein Login.** Jeder kann in der Seitenleiste jede Rolle wählen. Der
+   signierte Cookie schützt nur gegen Fälschung ohne Serverbeteiligung. Echtes Login (Passwort, SSO)
+   ist der nächste Schritt, die Schnittstelle dafür ist `access.current_user`.
+2. **Ändern und Löschen = Lesen.** Wer eine Seite lesen darf und kein Gast ist, darf sie ändern und
+   löschen. Kein Eigentümerschutz, keine Versionierung außer Git.
+3. **Existenz-Leck über Kollisionen.** Wer einen Slug oder Projektnamen anlegt, der in einer fremden
+   Domäne existiert, bekommt eine 409-Meldung und erfährt so, dass es ihn gibt. Die Alternative
+   (stilles Überschreiben fremder Inhalte) wäre schlimmer.
+4. **Upload-Dateien** unter `project_proposals/uploads/` folgen dem Vorschlag, werden aber nicht
+   separat geprüft und sind nicht über HTTP erreichbar.
+5. **CSRF** wird nur durch `SameSite=lax` abgefangen, es gibt keine CSRF-Tokens.
+6. **Kein `MPB_SECRET` gesetzt** heißt: Zufallsschlüssel pro Start, alle Sessions verfallen beim
+   Neustart. Für den Betrieb den Wert in `.env` setzen.
+7. **Sprachmodell-Antworten** werden nicht nachträglich geprüft. Der Schutz liegt komplett im
+   Vorfilter; was das Modell nie gesehen hat, kann es nicht verraten.
 
 ## Nicht in diesem Paket
 

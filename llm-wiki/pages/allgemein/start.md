@@ -1,8 +1,8 @@
 ---
 erstellt_von: system
 erstellt_am: '2026-09-05T15:12:00'
-geaendert_von: ''
-geaendert_am: ''
+geaendert_von: pmo-leitung
+geaendert_am: '2026-09-05T17:29:24'
 vertraulichkeit: oeffentlich
 domaene: allgemein
 empfaenger: []

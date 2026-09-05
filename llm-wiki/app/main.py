@@ -674,8 +674,11 @@ def require_proposal(slug: str, user: str) -> proposals.Proposal:
 @app.get("/proposals/evaluate")
 def proposal_evaluate(request: Request):
     """Bewertet die zuletzt eingereichten Projektvorschlaege in allen vier
-    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md."""
-    recent = proposals.list_proposals()[:3]  # bereits nach submitted_at absteigend sortiert
+    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md.
+    Nur Vorschlaege, die der Nutzer laut decide lesen darf (US-12) - sonst
+    wuerde die Bewertung vertrauliche Inhalte an Gaeste durchreichen."""
+    user = access.current_user(request)
+    recent = proposals.list_proposals(user)[:3]  # bereits nach submitted_at absteigend sortiert
     results = [
         {"proposal": p, "data": evaluation.evaluate_proposal(p)} for p in recent
     ]

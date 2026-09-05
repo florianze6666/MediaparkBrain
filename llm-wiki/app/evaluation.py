@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 from .llm import is_configured as llm_is_configured
 from .proposals import Proposal
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+log = logging.getLogger(__name__)
 
 # Kurzfassung der vier Experten-Dimensionen aus PLAN.md §6.
 ROLE_CRITERIA = {
@@ -108,17 +110,11 @@ def _project_text(proposal: Proposal) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def evaluate_proposal(proposal: Proposal) -> dict:
-    """Bewertet einen Projektvorschlag in allen vier Experten-Dimensionen gemaess
-    Bewertungslogik_Experten-Agent_MVP.md. Gibt bei fehlendem API-Key oder
-    Parsing-Fehlern ein dict mit "error" zurueck."""
-    if not llm_is_configured():
-        return {"error": "Kein ANTHROPIC_API_KEY gesetzt - Bewertung nicht moeglich."}
-
+def _ask_model(model: str, proposal: Proposal) -> str:
+    """Ruft das Modell auf und liefert den rohen Antworttext (ohne Codeblock-Zaun)."""
     from anthropic import Anthropic
 
     client = Anthropic()
-    model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
     response = client.messages.create(
         model=model,
         max_tokens=2048,
@@ -134,13 +130,53 @@ def evaluate_proposal(proposal: Proposal) -> dict:
         ],
     )
     raw = "".join(block.text for block in response.content if block.type == "text").strip()
-    raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    return raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+
+def _describe_api_error(e: Exception, model: str) -> str:
+    """Verstaendliche Fehlermeldung fuer die Seite statt eines nackten Tracebacks."""
+    import anthropic
+
+    if isinstance(e, anthropic.AuthenticationError):
+        return "ANTHROPIC_API_KEY wird vom Anbieter abgelehnt - Bewertung nicht moeglich."
+    if isinstance(e, anthropic.NotFoundError):
+        return f'Modell "{model}" ist beim Anbieter nicht verfuegbar (ANTHROPIC_MODEL pruefen).'
+    if isinstance(e, anthropic.RateLimitError):
+        return "Anbieter meldet Rate-Limit - bitte spaeter erneut versuchen."
+    if isinstance(e, anthropic.APIConnectionError):
+        return "Keine Verbindung zum LLM-Anbieter (Netzwerk oder ANTHROPIC_BASE_URL pruefen)."
+    if isinstance(e, anthropic.APIStatusError):
+        return f"LLM-Anbieter antwortet mit Fehler {e.status_code} - Bewertung nicht moeglich."
+    return f"Bewertung fehlgeschlagen: {type(e).__name__}: {e}"
+
+
+def evaluate_proposal(proposal: Proposal) -> dict:
+    """Bewertet einen Projektvorschlag in allen vier Experten-Dimensionen gemaess
+    Bewertungslogik_Experten-Agent_MVP.md. Gibt bei fehlendem API-Key oder
+    Parsing-Fehlern ein dict mit "error" zurueck."""
+    if not llm_is_configured():
+        return {"error": "Kein ANTHROPIC_API_KEY gesetzt - Bewertung nicht moeglich."}
+
+    model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
+    try:
+        raw = _ask_model(model, proposal)
+    except Exception as e:  # noqa: BLE001 - jede API-/Netzstoerung wird auf der Seite gezeigt
+        # Ohne diesen Fang wuerde ein ungueltiger Key, ein unbekanntes Modell oder
+        # ein Netzfehler die ganze Seite als HTTP 500 abbrechen - die Bewertung
+        # der uebrigen Vorschlaege inklusive.
+        log.exception("Bewertung von %s fehlgeschlagen", proposal.slug)
+        return {"error": _describe_api_error(e, model)}
 
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
         return {
             "error": "Antwort des Modells konnte nicht als JSON gelesen werden.",
+            "raw": raw,
+        }
+    if not isinstance(data, dict):
+        return {
+            "error": "Antwort des Modells hat nicht die erwartete Struktur.",
             "raw": raw,
         }
 

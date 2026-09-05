@@ -51,6 +51,13 @@ body {
 }
 
 .btn-ask { background: #2f9e6e; }
+.btn-proposal { background: #a8722f; }
+
+.hint-inline { color: var(--muted); font-size: 12px; margin-left: 10px; }
+.hint.error { border-color: #c0392b; color: #ff9d90; }
+.proposal-list li { display: flex; align-items: baseline; padding: 6px 8px; }
+.proposal-list a { color: var(--text); text-decoration: none; }
+.proposal-list a:hover { text-decoration: underline; }
 
 .page-list { list-style: none; padding: 0; margin: 0; }
 .page-list li { margin-bottom: 4px; }

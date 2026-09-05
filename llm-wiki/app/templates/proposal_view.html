@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}{{ proposal.project_name }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ proposal.project_name }}</h1>
+    <div class="page-actions">
+      <form method="post" action="/proposals/{{ proposal.slug }}/delete" onsubmit="return confirm('Vorschlag wirklich loeschen?');" style="display:inline">
+        <button type="submit" class="link-btn">Löschen</button>
+      </form>
+    </div>
+  </div>
+  <p class="hint">Eingereicht am {{ proposal.submitted_at }}</p>
+
+  <h2>Beschreibung</h2>
+  <article class="markdown-body">{{ description_html | safe }}</article>
+
+  <h2>Hochgeladene Dateien</h2>
+  {% if proposal.files %}
+    <ul>
+      {% for name in proposal.files %}
+      <li>{{ name }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">Keine Dateien hochgeladen.</p>
+  {% endif %}
+
+  <p><a href="/proposals">← Alle Projektvorschläge</a></p>
+{% endblock %}

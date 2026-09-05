@@ -406,6 +406,22 @@ und ist nur für Finance-Leser sichtbar.
 
 ---
 
+## Bekannte Lücken (Stand 2026-09-05 abends)
+
+Transparent festgehalten, damit niemand denkt, es sei fertig. Details und Testfälle in
+`docs/USER-STORIES.md`, Abschnitt „Bekannte Lücken".
+
+| Nr | Lücke | Risiko | Gehört zu |
+|----|-------|--------|-----------|
+| L-1 | `/proposals/evaluate` liest Vorschläge **ungefiltert**: ein Mitarbeiter sieht die Bewertung von Finance-Vorschlägen | Rechte | Paket 4 (Marc), Einzeiler `list_proposals(user)` plus Security-Test |
+| L-2 | Bewertung nutzt nur den Vorschlagstext, **kein Wiki-Wissen**, Agent hat keine Rolle als Nutzer | Kernfunktion fehlt | Paket 13 (Backlog) |
+| L-3 | `pdf_ingest.py` ist fertig und getestet, aber **nicht an den Upload angebunden**; der Upload nutzt weiter pypdf roh aus `extractors.py` | Doppelte Module | Paket 8 (Florian) und 2 (Ekkehardt) |
+| L-4 | **Keine Tests** für Hash-Dublette, Bewertung, Projektanträge-Dashboard | Regressionen unbemerkt | Paket 4, 6 |
+| L-5 | Login ist eine **Auswahl**, kein Login; Cookie ist signiert, aber jeder darf jede Rolle wählen | Nur für Demo tragbar | Paket 17 (Backlog) |
+| L-6 | Zwei offene Doppelarbeiten: Franks PR #28 baut die Domänenordner, die Paket 9 schon hat | Merge-Konflikt, verlorene Arbeit | Paket 7 (Frank), Entscheidung im Team |
+
+---
+
 ## Reihenfolge und Abhängigkeiten
 
 1. Paket 1 legt das Metadaten-Schema früh fest (erste Stunde), damit 2, 6 und 7 dagegen bauen.

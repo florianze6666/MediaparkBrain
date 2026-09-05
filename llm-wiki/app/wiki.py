@@ -36,7 +36,7 @@ class Page:
 
     @property
     def path(self) -> Path:
-        return pages_dir() / f"{self.slug}.md"
+        return pages_dir() / (self.meta.domaene or "allgemein") / f"{self.slug}.md"
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ def list_pages(user: str | None = None) -> list[Page]:
     d = pages_dir()
     d.mkdir(parents=True, exist_ok=True)
     pages = []
-    for f in sorted(d.glob("*.md")):
+    for f in sorted(d.rglob("*.md")):
         page = _parse(f.stem, f.read_text(encoding="utf-8"))
         if user is not None and decide(user, page.meta) != ALLOW:
             continue
@@ -109,10 +109,15 @@ def list_pages(user: str | None = None) -> list[Page]:
     return sorted(pages, key=lambda p: p.title.lower())
 
 
+def _find_page_file(slug: str) -> Path | None:
+    """Sucht die Datei zu `slug` unabhaengig davon, in welchem Domaenen-Ordner sie liegt."""
+    return next(iter(sorted(pages_dir().rglob(f"{slug}.md"))), None)
+
+
 def get_page(slug: str) -> Page | None:
     """Ungefilterter Rohzugriff. Fuer Nutzer-Sicht `get_page_for` verwenden."""
-    f = pages_dir() / f"{slug}.md"
-    if not f.exists():
+    f = _find_page_file(slug)
+    if f is None:
         return None
     return _parse(slug, f.read_text(encoding="utf-8"))
 
@@ -126,9 +131,22 @@ def get_page_for(slug: str, user: str) -> Page | None:
 
 
 def save_page(slug: str, title: str, content: str, meta: PageMeta | None = None) -> Page:
-    d = pages_dir()
-    d.mkdir(parents=True, exist_ok=True)
-    page = Page(slug=slug, title=title, content=content, meta=meta or PageMeta())
+    """Schreibt die Seite nach pages/<domaene>/<slug>.md.
+
+    Liegt sie (z. B. nach einem Domaenen-Wechsel oder als Alt-Datei aus
+    pages/<slug>.md) noch woanders, wird die alte Datei entfernt. `ablageort`
+    wird nur befuellt, wenn der Aufrufer ihn nicht selbst gesetzt hat.
+    """
+    meta = meta or PageMeta()
+    if not meta.domaene:
+        meta.domaene = "allgemein"
+    old = _find_page_file(slug)
+    page = Page(slug=slug, title=title, content=content, meta=meta)
+    if old is not None and old.resolve() != page.path.resolve():
+        old.unlink()
+    page.path.parent.mkdir(parents=True, exist_ok=True)
+    if not meta.ablageort:
+        meta.ablageort = f"{meta.domaene}/{slug}.md"
     page.path.write_text(
         f"{_render_frontmatter(page.meta)}# {title}\n\n{content.strip()}\n",
         encoding="utf-8",
@@ -137,9 +155,22 @@ def save_page(slug: str, title: str, content: str, meta: PageMeta | None = None)
 
 
 def delete_page(slug: str) -> None:
-    f = pages_dir() / f"{slug}.md"
-    if f.exists():
+    f = _find_page_file(slug)
+    if f is not None:
         f.unlink()
+
+
+def migrate_flat_pages() -> None:
+    """Verschiebt Alt-Seiten aus pages/ (Wurzelebene) in ihren Domaenen-Ordner.
+
+    Einmalig beim Start noetig, da Seiten frueher flach unter pages/*.md lagen.
+    Idempotent: bereits einsortierte Seiten liegen nicht mehr auf der Wurzelebene.
+    """
+    d = pages_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    for f in sorted(d.glob("*.md")):
+        page = _parse(f.stem, f.read_text(encoding="utf-8"))
+        save_page(page.slug, page.title, page.content, page.meta)
 
 
 # ---------------------------------------------------------------------------

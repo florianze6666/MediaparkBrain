@@ -6,7 +6,7 @@ geaendert_am: ''
 vertraulichkeit: oeffentlich
 domaene: allgemein
 empfaenger: []
-ablageort: ''
+ablageort: allgemein/wissensmanagement.md
 quelle: wiki
 ---
 # Wissensmanagement

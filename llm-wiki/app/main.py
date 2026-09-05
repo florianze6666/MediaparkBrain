@@ -140,6 +140,7 @@ def ensure_demo_pages() -> None:
             wiki.save_page(slug, title, content, meta)
 
 
+wiki.migrate_flat_pages()
 seed_if_empty()
 ensure_demo_pages()
 

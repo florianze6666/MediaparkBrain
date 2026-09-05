@@ -6,7 +6,7 @@ geaendert_am: ''
 vertraulichkeit: oeffentlich
 domaene: allgemein
 empfaenger: []
-ablageort: ''
+ablageort: allgemein/start.md
 quelle: wiki
 ---
 # Start

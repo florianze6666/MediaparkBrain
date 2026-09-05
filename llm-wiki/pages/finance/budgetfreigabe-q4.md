@@ -6,7 +6,7 @@ geaendert_am: ''
 vertraulichkeit: intern
 domaene: finance
 empfaenger: []
-ablageort: ''
+ablageort: finance/budgetfreigabe-q4.md
 quelle: wiki
 ---
 # Budgetfreigabe Q4

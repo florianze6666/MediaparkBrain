@@ -6,7 +6,7 @@ geaendert_am: ''
 vertraulichkeit: intern
 domaene: br
 empfaenger: []
-ablageort: ''
+ablageort: br/betriebsratsprotokoll-juli.md
 quelle: wiki
 ---
 # Betriebsratsprotokoll Juli

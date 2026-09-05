@@ -6,7 +6,7 @@ geaendert_am: ''
 vertraulichkeit: oeffentlich
 domaene: allgemein
 empfaenger: []
-ablageort: ''
+ablageort: allgemein/vier-experten-agenten.md
 quelle: wiki
 ---
 # Vier Experten-Agenten

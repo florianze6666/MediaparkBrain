@@ -14,7 +14,7 @@ def test_save_und_get_roundtrip(pages_env):
     )
     wiki.save_page("roundtrip", "Roundtrip Seite", "Absatz eins.\n\nAbsatz zwei.", meta)
 
-    raw = (pages_env / "roundtrip.md").read_text(encoding="utf-8")
+    raw = (pages_env / "finance" / "roundtrip.md").read_text(encoding="utf-8")
     assert raw.startswith("---\n")
     assert "erstellt_von: cfo" in raw
     assert "domaene: finance" in raw
@@ -87,7 +87,7 @@ def test_altbestand_bekommt_meta_beim_speichern(client):
         "vertraulichkeit": "intern", "domaene": "allgemein", "empfaenger": "",
     })
     assert r.status_code == 303
-    raw = (wiki.pages_dir() / "altbestand.md").read_text(encoding="utf-8")
+    raw = (wiki.pages_dir() / "allgemein" / "altbestand.md").read_text(encoding="utf-8")
     assert raw.startswith("---\n")
     page = wiki.get_page("altbestand")
     assert page.meta.erstellt_von == "unbekannt"

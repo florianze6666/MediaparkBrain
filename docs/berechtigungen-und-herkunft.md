@@ -29,7 +29,7 @@ bewusst eine Simulation für den Demonstrator.
 
 ## Datenmodell
 
-### Metadaten im Seitenkopf (YAML-Frontmatter in `llm-wiki/pages/<slug>.md`)
+### Metadaten im Seitenkopf (YAML-Frontmatter in `llm-wiki/pages/<domaene>/<slug>.md`)
 
 ```yaml
 ---
@@ -40,7 +40,7 @@ geaendert_am: 2026-09-05T19:02:00
 vertraulichkeit: intern           # oeffentlich | intern | vertraulich
 domaene: allgemein                # allgemein | projekt | finance | einkauf | hr | it | br | gf | mail
 empfaenger: []                    # nur bei "vertraulich": Nutzer-IDs oder Gruppen, die lesen dürfen
-ablageort: ""                     # Paket 7 (Frank) befüllt das
+ablageort: allgemein/mein-slug.md # Paket 7 (Frank): tatsaechlicher Speicherort, automatisch befuellt
 quelle: wiki                      # wiki | upload   (Paket 2, Ekkehardt, setzt "upload")
 ---
 # Titel der Seite
@@ -52,6 +52,15 @@ Seiten ohne Frontmatter (Altbestand) gelten als `erstellt_von: unbekannt`, `vert
 `domaene: allgemein`. Sie werden beim nächsten Speichern mit Metadaten versehen. Die drei Seed-Seiten (Start, Vier
 Experten-Agenten, Wissensmanagement) sind als `system` / `oeffentlich` markiert, damit auch der Gast
 einen Einstieg sieht.
+
+**Paket 7 (Ablage, umgesetzt):** `wiki.save_page` legt jede Seite unter `pages/<domaene>/<slug>.md` ab,
+nicht mehr flach unter `pages/<slug>.md`. Aendert sich beim Bearbeiten die Domaene, wird die Datei am alten
+Ort geloescht und am neuen neu geschrieben (Slug bleibt der Schluessel, `_find_page_file` sucht ihn
+domaenenuebergreifend per `rglob`). `meta.ablageort` wird automatisch mit dem neuen relativen Pfad
+(`<domaene>/<slug>.md`) befuellt — nur wenn der Aufrufer selbst schon einen Wert gesetzt hat (z. B. ein
+importiertes Dokument mit echtem Quellsystem-Pfad), bleibt dieser erhalten. Beim Start migriert
+`wiki.migrate_flat_pages()` einmalig alle noch flach unter `pages/*.md` liegenden Alt-Seiten in ihren
+Domaenen-Ordner (idempotent, betrifft nur die Wurzelebene).
 
 ### Rollen (aus `PLAN.md`) und Rechte-Datei `llm-wiki/permissions.yaml`
 
@@ -140,8 +149,9 @@ derselben Domäne. Der Ersteller sieht seine vertrauliche Seite, solange er die 
 
 - **Paket 2 (Upload):** `wiki.save_page(slug, title, content, meta)` mit `meta.quelle = "upload"` und
   `meta.erstellt_von = <aktueller Nutzer>`. Der aktuelle Nutzer kommt aus `access.current_user(request)`.
-- **Paket 7 (Ablage):** `meta.ablageort` ist vorgesehen und wird angezeigt, sobald befüllt. Zuordnung
-  Ablageort → Domäne steht als Kommentar in `permissions.yaml` (z. B. `sharepoint_hr/…` → `hr`).
+- **Paket 7 (Ablage, umgesetzt):** Seiten liegen unter `pages/<domaene>/<slug>.md`; `meta.ablageort`
+  wird automatisch mit diesem Pfad befüllt und in der Seitenansicht angezeigt. Zuordnung Ablageort im
+  Korpus → Domäne steht weiterhin als Kommentar in `permissions.yaml` (z. B. `sharepoint_hr/…` → `hr`).
 - **Paket 6 (Statistik):** `wiki.list_pages(user=None)` liefert ungefiltert alle Seiten mit Metadaten.
 - **Paket 4 (Bewertung):** Abgleich nur über `wiki.search_snippets(query, user)`, nie über den Rohbestand.
 

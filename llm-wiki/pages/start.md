@@ -1,3 +1,14 @@
+---
+erstellt_von: system
+erstellt_am: '2026-09-05T15:12:00'
+geaendert_von: ''
+geaendert_am: ''
+vertraulichkeit: oeffentlich
+domaene: allgemein
+empfaenger: []
+ablageort: ''
+quelle: wiki
+---
 # Start
 
 Willkommen im **LLM-Wiki** von MediaparkBrain.

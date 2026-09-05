@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Projektvorschläge{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Eingereichte Projektvorschläge</h1>
+    <div class="page-actions">
+      <a href="/proposals/new">+ Neuer Vorschlag</a>
+    </div>
+  </div>
+  {% if proposals %}
+    <ul class="page-list proposal-list">
+      {% for p in proposals %}
+      <li>
+        <a href="/proposals/{{ p.slug }}">{{ p.project_name }}</a>
+        <span class="hint-inline">eingereicht am {{ p.submitted_at }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Noch keine Projektvorschläge eingereicht. <a href="/proposals/new">Ersten Vorschlag einreichen</a>.</p>
+  {% endif %}
+{% endblock %}

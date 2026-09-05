@@ -7,10 +7,19 @@
       angezeigt (reine Volltextsuche, keine LLM-Antwort). Key in <code>llm-wiki/.env</code> eintragen,
       um echte, kontextbasierte Antworten zu erhalten.</p>
   {% endif %}
+  <p class="page-meta"><span>Suche als: <strong>{{ user_name }}</strong> — nur Seiten, die du lesen darfst, werden durchsucht.</span></p>
   <form method="post" action="/ask" class="ask-form">
     <input type="text" name="question" placeholder="z.B. Welche Agenten bewerten ein Projekt?" value="{{ question }}" required autofocus>
     <button type="submit" class="btn">Fragen</button>
   </form>
+
+  <div class="ask-loading" id="ask-loading" role="status" aria-live="assertive" hidden>
+    <div class="ask-loading-box">
+      <span class="ask-spinner" aria-hidden="true"></span>
+      <p class="ask-loading-title">Einen Moment …</p>
+      <p class="ask-loading-text">Das Wiki wird durchsucht und Claude formuliert eine Antwort.</p>
+    </div>
+  </div>
 
   {% if answer %}
     <p class="fresh-badge">Yeah, Yeah!</p>
@@ -36,4 +45,44 @@
   {% elif answer %}
     <p class="hint">Keine passenden Wiki-Seiten gefunden.</p>
   {% endif %}
+
+  <script>
+  (function () {
+    var form = document.querySelector('.ask-form');
+    var loading = document.getElementById('ask-loading');
+    if (!form || !loading) return;
+
+    var input = form.querySelector('input[name="question"]');
+    var button = form.querySelector('button[type="submit"]');
+    var buttonLabel = button ? button.textContent : '';
+    var stale = document.querySelectorAll('section.answer, section.sources');
+
+    // Ohne JS bleibt die Anzeige per [hidden] aus; mit JS steuert die Klasse.
+    loading.removeAttribute('hidden');
+
+    function setLoading(on) {
+      loading.classList.toggle('is-visible', on);
+      if (input) input.readOnly = on;
+      if (button) button.textContent = on ? 'Fragt …' : buttonLabel;
+      for (var i = 0; i < stale.length; i++) {
+        stale[i].classList.toggle('is-stale', on);
+      }
+      if (!on && button) button.disabled = false;
+    }
+
+    form.addEventListener('submit', function () {
+      // Kein preventDefault: klassischer Form-POST laeuft normal weiter.
+      setLoading(true);
+      // Button erst nach dem Submit-Event deaktivieren, sonst bricht der Post ab.
+      window.setTimeout(function () {
+        if (button) button.disabled = true;
+      }, 0);
+    });
+
+    // Zurueck-Navigation (bfcache): Zustand zuruecksetzen.
+    window.addEventListener('pageshow', function () {
+      setLoading(false);
+    });
+  })();
+  </script>
 {% endblock %}

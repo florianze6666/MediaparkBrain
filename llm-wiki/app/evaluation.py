@@ -8,6 +8,27 @@ from .proposals import Proposal
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
+# Ordnet angemeldete Nutzer (permissions.yaml) ihrer Experten-Dimension zu.
+# Nur diese vier Nutzer sehen im Bewertungsreport ausschliesslich ihre eigene
+# Rolle (US: "Als Betriebsrat will ich nur die Betriebsrat-Bewertung sehen,
+# nicht die des CEO"). Alle anderen Nutzer (u.a. orchestrator, admin,
+# pmo-leitung) sehen weiterhin den vollstaendigen Report ueber alle vier
+# Rollen - passend zur Orchestrator-Rolle aus PLAN.md, die alle Perspektiven
+# zusammenfuehrt statt selbst zu bewerten.
+USER_TO_ROLE = {
+    "betriebsrat": "betriebsrat",
+    "cfo": "cfo",
+    "it-security": "it",
+    "ceo": "ceo",
+}
+
+
+def viewer_role(user_id: str) -> str | None:
+    """Auf welche Rolle dieser Nutzer im Bewertungsreport beschraenkt ist -
+    None bedeutet: sieht den vollstaendigen Report (alle vier Rollen)."""
+    return USER_TO_ROLE.get(user_id)
+
+
 # Kurzfassung der vier Experten-Dimensionen aus PLAN.md §6.
 ROLE_CRITERIA = {
     "betriebsrat": {

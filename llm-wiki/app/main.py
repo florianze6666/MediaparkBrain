@@ -500,11 +500,23 @@ async def proposal_new_save(
 
     duplicate = proposals.find_duplicate_file(uploaded_files)
     if duplicate is not None:
+        # Der Datei-Hash allein erkennt bewusst auch Umbenennungen (siehe
+        # proposals.find_duplicate_file) - der Name wird hier separat verglichen
+        # und in der Meldung genannt, damit sichtbar bleibt, ob es sich um eine
+        # Wiedereinreichung unter demselben oder einem anderen Titel handelt.
+        same_name = wiki.slugify(project_name) == duplicate.slug
+        if same_name:
+            name_hint = f'ebenfalls unter dem Namen "{project_name}"'
+        else:
+            name_hint = (
+                f'unter dem Namen "{duplicate.project_name}" '
+                f'(du hast "{project_name}" eingegeben)'
+            )
         return _proposal_form(
             request, 409,
             error=(
-                "Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
-                f'"{duplicate.project_name}" (Hash identisch). Einreichung abgelehnt.'
+                f"Diese Projektdatei (Hash identisch) wurde bereits eingereicht - "
+                f"{name_hint}. Einreichung abgelehnt."
             ),
             project_name=project_name, description=description,
             vertraulichkeit=vertraulichkeit, domaene=domaene, empfaenger=empfaenger,
@@ -530,15 +542,22 @@ def require_proposal(slug: str, user: str) -> proposals.Proposal:
 @app.get("/proposals/evaluate")
 def proposal_evaluate(request: Request):
     """Bewertet die zuletzt eingereichten Projektvorschlaege in allen vier
-    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md."""
+    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md.
+    Die vier Experten-Nutzer (betriebsrat, cfo, it-security, ceo) sehen dabei
+    ausschliesslich ihre eigene Rolle, nicht die Bewertungen der anderen."""
+    user = access.current_user(request)
+    role = evaluation.viewer_role(user)
     recent = proposals.list_proposals()[:3]  # bereits nach submitted_at absteigend sortiert
     results = [
         {"proposal": p, "data": evaluation.evaluate_proposal(p)} for p in recent
     ]
+    visible_roles = (
+        {role: evaluation.ROLE_CRITERIA[role]} if role else evaluation.ROLE_CRITERIA
+    )
     return templates.TemplateResponse(
         request,
         "proposal_evaluation.html",
-        ctx(request, results=results, roles=evaluation.ROLE_CRITERIA),
+        ctx(request, results=results, roles=visible_roles, viewer_role=role),
     )
 
 

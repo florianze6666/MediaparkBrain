@@ -17,6 +17,13 @@
     <span><i class="risk-dot" style="background:var(--border)"></i> ohne Score: Information fehlt</span>
   </div>
 
+  {% if viewer_role %}
+    <p class="hint">
+      Du siehst nur deine eigene Bewertungsdimension (<strong>{{ roles[viewer_role].name }}</strong>).
+      Die Bewertungen der anderen Rollen sowie der Gesamtscore sind für deine Rolle nicht sichtbar.
+    </p>
+  {% endif %}
+
   {% if not results %}
     <p class="hint">Noch keine Projektvorschläge eingereicht. <a href="/proposals/new">Ersten Vorschlag einreichen</a>.</p>
   {% endif %}
@@ -29,6 +36,13 @@
         <h2><a href="/proposals/{{ proposal.slug }}">{{ proposal.project_name }}</a></h2>
         {% if data.error %}
           <span class="risk-badge risk-neutral">Bewertung nicht möglich</span>
+        {% elif viewer_role %}
+          {% set r_data = data.get(viewer_role, {}) %}
+          {% if r_data.status == "BEWERTET" %}
+            <span class="risk-badge {{ r_data.score | risk_class }}">Deine Bewertung: {{ r_data.score }}/10</span>
+          {% else %}
+            <span class="risk-badge risk-neutral">Deine Bewertung: KEIN SCORE</span>
+          {% endif %}
         {% else %}
           <span class="risk-badge {{ data._gesamtscore | risk_class }}">
             Gesamtscore: {{ data._gesamtscore if data._gesamtscore is not none else "KEIN SCORE" }}

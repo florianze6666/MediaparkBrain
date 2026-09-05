@@ -81,7 +81,7 @@ a { color: var(--accent); }
 }
 
 .btn-ask { background: var(--accent-purple); }
-.btn-proposal { background: #a8722f; }
+.btn-proposal { background: var(--accent); color: #3a1d06; }
 
 .hint-inline { color: var(--muted); font-size: 12px; margin-left: 10px; }
 .hint.error { border-color: #c0392b; color: #ff9d90; }
@@ -90,15 +90,15 @@ a { color: var(--accent); }
 .proposal-list a:hover { text-decoration: underline; }
 
 .btn-dashboard {
-  background: #32cd32;
-  color: #0d2b0d;
+  background: var(--border);
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   font-weight: 600;
 }
-.btn-dashboard:hover { background: #3ddb3d; }
+.btn-dashboard:hover { background: var(--accent-purple); color: white; }
 .btn-icon { flex-shrink: 0; }
 
 .page-list { list-style: none; padding: 0; margin: 0; }

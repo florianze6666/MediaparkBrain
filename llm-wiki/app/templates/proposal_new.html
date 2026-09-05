@@ -19,8 +19,8 @@
     <label>Beschreibung
       <textarea name="description" rows="10" required>{{ description or '' }}</textarea>
     </label>
-    <label>Dateien (Project Charter, Business Case, ...)
-      <input type="file" name="files" multiple>
+    <label>Dateien (Project Charter, Business Case, ... als Markdown)
+      <input type="file" name="files" accept=".md" multiple>
     </label>
     <div class="form-actions">
       <button type="submit" class="btn">Einreichen</button>

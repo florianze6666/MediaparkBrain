@@ -395,7 +395,39 @@ async def proposal_new_save(
     for f in files:
         if not f.filename:
             continue
+        if not f.filename.lower().endswith(".md"):
+            return templates.TemplateResponse(
+                request,
+                "proposal_new.html",
+                ctx(
+                    request,
+                    error=(
+                        f'Datei "{f.filename}" ist keine Markdown-Datei (.md). '
+                        "Nur .md-Dateien sind als Projektdatei zulaessig."
+                    ),
+                    project_name=project_name,
+                    description=description,
+                ),
+                status_code=415,
+            )
         uploaded_files.append((f.filename, await f.read()))
+
+    duplicate = proposals.find_duplicate_file(uploaded_files)
+    if duplicate is not None:
+        return templates.TemplateResponse(
+            request,
+            "proposal_new.html",
+            ctx(
+                request,
+                error=(
+                    "Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
+                    f'"{duplicate.project_name}" (Hash identisch). Einreichung abgelehnt.'
+                ),
+                project_name=project_name,
+                description=description,
+            ),
+            status_code=409,
+        )
 
     proposal = proposals.save_proposal(project_name, description, uploaded_files)
     return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)

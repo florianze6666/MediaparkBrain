@@ -70,23 +70,28 @@ hoch. Was macht das Wiki damit, damit anschließend jemand danach fragen kann?
 
 ### 4.1 Was „Projektdaten" konkret sind
 
-Ein Projekt wird nicht als eine Datei eingereicht, sondern als **Bündel** — typischerweise
-eine erzählende Datei und eine rechnende Datei:
+Ein Projekt wird nicht als eine Datei eingereicht, sondern als **Bündel** aus mehreren
+Dokumenten. Übliche Rollen in so einem Bündel sind:
 
-| Rolle im Bündel | Format | Enthält | Beitrag zur Bewertung |
-|---|---|---|---|
-| **Projektvorstellung** | PDF | Worum geht es, warum jetzt, was ist der Nutzen | Beschreibung, Ziel, Nutzenargumentation |
-| **Business Case** | XLSX | Kosten, Nutzen, Wirtschaftlichkeitsrechnung | Die Zahlen für den CFO-Agenten |
-| **Project Charter** | DOCX | Formaler Steckbrief: ID, Land, Deliverables, Eckzahlen | Struktur- und Stammdaten |
+| Rolle im Bündel | Enthält typischerweise | Beitrag zur Bewertung |
+|---|---|---|
+| **Projektvorstellung** | Worum geht es, warum jetzt, was ist der Nutzen | Beschreibung, Ziel, Nutzenargumentation |
+| **Business Case** | Kosten, Nutzen, Wirtschaftlichkeitsrechnung | Die Zahlen für den CFO-Agenten |
+| **Project Charter** | Formaler Steckbrief: ID, Land, Deliverables, Eckzahlen | Struktur- und Stammdaten |
 
-Die Projektvorstellung wird als **PDF** eingereicht — eine Foliendatei exportiert der
-Einreicher vorher. Das hält die Zahl der Parser klein und ist verlustfrei genug: der
-Textinhalt der Folien bleibt erhalten (siehe Abschnitt 6).
+> **Wichtig: Das Dateiformat sagt nichts über den Inhalt.** Ein Business Case kann als PDF
+> kommen, eine Projektvorstellung als DOCX, ein Charter als XLSX-Blatt. Die Rolle ergibt sich
+> aus dem Inhalt oder aus der Angabe des Einreichers — **nie aus der Dateiendung.** Das System
+> darf daraus keine Regel machen, sonst liest es ein PDF voller Zahlen als Fließtext oder
+> verwirft ein Charter, weil es im „falschen" Format kam.
+>
+> Die Dateiendung entscheidet nur **eines**: welcher Parser die Datei aufmacht (Abschnitt 6).
+> Was drinsteht, stellt sich erst danach heraus.
 
-Nicht jedes Bündel enthält alle drei Teile. Projektvorstellung plus Business Case ist der
-übliche Fall — das Charter kommt oft erst später dazu. Das Wiki darf deshalb kein bestimmtes
-Set erzwingen, sondern verarbeitet, was kommt, und hält fest, was fehlt. Genau darauf setzt
-später der Completeness Check aus `PLAN.md` §2 auf.
+Auch die Zusammensetzung des Bündels ist offen: Nicht jedes Projekt bringt alle drei Rollen
+mit, manche bringen weitere (Angebote, Architekturskizzen, Betriebsratsstellungnahmen). Das
+Wiki darf deshalb kein bestimmtes Set erzwingen, sondern verarbeitet, was kommt, und hält fest,
+was fehlt. Genau darauf setzt später der Completeness Check aus `PLAN.md` §2 auf.
 
 **Vollständig durchgespielt** an dem Bündel, das in `test project data/` liegt (M:INVOICE –
 CONI, Company 1):
@@ -102,17 +107,20 @@ Wiki muss sie deshalb über einen gemeinsamen Schlüssel verbinden — hier die 
 nebeneinander, und eine Frage wie „Was kostet CONI und warum machen wir das?" findet nur eine
 Hälfte.
 
-> **Die Zielform existiert bereits.** `project_proposals/m-invoice-coni-company1.md` ist genau
-> das, was der Upload automatisch erzeugen soll: eine Markdown-Seite mit Frontmatter, die unter
-> `source_documents` auf beide Originaldateien verweist, und mit Überschriften nach der
-> Feldliste aus `PLAN.md` §2. Diese vier Dateien wurden von Hand erstellt — sie sind die
-> Referenz, an der sich die automatische Verarbeitung messen lässt.
+> **Die Zielform existiert bereits — fast.** `project_proposals/m-invoice-coni-company1.md` ist
+> im Aufbau genau das, was der Upload automatisch erzeugen soll: eine Markdown-Seite mit
+> Frontmatter, die unter `source_documents` auf beide Originaldateien verweist, und mit
+> Überschriften nach der Feldliste aus `PLAN.md` §2. Diese vier Dateien wurden von Hand
+> erstellt — sie sind die Referenz, an der sich die automatische Verarbeitung messen lässt.
+>
+> Ihr **Frontmatter** ist allerdings ein anderes als das des Korpus (siehe 5.1) — das ist vor
+> dem Bau von Paket 2 zu klären.
 
 ### 4.2 Der Weg im Überblick
 
 ```mermaid
 flowchart TD
-    A["Projektmanager reicht ein Bündel ein<br/>Projektvorstellung PDF + Business Case XLSX<br/>ggf. Charter DOCX"] --> B{"Typ erlaubt?"}
+    A["Projektmanager reicht ein Bündel ein<br/>Vorstellung · Business Case · Charter …<br/>in beliebigen erlaubten Formaten"] --> B{"Typ erlaubt?"}
     B -- nein --> B1["Fehlermeldung<br/>kein Erfolgs-Feedback"]
     B -- ja --> C["1 Annahme<br/>Originale zwischenspeichern"]
     C --> D["2 Text herausholen<br/>PDF: Seiten · XLSX: Blätter · DOCX: Absätze"]
@@ -249,6 +257,39 @@ Daran hängt die wichtigste Einsicht für die Dateiverarbeitung: **Die Qualität
 entscheidet über die Auffindbarkeit, nicht die Qualität des Prompts.** Was beim Einlesen zu
 einer Textwand verklebt oder als Wortsalat ankommt, ist danach nicht mehr zu retten.
 
+### 4.6 Die Originaldatei wird bei einer Abfrage nie geöffnet
+
+Das ist die zentrale Architekturentscheidung, und sie steht so im Code:
+
+- `search_snippets()` durchläuft ausschließlich `pages/*.md` (`llm-wiki/app/wiki.py:82`).
+- `ask_llm()` bekommt als Kontext nur die gefundenen **Absatztexte** aus diesen Seiten
+  (`llm-wiki/app/llm.py:25`).
+- Es gibt **keine Stelle im Code, die eine PDF-, DOCX- oder XLSX-Datei zur Fragezeit öffnet.**
+
+Daraus folgt die Regel, an der die ganze Dateiverarbeitung hängt:
+
+> **Was nicht in der Markdown-Datei steht, existiert für eine Abfrage nicht.**
+> Die Markdown-Seite ist die Wissensbasis. Die Originaldatei ist Archiv und Beleg für
+> Menschen — nicht die Quelle, aus der geantwortet wird.
+
+Deshalb ist Schritt 3 (Umwandlung in Markdown) kein Formatierungsschritt, sondern der Moment,
+in dem entschieden wird, welches Wissen das System überhaupt besitzt. Wer beim Einlesen kürzt
+oder zusammenfasst, löscht Wissen — und zwar unsichtbar: Die Frage bekommt später einfach keine
+Antwort, ohne dass irgendwo ein Fehler auftaucht.
+
+**Warum nicht der andere Weg?** Denkbar wäre: die Markdown-Seite nur als Steckbrief anlegen und
+bei einer Frage die passende Originaldatei aufmachen. Für den Hackathon ist das der schlechtere
+Weg — es bräuchte Parser zur Laufzeit, jede Frage würde langsamer, und das LLM bekäme
+unaufbereiteten Rohtext statt sauber getrennter Absätze. Später ist das eine sinnvolle
+Erweiterung für Nachschlagefälle („zeig mir Seite 7 im Original"); die Antwort selbst sollte
+weiter aus der Markdown-Seite kommen.
+
+Was die Originaldatei trotzdem leistet: Sie ist der **Beleg**. Das Frontmatter-Feld
+`quelldatei` verlinkt sie, sodass jeder eine Aussage im Original nachprüfen kann — die
+Nachvollziehbarkeit, die `PLAN.md` §4 verlangt. Und sie ist die **Reserve**: Wird die
+Extraktion später besser, lässt sich die Markdown-Seite aus dem Original neu erzeugen, ohne
+dass jemand die Datei erneut hochladen muss.
+
 ---
 
 ## 5. Das Metadaten-Schema
@@ -296,14 +337,62 @@ Die 9 Ablageorte im Korpus mit ihrer Dokumentzahl:
 | `br_ablage` | 15 | `sharepoint_finance` | 14 |
 | `mailarchiv` | 12 | | |
 
+### 5.1 Achtung: es gibt derzeit zwei Schemata
+
+Im Repo liegen zwei unvereinbare Frontmatter-Varianten, und beide sind gepflegt:
+
+| | `corpus/*.md` (216 Dateien) | `project_proposals/*.md` (4 Dateien) |
+|---|---|---|
+| Sprache der Schlüssel | deutsch | englisch |
+| Felder | 13 | 11 |
+| Identität | `doc_id`, `projekt` | `project_id`, `project_name` |
+| Vertraulichkeit | `vertraulichkeit: intern` | `classification: internal` |
+| Zeitbezug | `datum` (fachliches Datum) | `start_fy`, `go_live_fy` |
+| Ablage | `ablageort` | — fehlt |
+| Herkunft | `verfasser`, `rolle` | `source_documents` (Verweis auf die Originale) |
+
+Sie überschneiden sich fast nicht. Für den Upload heißt das: **eine Entscheidung ist nötig**,
+sonst erzeugt Paket 2 Seiten, die entweder die Zugriffsprüfung (Paket 1) oder die Statistik
+(Paket 6) nicht bedienen können.
+
+**Vorschlag zur Klärung:** Das Korpus-Schema ist die Grundlage — es ist das umfangreichere, das
+belegtere (216 gegen 4 Dateien) und das einzige, das `vertraulichkeit`, `ablageort` und `datum`
+mitbringt, also genau die drei Felder, an denen Rechte, Ablage und Aktualität hängen. Die
+projektspezifischen Felder kommen **zusätzlich** dazu, wenn `dokumenttyp` ein Projektdokument
+ist:
+
+```yaml
+# Basis (immer, aus dem Korpus-Schema)
+doc_id: ...
+vertraulichkeit: intern
+ablageort: projektlaufwerk
+datum: 2026-01-15
+# ... die übrigen 9 Felder
+
+# Ergänzung (nur bei Projektdokumenten)
+project_id: BC-2026-0412.1
+program: "Company 1 – Digital Customer Experience"
+start_fy: 2026
+go_live_fy: 2027
+source_documents: ["test project data/__Project_Charter_M-Invoice_Company1.docx"]
+```
+
+Das ist ein Vorschlag, keine getroffene Entscheidung — sie gehört zu Paket 1 (Anselm), weil die
+Zugriffsregeln daran hängen.
+
 ---
 
 ## 6. Extraktion je Dateityp
 
-### PDF — die Projektvorstellung
+Hier geht es allein um die **Mechanik des Auslesens** — nicht darum, was in der Datei steht.
+Die Endung bestimmt, welcher Parser aufmacht; welche Rolle das Dokument im Bündel spielt,
+zeigt sich erst am extrahierten Inhalt (siehe 4.1).
 
-Der wichtigste Fall, weil die Projektvorstellung so eingereicht wird. Ein PDF, das aus
-Präsentationsfolien exportiert wurde, verhält sich anders als ein Fließtextdokument:
+### PDF
+
+PDFs kommen in zwei sehr verschiedenen Bauformen, und die Extraktion muss sie unterscheiden.
+
+**Aus Folien exportiert** (häufig bei Projektvorstellungen):
 
 - **Eine Seite wird ein Abschnitt**, die größte Schrift der Seite wird die Überschrift. Die
   Seitengrenze ist die natürliche Absatzgrenze — anders als bei Fließtext, wo Seitenumbrüche
@@ -322,16 +411,30 @@ Präsentationsfolien exportiert wurde, verhält sich anders als ein Fließtextdo
 Fußzeilen, Logos und Agenda-Seiten wiederholen sich auf jeder Seite und gehören nicht in die
 Wissensbasis; sonst trägt jeder Absatz denselben Firmennamen und verwässert die Wortsuche.
 
+**Als Fließtext gesetzt** (Berichte, Angebote, ein Charter als PDF):
+
+- Seitenumbrüche liegen mitten im Satz und müssen beim Zusammensetzen **verschwinden** —
+  genau umgekehrt zum Folienfall. Absatzgrenzen ergeben sich aus Leerraum und Einzug, nicht
+  aus der Seitenzahl.
+- Kopf- und Fußzeilen wiederholen sich auf jeder Seite und gehören entfernt.
+- Nummerierte Überschriften („4.2 Kostenstruktur") sind wertvoll: sie werden zu
+  Markdown-Überschriften und geben den Abschnitten ihre Wörter.
+
+Welche der beiden Bauformen vorliegt, erkennt man an der Textverteilung — wenige, große,
+weit auseinanderstehende Textblöcke sprechen für Folien, durchgehender Fließtext für einen
+Bericht. Im Zweifel ist die Folienlogik die harmlosere Wahl: sie zerteilt zu fein statt zu
+grob, und zu feine Absätze schaden der Suche weniger als eine Textwand.
+
 **Grenzfall:** Gescannte oder als Bild exportierte PDFs haben keinen Textlayer. OCR liegt
 außerhalb des Hackathon-Umfangs. Solche Dateien sollten klar abgewiesen werden, statt eine
 leere Seite in der Wissensbasis zu hinterlassen — der Upload muss also prüfen, ob überhaupt
 Text herauskam, und nicht nur, ob die Datei lesbar war.
 
----
+### XLSX
 
-### XLSX — der Business Case
-
-Die Testdatei hat **11 Arbeitsblätter**, und sie sind sehr unterschiedlich wertvoll:
+Arbeitsmappen bringen mehrere Blätter mit, und die sind sehr unterschiedlich wertvoll. Als
+Beispiel der Business Case aus `test project data/` — **11 Blätter**, die Aufteilung wird bei
+anderen Mappen anders aussehen, das Prinzip nicht:
 
 | Blatt | Zellen | In die Wissensbasis? |
 |---|---:|---|
@@ -349,23 +452,33 @@ Zwei Konsequenzen:
 
 - **Nicht jedes Blatt gehört ins Wiki.** Allein `Selection lists` würde rund 240
   Nachschlagewerte (Ländernamen, Steuersätze) in den Index kippen und die Wortsuche verwässern
-  — „Portugal" träfe dann jeden Business Case, egal ob das Projekt Portugal betrifft.
+  — „Portugal" träfe dann jeden Business Case, egal ob das Projekt Portugal betrifft. Welche
+  Blätter Ballast sind, lässt sich nicht am Namen festmachen: Blätter mit vielen kurzen,
+  wiederkehrenden Werten und ohne Bezug zum Projekt sind Kandidaten, die Entscheidung braucht
+  einen Blick in die Mappe.
 - **Formeln müssen nicht gerechnet werden.** Alle Formelzellen der relevanten Blätter tragen
   ein zwischengespeichertes Ergebnis (`Summary` 210 von 210, `Costs & Benefits` 459 von 459).
   Ein Reader im Nur-Werte-Modus liefert also die Zahlen, ohne dass Excel installiert sein muss.
 
-### DOCX — der Project Charter
+### DOCX
 
-Absätze und Tabellen auslesen. Der Charter ist im Kern eine Tabelle aus Feldname und Wert; die
-Paarung muss die Extraktion überleben (Regel aus 4.3). Deckblätter, Kopf- und Fußzeilen sind
-Rauschen und gehören nicht in die Seite. Die Dateieigenschaften helfen übrigens nicht weiter:
-in den Testdateien steht als Autor `python-docx` und als Erstelldatum 2013 — `verfasser` und
-`datum` müssen aus dem Inhalt oder vom Uploader kommen, nicht aus den Metadaten der Datei.
+Absätze und Tabellen auslesen. Deckblätter, Kopf- und Fußzeilen sind Rauschen und gehören
+nicht in die Seite.
+
+Wo ein DOCX **formularartig** aufgebaut ist — eine Tabelle aus Feldname und Wert, wie beim
+Charter in `test project data/` — muss die Paarung die Extraktion überleben (Regel aus 4.3).
+Wo es Fließtext ist, gelten dieselben Absatzregeln wie beim PDF-Bericht.
+
+Die Dateieigenschaften helfen übrigens nicht weiter: in den Testdateien steht als Autor
+`python-docx` und als Erstelldatum 2013 — `verfasser` und `datum` müssen aus dem Inhalt oder
+vom Uploader kommen, nicht aus den Metadaten der Datei.
 
 ### MD / TXT
 
 Direkt übernehmen. Vorhandenes Frontmatter erkennen und nicht als Fließtext behandeln — sonst
 landen `doc_id` und `vertraulichkeit` als durchsuchbarer Inhalt in der Wissensbasis.
+
+---
 
 ## 7. Abgleich mit PLAN.md — umgesetzt vs. Zielbild
 

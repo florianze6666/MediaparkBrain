@@ -19,6 +19,7 @@ UNKNOWN_CREATOR = "unbekannt"
 COOKIE_NAME = "mpb_user"
 
 VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich")
+DEFAULT_DOMAENE = "allgemein"
 
 ALLOW = "ALLOW"
 DENY = "DENY"
@@ -36,7 +37,7 @@ class PageMeta:
     geaendert_von: str = ""
     geaendert_am: str = ""
     vertraulichkeit: str = "intern"
-    domaene: str = "allgemein"
+    domaene: str = DEFAULT_DOMAENE
     empfaenger: list[str] = field(default_factory=list)
     ablageort: str = ""
     quelle: str = "wiki"
@@ -59,6 +60,11 @@ class PageMeta:
             setattr(meta, key, value)
         if meta.vertraulichkeit not in VERTRAULICHKEITEN:
             meta.vertraulichkeit = "intern"
+        # Die Domaene wird hier bewusst NICHT normalisiert: `decide` wertet
+        # eine unbekannte Domaene als DENY. Wuerde sie beim Lesen still auf
+        # "allgemein" gesetzt, waere aus einer Sperre eine Freigabe geworden.
+        # Geprueft wird erst dort, wo die Domaene zum Verzeichnisnamen wird
+        # (siehe wiki.Page.path und wiki.save_page).
         if not meta.erstellt_von:
             meta.erstellt_von = UNKNOWN_CREATOR
         return meta
@@ -114,6 +120,21 @@ def list_users() -> list[dict[str, Any]]:
 
 def list_domains() -> list[str]:
     return list(load_permissions()["domaenen"].keys())
+
+
+def normalize_domaene(value: str | None) -> str:
+    """Gibt eine Domaene zurueck, die in `permissions.yaml` bekannt ist.
+
+    Seit Seiten unter `pages/<domaene>/<slug>.md` liegen, ist die Domaene ein
+    Verzeichnisname. Sie kommt aber aus einem Formularfeld, das jeder frei
+    setzen kann - ungeprueft koennte damit ein Wert wie "../../ausserhalb"
+    eine Datei ausserhalb des Seitenverzeichnisses anlegen. Deshalb wird hier
+    gegen die bekannte Liste geprueft; alles Unbekannte faellt auf
+    "allgemein" zurueck.
+    """
+    if value and value in load_permissions()["domaenen"]:
+        return value
+    return DEFAULT_DOMAENE
 
 
 def get_user(user_id: str | None) -> dict[str, Any]:

@@ -7,11 +7,15 @@ from pathlib import Path
 
 import yaml
 
-from .access import PageMeta, decide, ALLOW
+from .access import PageMeta, decide, normalize_domaene, ALLOW
 
 # Standard-Ablage der Seiten; per Env MPB_PAGES_DIR ueberschreibbar (Tests).
 PAGES_DIR = Path(__file__).resolve().parent.parent / "pages"
 SLUG_RE = re.compile(r"[^a-z0-9-]+")
+# Genau das, was slugify erzeugen kann - alles andere ist kein Slug.
+SLUG_OK = re.compile(r"[a-z0-9-]+")
+# Ein automatisch gesetzter Ablageort, erkennbar an <domaene>/<slug>.md.
+AUTO_ABLAGEORT = re.compile(r"[a-z0-9-]+/[a-z0-9-]+\.md")
 WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß0-9]+")
 FRONTMATTER_DELIM = "---"
 
@@ -36,7 +40,10 @@ class Page:
 
     @property
     def path(self) -> Path:
-        return pages_dir() / (self.meta.domaene or "allgemein") / f"{self.slug}.md"
+        # normalize_domaene haelt den Wert in der Liste aus permissions.yaml;
+        # ohne diese Pruefung koennte ein Formularwert wie "../../ausserhalb"
+        # eine Datei ausserhalb des Seitenverzeichnisses anlegen.
+        return pages_dir() / normalize_domaene(self.meta.domaene) / f"{self.slug}.md"
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +117,16 @@ def list_pages(user: str | None = None) -> list[Page]:
 
 
 def _find_page_file(slug: str) -> Path | None:
-    """Sucht die Datei zu `slug` unabhaengig davon, in welchem Domaenen-Ordner sie liegt."""
+    """Sucht die Datei zu `slug` unabhaengig davon, in welchem Domaenen-Ordner sie liegt.
+
+    Der Slug kommt roh aus dem Pfadparameter der Routen und wird an `rglob`
+    als *Muster* weitergereicht. Ohne die Pruefung wuerde "*" auf eine
+    beliebige fremde Seite passen - `/wiki/*/delete` haette dann eine Seite
+    geloescht, die niemand benannt hat. Erlaubt ist genau das Alphabet, das
+    `slugify` erzeugen kann.
+    """
+    if not SLUG_OK.fullmatch(slug):
+        return None
     return next(iter(sorted(pages_dir().rglob(f"{slug}.md"))), None)
 
 
@@ -138,14 +154,17 @@ def save_page(slug: str, title: str, content: str, meta: PageMeta | None = None)
     wird nur befuellt, wenn der Aufrufer ihn nicht selbst gesetzt hat.
     """
     meta = meta or PageMeta()
-    if not meta.domaene:
-        meta.domaene = "allgemein"
+    meta.domaene = normalize_domaene(meta.domaene)
     old = _find_page_file(slug)
     page = Page(slug=slug, title=title, content=content, meta=meta)
     if old is not None and old.resolve() != page.path.resolve():
         old.unlink()
     page.path.parent.mkdir(parents=True, exist_ok=True)
-    if not meta.ablageort:
+    # Nur den selbst gesetzten Wert fortschreiben. Ein vom Aufrufer
+    # gepflegter echter Quellsystem-Pfad bleibt unangetastet; der zuvor
+    # automatisch erzeugte wuerde sonst nach einem Domaenenwechsel dauerhaft
+    # auf den alten Ordner zeigen und so in der Seitenansicht luegen.
+    if not meta.ablageort or AUTO_ABLAGEORT.fullmatch(meta.ablageort):
         meta.ablageort = f"{meta.domaene}/{slug}.md"
     page.path.write_text(
         f"{_render_frontmatter(page.meta)}# {title}\n\n{content.strip()}\n",
@@ -164,13 +183,29 @@ def migrate_flat_pages() -> None:
     """Verschiebt Alt-Seiten aus pages/ (Wurzelebene) in ihren Domaenen-Ordner.
 
     Einmalig beim Start noetig, da Seiten frueher flach unter pages/*.md lagen.
-    Idempotent: bereits einsortierte Seiten liegen nicht mehr auf der Wurzelebene.
+
+    Die Datei wird **verschoben**, nicht ueber `save_page` neu geschrieben:
+    Sonst haette `_find_page_file` bei gleichem Slug zuerst die bereits
+    einsortierte Fassung gefunden und diese mit dem Inhalt der alten flachen
+    Datei ueberschrieben - Datenverlust bei jedem Start, denn die flache Datei
+    waere liegen geblieben und der Slug damit dauerhaft doppelt.
+
+    Liegt am Zielort schon eine Seite mit diesem Slug, gewinnt sie. Die
+    flache Alt-Datei wird dann auf `.md.alt` umbenannt: Der Inhalt bleibt
+    erhalten, taucht aber nicht mehr als zweite Seite mit demselben Slug auf.
     """
     d = pages_dir()
     d.mkdir(parents=True, exist_ok=True)
     for f in sorted(d.glob("*.md")):
         page = _parse(f.stem, f.read_text(encoding="utf-8"))
-        save_page(page.slug, page.title, page.content, page.meta)
+        ziel = page.path
+        if ziel.exists():
+            beiseite = f.with_name(f.name + ".alt")
+            if not beiseite.exists():
+                f.rename(beiseite)
+            continue
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        f.rename(ziel)
 
 
 # ---------------------------------------------------------------------------

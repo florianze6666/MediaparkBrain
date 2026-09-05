@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}{{ "Bearbeiten" if page else "Neue Seite" }}{% endblock %}
+{% block content %}
+  <h1>{{ "Seite bearbeiten" if page else "Neue Seite" }}</h1>
+  <form method="post" action="{% if page %}/wiki/{{ slug }}/edit{% else %}/new{% endif %}" class="edit-form">
+    <label>Titel
+      <input type="text" name="title" value="{{ page.title if page else '' }}" required>
+    </label>
+    <label>Inhalt (Markdown)
+      <textarea name="content" rows="18" required>{{ page.content if page else '' }}</textarea>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn">Speichern</button>
+      <a href="{% if page %}/wiki/{{ page.slug }}{% else %}/{% endif %}">Abbrechen</a>
+    </div>
+  </form>
+{% endblock %}

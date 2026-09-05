@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><a href="/">MediaparkBrain<br>LLM-Wiki</a></div>
+      <nav class="actions">
+        <a href="/new" class="btn">+ Neue Seite</a>
+        <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
+      </nav>
+      <ul class="page-list">
+        {% for p in pages %}
+        <li class="{% if page and page.slug == p.slug %}active{% endif %}">
+          <a href="/wiki/{{ p.slug }}">{{ p.title }}</a>
+        </li>
+        {% else %}
+        <li class="empty">Noch keine Seiten</li>
+        {% endfor %}
+      </ul>
+    </aside>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

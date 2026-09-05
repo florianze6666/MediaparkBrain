@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}Projektvorschlag einreichen{% endblock %}
+{% block content %}
+  <h1>Projektvorschlag einreichen</h1>
+  <p class="hint">
+    Reiche hier einen neuen Projektvorschlag ein (Beschreibung + optional Business
+    Case / Charter als Datei). Ein Projektname darf nur einmal eingereicht werden -
+    wurde er bereits eingereicht, wird die Einreichung abgelehnt.
+  </p>
+
+  {% if error %}
+    <p class="hint error">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/proposals/new" enctype="multipart/form-data" class="edit-form">
+    <label>Projektname
+      <input type="text" name="project_name" value="{{ project_name or '' }}" required>
+    </label>
+    <label>Beschreibung
+      <textarea name="description" rows="10" required>{{ description or '' }}</textarea>
+    </label>
+    <label>Dateien (Project Charter, Business Case, ...)
+      <input type="file" name="files" multiple>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn">Einreichen</button>
+      <a href="/proposals">Alle eingereichten Vorschläge</a>
+    </div>
+  </form>
+{% endblock %}

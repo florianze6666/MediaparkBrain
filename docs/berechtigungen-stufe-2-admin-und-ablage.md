@@ -1,4 +1,4 @@
-# Paket 8: Erweitertes Berechtigungsmanagement (Stufe 2)
+# Paket 9: Erweitertes Berechtigungsmanagement (Stufe 2)
 
 Verantwortlich: Anselm · Stand: 2026-09-05 · Baut auf `docs/berechtigungen-und-herkunft.md` (Stufe 1) auf
 

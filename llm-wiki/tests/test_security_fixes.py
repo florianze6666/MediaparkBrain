@@ -1,4 +1,4 @@
-"""Security-Review nach Paket 8 - drei Luecken, drei Fixes:
+"""Security-Review nach Paket 9 - drei Luecken, drei Fixes:
 
 1. Write ⊆ Read: Schreiben nur in Domaenen, die man lesen darf (access.can_write).
 2. Signierter Identitaets-Cookie (HMAC-SHA256, MPB_SECRET): roh oder manipuliert = Gast.

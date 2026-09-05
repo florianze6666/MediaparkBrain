@@ -20,12 +20,13 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 |----|-------|----------------|---------|
 | 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ✅ Fertig |
 | 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
-| 3 | Funktionsbeschreibung des Systems | Florian | ⬜ Offen |
+| 3 | Funktionsbeschreibung des Systems | Florian | 🟡 In Arbeit |
 | 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | 🟡 In Arbeit |
 | 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | 🟡 In Arbeit |
 | 6 | Statistik: Wie viele Dokumente sind drin? | Antje | 🟡 In Arbeit |
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
-| 8 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | 🟡 In Arbeit |
+| 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | ⬜ Offen |
+| 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | 🟡 In Arbeit |
 
 ---
 
@@ -75,7 +76,7 @@ Ablageort nutzt.
 
 ## 3. Funktionsbeschreibung des Systems — Florian
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit
 
 **Ziel:** Jeder im Team und jeder Zuschauer versteht in fünf Minuten, was das System macht.
 
@@ -168,7 +169,55 @@ Ablageort nutzt.
 
 ---
 
-## 8. Erweitertes Berechtigungsmanagement — Anselm
+## 8. PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen — Florian
+
+**Zustand:** ⬜ Offen
+
+**Ziel:** Wer im Datei-Upload ein PDF hochlädt, findet dessen **Inhalt** anschließend unter „Frag das
+Wiki" wieder — nicht nur den Dateinamen.
+
+**Ausgangslage:** Unter `/proposals/new` lassen sich bereits Dateien hochladen, sie landen aber
+unverändert als Bytes in `project_proposals/uploads/<slug>/`. Es findet **keine Textextraktion** statt,
+und die erzeugte Markdown-Datei listet nur die Dateinamen. Da `search_snippets()` ausschließlich
+`llm-wiki/pages/` durchsucht, ist der Inhalt eines hochgeladenen PDFs heute für keine Frage
+auffindbar (siehe `docs/FUNKTIONSWEISE.md`, Abschnitt 4.6).
+
+**Technologieentscheidung: Textlayer zuerst, OCR nur als Notfall.**
+Digital erzeugte PDFs — Exporte aus Word, Excel, PowerPoint, also praktisch alle Projektunterlagen —
+enthalten den Text bereits exakt. OCR würde diese Seiten rastern und den Text neu erraten: man
+ersetzt exakte Daten durch eine Schätzung. Bei Fließtext fällt das kaum auf, bei einem Business Case
+schon: OCR verwechselt 0/O und 1/l und liest „450 T€" gern als „45O TE" — genau die Zahlen, auf die
+der CFO-Agent seinen Score stützt. OCR ist deshalb ausdrücklich **Stufe 2** und nur dann zu bauen,
+wenn tatsächlich gescannte PDFs auftauchen.
+
+**Umfang**
+- Textextraktion mit **pdfplumber** (reines pip-Paket, keine Systeminstallation; liefert
+  Wortpositionen, Schriftgrößen und `extract_tables()`).
+- Beide PDF-Bauformen bedienen, nach den Regeln in `docs/FUNKTIONSWEISE.md` Abschnitt 6:
+  aus Folien exportiert (Seite = Abschnitt, Überschrift mitnehmen) und als Fließtext gesetzt
+  (Seitenumbrüche zusammenfügen, Kopf-/Fußzeilen entfernen).
+- Tabellen als Markdown-Tabellen übernehmen, nicht als Textwand.
+- **Leerprüfung:** Kam kein oder kaum Text heraus (Bild-PDF, Scan), wird die Datei **nicht** still als
+  leere Seite gespeichert, sondern mit klarer Meldung als Informationslücke ausgewiesen
+  (`PLAN.md` §7, Phase 5).
+- Ergebnis als Markdown-Seite unter `llm-wiki/pages/` **mit Frontmatter nach Paket 1** — erst dadurch
+  wird der Inhalt abfragbar und unterliegt dem Rechtefilter.
+- Seitenzahl als Belegstelle mitführen, damit eine Aussage im Original nachprüfbar bleibt.
+
+**Fertig wenn**
+- Ein PDF wird hochgeladen; eine Frage nach einem Detail daraus liefert unter „Frag das Wiki" einen
+  Absatz aus genau diesem PDF als Quelle.
+- Ein PDF ohne Textlayer wird mit verständlicher Meldung abgelehnt und hinterlässt keine leere Seite.
+
+**Nicht im Umfang:** OCR, Bilderkennung, Diagrammauswertung. Wo eine Aussage nur im Bild steckt,
+bleibt sie eine benannte Informationslücke.
+
+**Schnittstellen:** Setzt auf dem Upload-Weg aus Paket 2 auf und liefert dessen PDF-Parser. Nutzt das
+Frontmatter-Schema aus Paket 1 und den Ablageort aus Paket 7. Paket 6 zählt die Ergebnisse.
+
+---
+
+## 9. Erweitertes Berechtigungsmanagement — Anselm
 
 **Zustand:** 🟡 In Arbeit (Konzept: `docs/berechtigungen-stufe-2-admin-und-ablage.md`)
 
@@ -196,6 +245,9 @@ Ablageort nutzt.
 3. Paket 5 und 6 hängen an Paket 2, können aber mit Testdaten sofort starten.
 4. Paket 4 ist unabhängig und kann sofort auf `project_proposals/` losgehen.
 5. Paket 3 läuft parallel und sammelt laufend ein.
+6. Paket 8 hängt am Upload-Weg aus Paket 2, lässt sich aber vorher eigenständig entwickeln und erst
+   am Ende einhängen. Testmaterial fehlt allerdings: `test project data/` enthält nur DOCX und XLSX,
+   **kein einziges PDF** — als Erstes braucht es also PDF-Exporte dieser Unterlagen.
 
 ## Gemeinsame Regeln
 

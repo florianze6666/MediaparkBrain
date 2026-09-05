@@ -222,7 +222,7 @@ def test_us18_route_404_fuer_kopflose_finance_datei(client):
 def test_oeffentlich_in_fremdem_ordner_oeffnet_den_ordner_nicht(pages_env):
     """Ordner ist die einzige Wahrheit: Das Label oeffentlich erweitert nie die
     Ordnerrechte (Label verschaerft nur). Frueher galt hier eine Ausnahme - die
-    war ein Leck (Security-Review nach Paket 8)."""
+    war ein Leck (Security-Review nach Paket 9)."""
     import app.wiki as wiki
     from app.access import PageMeta
 

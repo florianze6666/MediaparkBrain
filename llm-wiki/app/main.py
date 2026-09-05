@@ -13,11 +13,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import access, llm, proposals, stats, wiki
-from .access import PageMeta
-
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
+
+# access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
+# load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
+from . import access, llm, proposals, stats, wiki  # noqa: E402
+from .access import PageMeta  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
 

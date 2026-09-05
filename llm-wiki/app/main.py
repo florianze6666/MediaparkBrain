@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import llm, wiki
+from . import llm, stats, wiki
 
 load_dotenv()
 
@@ -127,6 +127,17 @@ def new_page_save(title: str = Form(...), content: str = Form(...)):
     slug = wiki.slugify(title)
     wiki.save_page(slug, title, content)
     return RedirectResponse(f"/wiki/{slug}", status_code=303)
+
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    pages = wiki.list_pages()
+    dashboard_stats = stats.get_dashboard_stats()
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {"pages": pages, "stats": dashboard_stats},
+    )
 
 
 @app.get("/ask")

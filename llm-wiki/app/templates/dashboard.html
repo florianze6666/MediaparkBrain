@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+</div>
+
+<div class="dashboard-summary">
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_files }}</div>
+    <div class="stat-label">Dateien insgesamt</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_folders }}</div>
+    <div class="stat-label">Ordner</div>
+  </div>
+</div>
+
+<h2>Letzte {{ stats.recent_documents|length }} Dokumente</h2>
+<div class="dashboard-table-wrap">
+  <table class="dashboard-table">
+    <thead>
+      <tr>
+        <th>Dokument</th>
+        <th>Hochgeladen am</th>
+        <th>Von</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doc in stats.recent_documents %}
+      <tr>
+        <td><a href="/wiki/{{ doc.slug }}">{{ doc.title }}</a></td>
+        <td>{{ doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else '—' }}</td>
+        <td>{{ doc.uploaded_by }}</td>
+        <td>
+          {% if doc.is_update %}
+          <span class="badge badge-update">Aktualisiert</span>
+          {% else %}
+          <span class="badge badge-new">Neu</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" class="empty">Noch keine Dokumente vorhanden.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

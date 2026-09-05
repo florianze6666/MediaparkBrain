@@ -4,7 +4,7 @@ titel: "Lessons Learned: Parallelnutzung mehrerer Systeme in der Projektabwicklu
 dokumenttyp: Lessons Learned
 datum: 2025-12-07
 verfasser: Nicole Brandt
-rolle: Lead Project Manager Industrial Heat Systems
+rolle: Lead Project Manager IHS
 organisationseinheit: Industrial Heat Systems
 empfaenger: [Project Excellence Office]
 projekt: "-"

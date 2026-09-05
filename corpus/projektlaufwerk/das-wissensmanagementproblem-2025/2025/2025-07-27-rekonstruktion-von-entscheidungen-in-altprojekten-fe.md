@@ -4,7 +4,7 @@ titel: "Lessons Learned: Rekonstruktion von Entscheidungen in Altprojekten festh
 dokumenttyp: Lessons Learned
 datum: 2025-07-27
 verfasser: Nicole Brandt
-rolle: Lead Project Manager Industrial Heat Systems
+rolle: Lead Project Manager IHS
 organisationseinheit: Industrial Heat Systems
 empfaenger: ["-"]
 projekt: "-"

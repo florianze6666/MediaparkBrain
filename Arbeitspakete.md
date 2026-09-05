@@ -26,7 +26,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 6 | Statistik: Wie viele Dokumente sind drin? | Antje | 🟡 In Arbeit |
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
 | 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | ⬜ Offen |
-| 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | 🟡 In Arbeit |
+| 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
 
 ---
 
@@ -219,7 +219,7 @@ Frontmatter-Schema aus Paket 1 und den Ablageort aus Paket 7. Paket 6 zählt die
 
 ## 9. Erweitertes Berechtigungsmanagement — Anselm
 
-**Zustand:** 🟡 In Arbeit (Konzept: `docs/berechtigungen-stufe-2-admin-und-ablage.md`)
+**Zustand:** ✅ Fertig (PR #25 gemerged; Konzept, Schnittstellen und Sicherheitsbetrachtung: `docs/berechtigungen-stufe-2-admin-und-ablage.md`)
 
 **Ziel:** Herkunft und Rechte ziehen sich durch das ganze System, nicht nur durch Wiki-Seiten.
 

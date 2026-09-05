@@ -119,3 +119,67 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .sources blockquote { margin: 6px 0 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted); }
 
 .hint { color: var(--muted); font-size: 13px; background: var(--panel); border: 1px solid var(--border); padding: 10px 12px; border-radius: 6px; }
+
+/* --- Ladeanzeige "Frag das Wiki" (Vollbild-Overlay) --- */
+.ask-loading {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 20, 0.88);
+  backdrop-filter: blur(4px);
+}
+.ask-loading.is-visible { display: flex; }
+
+.ask-loading-box {
+  text-align: center;
+  padding: 48px 64px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel, #171a24);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  max-width: 90vw;
+}
+.ask-spinner {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 28px;
+  border: 8px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ask-spin 0.9s linear infinite;
+}
+.ask-loading-title {
+  margin: 0 0 10px;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text, #fff);
+}
+.ask-loading-text {
+  margin: 0;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+@keyframes ask-spin { to { transform: rotate(360deg); } }
+
+.ask-form input[readonly] { opacity: 0.6; cursor: default; }
+.btn[disabled] { opacity: 0.6; cursor: default; }
+
+.is-stale { opacity: 0.4; transition: opacity 0.2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-spinner { animation: none; border-top-color: var(--border); }
+  .ask-spinner::after {
+    content: "";
+    display: block;
+    width: 24px; height: 24px;
+    margin: 28px auto 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .is-stale { transition: none; }
+}

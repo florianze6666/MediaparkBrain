@@ -2,24 +2,35 @@
 
 Stand: 2026-09-05 · Basis: `PLAN.md` und das LLM-Wiki unter `llm-wiki/`
 
+**Zustände:** Jedes Paket ist in genau einem von drei Zuständen. Wer den Zustand ändert, ändert ihn in
+der Tabelle und im Paket-Abschnitt und stellt einen kurzen PR.
+
+| Zustand | Bedeutung |
+|---------|-----------|
+| ⬜ Offen | Noch niemand dran |
+| 🟡 In Arbeit | Branch existiert, wird gebaut |
+| ✅ Fertig | PR gemerged, „Fertig wenn"-Kriterien erfüllt |
+
 Jedes Paket hat genau einen Verantwortlichen. Wer ein Paket anfängt, arbeitet auf einem eigenen Branch
 (`<name>/<thema>`) und stellt einen PR nach `main`. Kleine PRs, oft mergen. Gemeinsame Basis ist das
 LLM-Wiki (FastAPI, Markdown-Seiten in `llm-wiki/pages/`, Fragen über `/ask`). Wer eine Schnittstelle
 braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange gegen einen Platzhalter.
 
-| Nr | Paket | Verantwortlich |
-|----|-------|----------------|
-| 1 | Berechtigungen und Herkunft von Dokumenten | Anselm |
-| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt |
-| 3 | Funktionsbeschreibung des Systems | Florian |
-| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc |
-| 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana |
-| 6 | Statistik: Wie viele Dokumente sind drin? | Antje |
-| 7 | Ablage-Zuordnung hochgeladener Dateien | Frank |
+| Nr | Paket | Verantwortlich | Zustand |
+|----|-------|----------------|---------|
+| 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ⬜ Offen |
+| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
+| 3 | Funktionsbeschreibung des Systems | Florian | ⬜ Offen |
+| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | ⬜ Offen |
+| 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | ⬜ Offen |
+| 6 | Statistik: Wie viele Dokumente sind drin? | Antje | ⬜ Offen |
+| 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
 
 ---
 
 ## 1. Berechtigungen und Herkunft von Dokumenten — Anselm
+
+**Zustand:** ⬜ Offen
 
 **Ziel:** Das System weiß, wer ein Dokument eingebracht hat und wer es sehen darf. Grundlage für
 Abschnitt 4 in `PLAN.md` (Zugriffsrechte und Informationsgrenzen).
@@ -43,6 +54,8 @@ Ablageort nutzt.
 
 ## 2. Datei-Upload und Überführung in die Wissensdatenbank — Ekkehardt
 
+**Zustand:** ⬜ Offen
+
 **Ziel:** Nutzer laden Dateien (PDF, DOCX, XLSX, MD, TXT) hoch, der Inhalt landet durchsuchbar im Wiki.
 
 **Umfang**
@@ -61,6 +74,8 @@ Ablageort nutzt.
 
 ## 3. Funktionsbeschreibung des Systems — Florian
 
+**Zustand:** ⬜ Offen
+
 **Ziel:** Jeder im Team und jeder Zuschauer versteht in fünf Minuten, was das System macht.
 
 **Umfang**
@@ -77,6 +92,8 @@ Ablageort nutzt.
 ---
 
 ## 4. Bewertungslogik: Gab es das Projekt schon? — Marc
+
+**Zustand:** ⬜ Offen
 
 **Ziel:** Ein neuer Projektvorschlag wird gegen die vorhandenen Projekte abgeglichen. Das System sagt:
 „Das gab es schon", mit Verweis auf das bestehende Projekt.
@@ -97,6 +114,8 @@ Ablageort nutzt.
 
 ## 5. Upload-Feedback: pinker Rahmen und Sound — Oxana
 
+**Zustand:** ⬜ Offen
+
 **Ziel:** Ein erfolgreicher Upload ist unübersehbar und unüberhörbar.
 
 **Umfang**
@@ -113,6 +132,8 @@ Ablageort nutzt.
 
 ## 6. Statistik: Wie viele Dokumente sind drin? — Antje
 
+**Zustand:** ⬜ Offen
+
 **Ziel:** Auf einen Blick sehen, wie groß die Wissensbasis ist.
 
 **Umfang**
@@ -128,6 +149,8 @@ Ablageort nutzt.
 ---
 
 ## 7. Ablage-Zuordnung hochgeladener Dateien — Frank
+
+**Zustand:** ⬜ Offen
 
 **Ziel:** Jede hochgeladene Datei landet an einem nachvollziehbaren Ort, so wie im Demo-Korpus unter
 `corpus/` (Ablageorte wie Projektlaufwerk, Finance, HR).

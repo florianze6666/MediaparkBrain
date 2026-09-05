@@ -49,3 +49,5 @@ TODO: Wie führt man Tests, Linter und Typprüfung aus?
 ## Lizenz
 
 TODO: Lizenz festlegen (oder bewusst "privat, keine Lizenz" vermerken).
+
+Rollt ne Kugel um die Ecke und fällt um.

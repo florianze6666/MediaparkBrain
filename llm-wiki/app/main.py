@@ -4,12 +4,12 @@ from pathlib import Path
 
 import markdown as md
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import llm, wiki
+from . import llm, proposals, wiki
 
 load_dotenv()
 
@@ -127,6 +127,81 @@ def new_page_save(title: str = Form(...), content: str = Form(...)):
     slug = wiki.slugify(title)
     wiki.save_page(slug, title, content)
     return RedirectResponse(f"/wiki/{slug}", status_code=303)
+
+
+@app.get("/proposals")
+def proposal_list(request: Request):
+    pages = wiki.list_pages()
+    return templates.TemplateResponse(
+        request,
+        "proposal_list.html",
+        {"pages": pages, "proposals": proposals.list_proposals()},
+    )
+
+
+@app.get("/proposals/new")
+def proposal_new_form(request: Request):
+    pages = wiki.list_pages()
+    return templates.TemplateResponse(
+        request,
+        "proposal_new.html",
+        {"pages": pages, "error": None, "project_name": "", "description": ""},
+    )
+
+
+@app.post("/proposals/new")
+async def proposal_new_save(
+    request: Request,
+    project_name: str = Form(...),
+    description: str = Form(...),
+    files: list[UploadFile] = File(default=[]),
+):
+    pages = wiki.list_pages()
+
+    if proposals.already_submitted(project_name):
+        return templates.TemplateResponse(
+            request,
+            "proposal_new.html",
+            {
+                "pages": pages,
+                "error": (
+                    f'Ein Projektvorschlag mit dem Namen "{project_name}" wurde '
+                    "bereits eingereicht. Einreichung abgelehnt."
+                ),
+                "project_name": project_name,
+                "description": description,
+            },
+            status_code=409,
+        )
+
+    uploaded_files = []
+    for f in files:
+        if not f.filename:
+            continue
+        uploaded_files.append((f.filename, await f.read()))
+
+    proposal = proposals.save_proposal(project_name, description, uploaded_files)
+    return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
+
+
+@app.get("/proposals/{slug}")
+def proposal_view(request: Request, slug: str):
+    pages = wiki.list_pages()
+    proposal = proposals.get_proposal(slug)
+    if proposal is None:
+        return RedirectResponse("/proposals")
+    description_html = render_markdown(proposal.description)
+    return templates.TemplateResponse(
+        request,
+        "proposal_view.html",
+        {"pages": pages, "proposal": proposal, "description_html": description_html},
+    )
+
+
+@app.post("/proposals/{slug}/delete")
+def proposal_delete(slug: str):
+    proposals.delete_proposal(slug)
+    return RedirectResponse("/proposals", status_code=303)
 
 
 @app.get("/ask")

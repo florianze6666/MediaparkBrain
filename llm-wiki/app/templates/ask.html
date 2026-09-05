@@ -32,12 +32,10 @@
         <article class="fakt{% if not f.belegt %} fakt-unbelegt{% endif %}">
           {% if f.belegt %}
             {# Erst der Beleg, dann die Aussage: was im Dokument steht, kommt zuerst. #}
-            <blockquote class="fakt-zitat">
-              {{ f.zitat }}
-              <cite class="fakt-quelle">
-                <a href="/wiki/{{ f.quelle_slug }}">{{ f.quelle_titel }}</a>{% if f.belegstelle %} · {{ f.belegstelle }}{% endif %}
-              </cite>
-            </blockquote>
+            {# Zitat und Quelle in einer Zeile: die Anfuehrungszeichen haengen am
+               Text, nicht am Block - sonst rutscht das schliessende Zeichen auf
+               eine eigene Zeile und reisst den Kasten auf. #}
+            <blockquote class="fakt-zitat"><span class="fakt-zitat-label">Zitat</span><span class="fakt-zitat-text">{{ f.zitat }}</span><cite class="fakt-quelle"><a href="/wiki/{{ f.quelle_slug }}">{{ f.quelle_titel }}</a>{% if f.belegstelle %} · {{ f.belegstelle }}{% endif %}</cite></blockquote>
           {% else %}
             <p class="fakt-warnung">Ohne Beleg — kein wörtliches Zitat in der Wissensbasis gefunden.</p>
           {% endif %}

@@ -86,7 +86,44 @@ class Antwort:
 
 
 def is_configured() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return bool(os.environ.get("LLM_API_KEY"))
+
+
+def _client():
+    """Client fuer den konfigurierten OpenAI-kompatiblen Endpoint.
+
+    `LLM_BASE_URL` zeigt auf den /v1-Pfad des Anbieters (z.B.
+    https://hybridai.one/v1). Ist die Variable leer, faellt das SDK auf die
+    OpenAI-Standard-URL zurueck - der Endpoint ist also austauschbar, ohne
+    dass Code angefasst werden muss.
+    """
+    from openai import OpenAI
+
+    return OpenAI(
+        base_url=os.environ.get("LLM_BASE_URL") or None,
+        api_key=os.environ.get("LLM_API_KEY"),
+    )
+
+
+def chat(system_prompt: str, user_prompt: str, max_tokens: int) -> str:
+    """Ein einzelner Frage-Antwort-Durchgang - der einzige Weg nach aussen.
+
+    Alle drei Aufrufstellen (Zitat-Antwort, Projektbewertung, Dokumentkopf)
+    laufen hierueber: ein System-Prompt, eine Nutzerfrage, Klartext zurueck.
+    Kein Streaming, keine Tools, keine Historie - genau das, was die App
+    braucht.
+    """
+    response = _client().chat.completions.create(
+        model=os.environ.get("LLM_MODEL", DEFAULT_MODEL),
+        max_tokens=max_tokens,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    # Ein leerer Abschluss (content=None) darf die Aufrufer nicht mit einem
+    # AttributeError treffen - sie erwarten durchgaengig einen String.
+    return response.choices[0].message.content or ""
 
 
 # ---------------------------------------------------------------------------
@@ -153,21 +190,11 @@ def _json_aus(text: str) -> dict | None:
 
 def _modell_fragen(frage: str, kontext: str) -> str:
     """Der einzige Aufruf nach aussen - in Tests ersetzbar."""
-    from anthropic import Anthropic
-
-    client = Anthropic()
-    response = client.messages.create(
-        model=os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL),
+    return chat(
+        SYSTEM_PROMPT,
+        f"Kontext aus dem Wiki:\n\n{kontext}\n\nFrage: {frage}",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Kontext aus dem Wiki:\n\n{kontext}\n\nFrage: {frage}",
-            }
-        ],
     )
-    return "".join(block.text for block in response.content if block.type == "text")
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +217,7 @@ def _ohne_modell(snippets: list[Snippet]) -> Antwort:
     return Antwort(
         fakten=fakten,
         hinweis=(
-            "Kein ANTHROPIC_API_KEY gesetzt - unten stehen die gefundenen "
+            "Kein LLM_API_KEY gesetzt - unten stehen die gefundenen "
             "Belegstellen, aber keine daraus formulierte Antwort."
         ),
     )

@@ -18,8 +18,8 @@ def no_api_key(monkeypatch):
     # Ohne Key gibt ask_llm den Kontext roh zurueck -> Leak waere im HTML sichtbar.
     # Leerer String statt delenv: load_dotenv() beim Import von app.main setzt
     # nur fehlende Variablen, ueberschreibt aber keine vorhandenen.
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
-    monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+    monkeypatch.setenv("LLM_API_KEY", "")
+    monkeypatch.delenv("LLM_MODEL", raising=False)
 
 
 def after_form(html: str) -> str:
@@ -32,7 +32,7 @@ def test_mitarbeiter_bekommt_nichts_aus_finance(client):
     r = client.post("/ask", cookies=as_user("mitarbeiter"), data={"question": QUESTION})
     assert r.status_code == 200
     assert "Suche als" in r.text and "Mitarbeiter" in r.text
-    assert "Kein ANTHROPIC_API_KEY gesetzt" in r.text  # wirklich Roh-Kontext, kein LLM
+    assert "Kein LLM_API_KEY gesetzt" in r.text  # wirklich Roh-Kontext, kein LLM
     body = after_form(r.text)
     for marker in FINANCE_MARKERS:
         assert marker not in body, f"Leak: {marker!r} in Antwort fuer mitarbeiter"

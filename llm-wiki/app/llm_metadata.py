@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -9,12 +8,8 @@ from typing import Any
 import yaml
 
 from .access import PageMeta, default_confidentiality_for_user
-
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-
-
-def is_configured() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+from .llm import chat as llm_chat
+from .llm import is_configured
 
 
 def build_fallback_header(
@@ -157,23 +152,10 @@ WICHTIGE REGELN:
 """
 
     try:
-        from anthropic import Anthropic
-
-        client = Anthropic()
-        model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
-        response = client.messages.create(
-            model=model,
+        llm_response = llm_chat(
+            system_prompt,
+            f"Dateiname: {filename}\n\nDokument-Auszug:\n{preview}",
             max_tokens=1000,
-            system=system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Dateiname: {filename}\n\nDokument-Auszug:\n{preview}",
-                }
-            ],
-        )
-        llm_response = "".join(
-            block.text for block in response.content if block.type == "text"
         ).strip()
 
         # Extrahiere YAML Frontmatter

@@ -2,11 +2,34 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from pathlib import Path
 
 from .llm import is_configured as llm_is_configured
 from .proposals import Proposal
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+# Simulierte Unternehmenswissensbasis (PLAN.md §3) - Richtlinien, Architektur-,
+# Budget- und Prozessdokumente der fiktiven "Lahnberg Thermotechnik GmbH".
+# corpus/ dient hier als allgemeiner Referenzrahmen fuer die Bewertung (z.B.
+# Budgetgrenzen, IT-Richtlinien, Mitbestimmungsregeln) - nicht als Tatsachen
+# ueber das jeweils konkrete, andere fiktive Unternehmen im Projektvorschlag.
+CORPUS_DIR = Path(__file__).resolve().parent.parent.parent / "corpus"
+
+# Welche corpus/-Ordner zu welcher Experten-Dimension passen.
+ROLE_TO_CORPUS_DIRS = {
+    "betriebsrat": ["br_ablage"],
+    "cfo": ["sharepoint_finance", "einkauf_scm"],
+    "it": ["it_doku"],
+    "ceo": ["sharepoint_gf", "mailarchiv"],
+}
+
+WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß0-9]+")
+
+
+def _tokenize(text: str) -> set[str]:
+    return {w.lower() for w in WORD_RE.findall(text)}
 
 # Ordnet angemeldete Nutzer (permissions.yaml) ihrer Experten-Dimension zu.
 # Nur diese vier Nutzer sehen im Bewertungsreport ausschliesslich ihre eigene
@@ -95,6 +118,11 @@ Allgemeine Bewertungslogik (verbindlich fuer jede Rolle):
 Die vier Rollen und ihre Kriterien:
 {rollen}
 
+Die Nutzernachricht kann zusaetzlich einen Abschnitt "Zusaetzlicher Kontext aus \
+der Unternehmenswissensbasis (corpus/)" enthalten - dort steht bereits, wie \
+er einzuordnen ist (allgemeiner Referenzrahmen je Rolle, keine Tatsachen \
+ueber das konkrete Projekt).
+
 Antworte AUSSCHLIESSLICH mit validem JSON, ohne zusaetzlichen Text und ohne \
 Markdown-Codeblock, in genau dieser Struktur (ein Objekt pro Rollen-Schluessel):
 {{"betriebsrat": {{"status": "BEWERTET" oder "INFORMATION FEHLT", "score": Zahl 0-10 \
@@ -109,6 +137,63 @@ def _build_system_prompt() -> str:
     )
     return SYSTEM_PROMPT_TEMPLATE.format(
         bewertungslogik=BEWERTUNGSLOGIK_KURZ, rollen=rollen_block
+    )
+
+
+def _corpus_snippets_for_role(role_key: str, query_words: set[str], top_k: int = 3) -> list[tuple[str, str]]:
+    """Findet die zum Projekt passendsten Absaetze aus den corpus/-Ordnern der
+    jeweiligen Rolle (Keyword-Ueberlappung, gleiches Prinzip wie
+    wiki.search_snippets). Gibt (relativer Pfad, Absatz) zurueck."""
+    dirs = ROLE_TO_CORPUS_DIRS.get(role_key, [])
+    if not query_words or not dirs:
+        return []
+
+    results: list[tuple[float, str, str]] = []
+    for d in dirs:
+        folder = CORPUS_DIR / d
+        if not folder.is_dir():
+            continue
+        for f in folder.rglob("*.md"):
+            try:
+                text = f.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for para in text.split("\n\n"):
+                para = para.strip()
+                if not para:
+                    continue
+                overlap = query_words & _tokenize(para)
+                if not overlap:
+                    continue
+                score = len(overlap) / len(query_words)
+                results.append((score, str(f.relative_to(CORPUS_DIR)), para))
+
+    results.sort(key=lambda r: r[0], reverse=True)
+    return [(path, para) for _, path, para in results[:top_k]]
+
+
+def _corpus_context_block(proposal: Proposal, project_text: str) -> str:
+    """Baut fuer jede Rolle einen eigenen Kontextabschnitt aus der
+    Unternehmenswissensbasis (corpus/) - als Referenzrahmen, nicht als
+    Tatsachen ueber das konkrete Projekt (siehe Hinweis bei CORPUS_DIR)."""
+    query_words = _tokenize(proposal.project_name) | _tokenize(project_text)
+    sections = []
+    for key, role in ROLE_CRITERIA.items():
+        snippets = _corpus_snippets_for_role(key, query_words)
+        if not snippets:
+            continue
+        body = "\n\n".join(f"(Quelle: corpus/{path})\n{para}" for path, para in snippets)
+        sections.append(f"#### Fuer {role['name']} (Schluessel \"{key}\")\n{body}")
+    if not sections:
+        return ""
+    return (
+        "\n\n### Zusaetzlicher Kontext aus der Unternehmenswissensbasis (corpus/)\n"
+        "Diese Auszuege stammen aus internen Richtlinien-, Architektur- und "
+        "Budgetdokumenten (allgemeiner Referenzrahmen, KEINE Tatsachen ueber das "
+        "konkrete Projekt oben) und sind je Rolle nach Relevanz vorsortiert. Nutze "
+        "sie nur als Massstab (z.B. geltende Budgetgrenzen, IT-Richtlinien, "
+        "Mitbestimmungsregeln), nicht als Aussagen ueber das Projekt selbst:\n\n"
+        + "\n\n".join(sections)
     )
 
 
@@ -138,6 +223,9 @@ def evaluate_proposal(proposal: Proposal) -> dict:
 
     from anthropic import Anthropic
 
+    project_text = _project_text(proposal)
+    corpus_block = _corpus_context_block(proposal, project_text)
+
     client = Anthropic()
     model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
     response = client.messages.create(
@@ -149,7 +237,8 @@ def evaluate_proposal(proposal: Proposal) -> dict:
                 "role": "user",
                 "content": (
                     f"Projekt: {proposal.project_name}\n\n"
-                    f"Projektunterlagen:\n\n{_project_text(proposal)}"
+                    f"Projektunterlagen:\n\n{project_text}"
+                    f"{corpus_block}"
                 ),
             }
         ],

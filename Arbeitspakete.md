@@ -18,7 +18,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 
 | Nr | Paket | Verantwortlich | Zustand |
 |----|-------|----------------|---------|
-| 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ⬜ Offen |
+| 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | 🟡 In Arbeit |
 | 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
 | 3 | Funktionsbeschreibung des Systems | Florian | ⬜ Offen |
 | 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | ⬜ Offen |
@@ -30,7 +30,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 
 ## 1. Berechtigungen und Herkunft von Dokumenten — Anselm
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit (PR offen, Konzept: `docs/berechtigungen-und-herkunft.md`)
 
 **Ziel:** Das System weiß, wer ein Dokument eingebracht hat und wer es sehen darf. Grundlage für
 Abschnitt 4 in `PLAN.md` (Zugriffsrechte und Informationsgrenzen).

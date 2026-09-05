@@ -1,0 +1,28 @@
+# Rechte-Datei des LLM-Wikis (Paket 1: Berechtigungen und Herkunft).
+# Nutzer sind Rollen, keine echten Personen. Neue Nutzer, Gruppen oder
+# Domaenen: diese Datei aendern, kein Code. Auswertung in app/access.py.
+
+gruppen: [alle, projekt, finance, hr, it, br, gf, einkauf, leitung]
+
+nutzer:
+  gast:            {name: "Gast (nicht angemeldet)",        gruppen: []}
+  mitarbeiter:     {name: "Mitarbeiter",                    gruppen: [alle]}
+  projektmanager:  {name: "Projektmanager (Einreicher)",    gruppen: [alle, projekt]}
+  pmo-leitung:     {name: "PMO-Leitung",                    gruppen: [alle, projekt, leitung]}
+  betriebsrat:     {name: "Betriebsrat",                    gruppen: [alle, br]}
+  cfo:             {name: "CFO / Controlling",              gruppen: [alle, finance, einkauf, leitung]}
+  it-security:     {name: "IT / Architektur / Security",    gruppen: [alle, it, leitung]}
+  ceo:             {name: "CEO / Strategie",                gruppen: [alle, gf, finance, leitung]}
+  hr-leitung:      {name: "HR-Leitung",                     gruppen: [alle, hr, leitung]}
+  orchestrator:    {name: "Orchestrator (kein Gutachter)",  gruppen: [alle]}
+
+domaenen:            # Ablageort im Korpus -> Domaene
+  allgemein: {lesen: [alle]}                 # qm_lenkung, Wiki-Seiten ohne Zuordnung
+  projekt:   {lesen: [alle]}                 # projektlaufwerk
+  finance:   {lesen: [finance, leitung]}     # sharepoint_finance
+  einkauf:   {lesen: [einkauf, finance, leitung]}   # einkauf_scm
+  hr:        {lesen: [hr, leitung]}          # sharepoint_hr
+  it:        {lesen: [it, leitung]}          # it_doku
+  br:        {lesen: [br]}                   # br_ablage - auch die Leitung liest hier NICHT
+  gf:        {lesen: [gf]}                   # sharepoint_gf - nur Geschaeftsfuehrung
+  mail:      {lesen: [gf]}                   # mailarchiv - nur Geschaeftsfuehrung

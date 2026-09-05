@@ -11,6 +11,24 @@
         </form>
       </div>
     </div>
+    <div class="page-meta">
+      {% if page.meta.erstellt_von == "unbekannt" %}
+        <span>Herkunft unbekannt (Altbestand)</span>
+      {% else %}
+        <span>Angelegt von <strong>{{ page.meta.erstellt_von | user_name }}</strong>{% if page.meta.erstellt_am %} am {{ page.meta.erstellt_am | ts }}{% endif %}</span>
+      {% endif %}
+      <span class="badge badge-{{ page.meta.vertraulichkeit }}">{{ page.meta.vertraulichkeit | replace("oeffentlich", "öffentlich") }}</span>
+      <span class="badge badge-domain">{{ page.meta.domaene }}</span>
+      {% if page.meta.geaendert_von %}
+        <span>Zuletzt geändert von <strong>{{ page.meta.geaendert_von | user_name }}</strong>{% if page.meta.geaendert_am %} am {{ page.meta.geaendert_am | ts }}{% endif %}</span>
+      {% endif %}
+      {% if page.meta.ablageort %}
+        <span>Ablage: {{ page.meta.ablageort }}</span>
+      {% endif %}
+      {% if page.meta.quelle == "upload" %}
+        <span>Quelle: Upload</span>
+      {% endif %}
+    </div>
     <article class="markdown-body">{{ content_html | safe }}</article>
   {% else %}
     <p>Noch keine Seiten vorhanden. <a href="/new">Erste Seite anlegen</a>.</p>

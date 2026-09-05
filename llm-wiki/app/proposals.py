@@ -110,7 +110,8 @@ def _parse(raw: str, slug: str) -> Proposal:
     head, body = split_frontmatter_raw(raw)
     meta, rolle = _meta_from_head(head)
     lines = body.splitlines()
-    if head and head.get("project_name"):
+    is_legacy = bool(head and head.get("project_name"))
+    if is_legacy:
         # Altbestand mit fremdem Kopf (Marcs Format): dort steht der echte Name,
         # die Ueberschrift lautet generisch "Projektvorschlag".
         project_name = str(head["project_name"])
@@ -139,10 +140,24 @@ def _parse(raw: str, slug: str) -> Proposal:
             description_lines.append(line)
         elif section == "files" and line.strip().startswith("- "):
             files.append(line.strip()[2:].strip())
+    if not files and head and head.get("source_documents"):
+        # Altbestand mit fremdem Kopf (Marcs Format): Dateien stehen unter
+        # source_documents als Pfade, nicht im "## Hochgeladene Dateien"-Abschnitt.
+        files = [Path(str(s)).name for s in head["source_documents"] if str(s).strip()]
+    if is_legacy and not description_lines:
+        # Marcs Format hat keinen "## Beschreibung"-Unterabschnitt - die
+        # komplette PLAN.md-Sec.-2-Struktur (Zielsetzung, Business Case,
+        # Risikoanalyse, ...) steht direkt im Body. Das ganze Dokument
+        # (ohne die generische Titelzeile "# Projektvorschlag") ist die
+        # vollstaendige Projektcharter.
+        body_lines = lines[1:] if lines and lines[0].startswith("# ") else lines
+        description = "\n".join(body_lines).strip()
+    else:
+        description = "\n".join(description_lines).strip()
     return Proposal(
         slug=slug,
         project_name=project_name,
-        description="\n".join(description_lines).strip(),
+        description=description,
         submitted_at=submitted_at,
         submitted_by=submitted_by,
         status=status,

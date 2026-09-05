@@ -30,7 +30,10 @@
     <tbody>
       {% for doc in stats.recent_documents %}
       <tr>
-        <td><a href="/wiki/{{ doc.slug }}">{{ doc.title }}</a></td>
+        <td class="doc-title-cell">
+          <a href="/wiki/{{ doc.slug }}" class="doc-title-link">{{ doc.title }}</a>
+          <button type="button" class="title-expand-btn" onclick="toggleTitleExpand(this)" aria-label="Titel ein-/ausklappen">⋯</button>
+        </td>
         <td>{{ doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else '—' }}</td>
         <td>{{ doc.uploaded_by }}</td>
         <td>

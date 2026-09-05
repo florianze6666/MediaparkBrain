@@ -4,7 +4,7 @@ titel: "Projektauftrag Programm ONE LTT"
 dokumenttyp: Projektauftrag
 datum: 2022-11-10
 verfasser: Kessler
-rolle: Vorsitzender der Geschäftsführung
+rolle: CEO
 organisationseinheit: GF
 empfaenger: ["-"]
 projekt: IP-2022-03

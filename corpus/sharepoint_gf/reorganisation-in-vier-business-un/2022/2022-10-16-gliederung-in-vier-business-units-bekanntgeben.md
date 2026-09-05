@@ -4,7 +4,7 @@ titel: Gliederung der LTT in vier Business Units
 dokumenttyp: Vorstandsmemo
 datum: 2022-10-16
 verfasser: Kessler
-rolle: Vorsitzender der Geschäftsführung
+rolle: CEO
 organisationseinheit: GF
 empfaenger: [Führungskreis]
 projekt: PRJ-BU-REORG-2022

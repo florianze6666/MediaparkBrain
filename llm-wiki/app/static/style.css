@@ -494,3 +494,69 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 11px; }
 .hint.ok { border-color: #2f9e6e; color: #7fd4a8; }
+
+/* --- Paket 10: Fakt mit Quellenzitat ------------------------------------ */
+/* Der Beleg steht ueber der Aussage und ist typografisch klar abgesetzt:
+   was im Dokument steht, soll nicht wie das aussehen, was das Modell
+   daraus macht. */
+
+.fakt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0 0 1.15rem;
+}
+.fakt + .fakt {
+  border-top: 1px solid var(--border);
+  padding-top: 1.15rem;
+}
+
+.fakt-zitat {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: rgba(245, 147, 66, 0.07);
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--text);
+  quotes: "\201E" "\201C";
+}
+.fakt-zitat::before { content: open-quote; }
+.fakt-zitat::after  { content: close-quote; }
+
+.fakt-quelle {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-style: normal;
+  color: var(--muted);
+}
+.fakt-quelle a { color: var(--muted); }
+.fakt-quelle a:hover { color: var(--accent); }
+
+.fakt-aussage {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Ohne Beleg: sichtbar machen, nicht verstecken. */
+.fakt-warnung {
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border-left: 3px solid var(--accent-strong);
+  background: rgba(198, 20, 109, 0.1);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.fakt-unbelegt .fakt-aussage { color: var(--muted); }
+
+/* Fundstellen sind ab jetzt Nachschlagewerk, nicht Hauptinhalt. */
+details.sources > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 0.4rem 0;
+}
+details.sources > summary:hover { color: var(--accent); }

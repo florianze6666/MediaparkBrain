@@ -21,18 +21,36 @@
     </div>
   </div>
 
-  {% if answer %}
-    <p class="fresh-badge">Yeah, Yeah!</p>
+  {% if antwort %}
+    {% if antwort.fakten %}<p class="fresh-badge">Yeah, Yeah!</p>{% endif %}
     <section class="answer">
       <h2>Antwort</h2>
-      <p>{{ answer }}</p>
+
+      {% if antwort.hinweis %}<p class="hint">{{ antwort.hinweis }}</p>{% endif %}
+
+      {% for f in antwort.fakten %}
+        <article class="fakt{% if not f.belegt %} fakt-unbelegt{% endif %}">
+          {% if f.belegt %}
+            {# Erst der Beleg, dann die Aussage: was im Dokument steht, kommt zuerst. #}
+            <blockquote class="fakt-zitat">
+              {{ f.zitat }}
+              <cite class="fakt-quelle">
+                <a href="/wiki/{{ f.quelle_slug }}">{{ f.quelle_titel }}</a>{% if f.belegstelle %} · {{ f.belegstelle }}{% endif %}
+              </cite>
+            </blockquote>
+          {% else %}
+            <p class="fakt-warnung">Ohne Beleg — kein wörtliches Zitat in der Wissensbasis gefunden.</p>
+          {% endif %}
+          {% if f.aussage %}<p class="fakt-aussage">{{ f.aussage }}</p>{% endif %}
+        </article>
+      {% endfor %}
     </section>
-    <script>yeahYeah();</script>
+    {% if antwort.fakten %}<script>yeahYeah();</script>{% endif %}
   {% endif %}
 
   {% if snippets %}
-    <section class="sources">
-      <h2>Quellen</h2>
+    <details class="sources">
+      <summary>Alle {{ snippets|length }} durchsuchten Fundstellen</summary>
       <ul>
         {% for s in snippets %}
         <li>
@@ -41,9 +59,7 @@
         </li>
         {% endfor %}
       </ul>
-    </section>
-  {% elif answer %}
-    <p class="hint">Keine passenden Wiki-Seiten gefunden.</p>
+    </details>
   {% endif %}
 
   <script>
@@ -55,7 +71,7 @@
     var input = form.querySelector('input[name="question"]');
     var button = form.querySelector('button[type="submit"]');
     var buttonLabel = button ? button.textContent : '';
-    var stale = document.querySelectorAll('section.answer, section.sources');
+    var stale = document.querySelectorAll('section.answer, .sources');
 
     // Ohne JS bleibt die Anzeige per [hidden] aus; mit JS steuert die Klasse.
     loading.removeAttribute('hidden');

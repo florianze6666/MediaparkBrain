@@ -507,6 +507,10 @@ async def upload_submit(
             ),
         )
 
+    # 0. Vorab-Pruefung (Write <= Read), damit die Originaldatei gar nicht erst in einem
+    #    fremden Domaenenordner landet. Die endgueltige Pruefung folgt auf das fertige meta.
+    require_writable(user, PageMeta(domaene=domaene, vertraulichkeit=vertraulichkeit))
+
     # 1. Originaldatei im Uploads-Ordner sichern (nach Domaene)
     saved_path = wiki.save_uploaded_file(file.filename, content_bytes, domaene=domaene)
 

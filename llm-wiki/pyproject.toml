@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "httpx>=0.27"]
+dev = ["pytest>=8", "httpx>=0.27", "reportlab>=4.0"]  # reportlab baut die Test-PDFs
 
 [tool.uv]
 package = false

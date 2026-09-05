@@ -1,0 +1,49 @@
+# Fuehrt die pytest-Suite des LLM-Wikis bei jedem Push und Pull Request aus.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest (llm-wiki)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: llm-wiki
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: uv installieren
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: llm-wiki/uv.lock
+
+      - name: Python installieren (aus pyproject.toml)
+        run: uv python install
+
+      - name: Abhaengigkeiten installieren
+        run: uv sync --frozen --group dev
+
+      - name: Tests ausfuehren
+        run: uv run --frozen pytest -q --junitxml=pytest-report.xml
+
+      - name: Testbericht hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: llm-wiki/pytest-report.xml
+          retention-days: 7

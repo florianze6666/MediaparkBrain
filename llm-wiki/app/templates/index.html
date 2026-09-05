@@ -2,6 +2,10 @@
 {% block title %}{{ page.title if page else "Start" }}{% endblock %}
 {% block content %}
   {% if page %}
+    {% if just_saved %}
+      <p class="fresh-badge">Yeah, Yeah! Gespeichert.</p>
+      <script>clapHands();</script>
+    {% endif %}
     <div class="page-header">
       <h1>{{ page.title }}</h1>
       <div class="page-actions">

@@ -258,12 +258,14 @@ def index(request: Request):
 
 
 @app.get("/wiki/{slug}")
-def view_page(request: Request, slug: str):
+def view_page(request: Request, slug: str, gespeichert: int = 0):
     user = access.current_user(request)
     page = require_page(slug, user)
     html = render_markdown(page.content)
     return templates.TemplateResponse(
-        request, "index.html", ctx(request, content_html=html, page=page)
+        request,
+        "index.html",
+        ctx(request, content_html=html, page=page, just_saved=bool(gespeichert)),
     )
 
 
@@ -301,7 +303,7 @@ def edit_page_save(
     if new_slug != slug:
         wiki.delete_page(slug)
     wiki.save_page(new_slug, title, content, meta)
-    return RedirectResponse(f"/wiki/{new_slug}", status_code=303)
+    return RedirectResponse(f"/wiki/{new_slug}?gespeichert=1", status_code=303)
 
 
 @app.post("/wiki/{slug}/delete")
@@ -340,7 +342,7 @@ def new_page_save(
         empfaenger=parse_recipients(empfaenger),
     )
     wiki.save_page(slug, title, content, meta)
-    return RedirectResponse(f"/wiki/{slug}", status_code=303)
+    return RedirectResponse(f"/wiki/{slug}?gespeichert=1", status_code=303)
 
 
 # ---------------------------------------------------------------------------

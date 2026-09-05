@@ -721,6 +721,17 @@ def dashboard(request: Request):
     )
 
 
+@app.get("/dashboard/projektantraege")
+def dashboard_proposals(request: Request):
+    user = access.current_user(request)
+    proposal_stats = stats.get_proposal_stats(user)
+    return templates.TemplateResponse(
+        request,
+        "dashboard_proposals.html",
+        ctx(request, proposal_stats=proposal_stats),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Frag das Wiki
 # ---------------------------------------------------------------------------

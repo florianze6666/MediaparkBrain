@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from . import access, wiki
+from . import access, proposals, wiki
 
 _MIN_DATETIME = datetime.min.replace(tzinfo=timezone.utc)
 
@@ -23,6 +23,16 @@ class DashboardStats:
     total_files: int
     total_folders: int
     recent_documents: list[DocumentActivity]
+
+
+@dataclass
+class ProposalActivity:
+    title: str
+    slug: str
+    document_count: int
+    submitted_by: str
+    submitted_at: str
+    status: str
 
 
 def _git_log(cwd, rel_path: str) -> list[tuple[str, str]]:
@@ -97,3 +107,23 @@ def get_dashboard_stats(user: str, limit: int = 10) -> DashboardStats:
         total_folders=len(access.readable_domains(user)),
         recent_documents=activities[:limit],
     )
+
+
+def get_proposal_stats(user: str) -> list[ProposalActivity]:
+    """Projektantraege aus Sicht von `user`, neuester zuerst.
+
+    Nutzt denselben Rechtefilter wie /proposals (access.can_read ueber
+    proposals.list_proposals(user)), damit vertrauliche Antraege hier nicht
+    an Nutzer ohne Zugriff durchsickern.
+    """
+    return [
+        ProposalActivity(
+            title=p.project_name,
+            slug=p.slug,
+            document_count=len(p.files),
+            submitted_by=p.submitted_by,
+            submitted_at=p.submitted_at,
+            status=p.status,
+        )
+        for p in proposals.list_proposals(user)
+    ]

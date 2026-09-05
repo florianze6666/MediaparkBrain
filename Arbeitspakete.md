@@ -28,7 +28,20 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | 🟡 In Arbeit |
 | 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
 | 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | 🟡 In Arbeit |
-| 11 | Belegzitate zu jeder Bewertung in der Projektbewertung | Florian | ⬜ Offen |
+| 19 | Belegzitate zu jeder Bewertung in der Projektbewertung | Florian | ⬜ Offen |
+
+**Backlog (noch ohne Verantwortlichen, zum Abholen):**
+
+| Nr | Paket | Bereich | Zustand |
+|----|-------|---------|---------|
+| 11 | Projektanzeige zusammenführen: eine Ansicht mit Dokumentanzahl | Oberfläche | ⬜ Offen |
+| 12 | Versionierung von Dokumenten und Projektanträgen | Enterprise | ⬜ Offen |
+| 13 | Projektprüfung gegen das Unternehmenswissen | Kernfunktionalität | ⬜ Offen |
+| 14 | Zurücklernen: Wissensdatenbank lernt aus Projekten, Entscheidungen und Überarbeitungen | Kernfunktionalität | ⬜ Offen |
+| 15 | Semantische Suche statt Stichwortsuche | Workflow und Kernprozess | ⬜ Offen |
+| 16 | Nachforderungsprozess bei Projektentscheidungen | Workflow und Kernprozess | ⬜ Offen |
+| 17 | Serverinstallation mit Frontend | Enterprise | ⬜ Offen |
+| 18 | SharePoint-Schnittstelle | Enterprise | ⬜ Offen |
 
 ---
 
@@ -282,7 +295,137 @@ ist das die Vorarbeit: deren `assessment` soll später genauso belegt sein.
 
 ---
 
-## 11. Belegzitate zu jeder Bewertung in der Projektbewertung — Florian
+## Backlog: Pakete 11 bis 18 (noch ohne Verantwortlichen)
+
+Stand 2026-09-05 abends, gesammelt von Anselm. Wer eines übernimmt, trägt sich in der Tabelle ein,
+setzt den Zustand auf „In Arbeit" und ergänzt Umfang und „Fertig wenn" nach dem Muster der Pakete 1 bis 10.
+
+### 11. Projektanzeige zusammenführen — offen
+
+**Ziel:** Es gibt nur noch eine Ansicht für Projektanträge, nicht mehrere nebeneinander (Liste,
+Dashboard, Projektanträge-Dashboard). Sie zeigt pro Projekt die Anzahl der zugehörigen Dokumente.
+
+**Fertig wenn:** Ein Klick in der Seitenleiste führt zu genau einer Projektübersicht; die alten
+Ansichten sind entfernt oder leiten dorthin um.
+
+### 12. Versionierung — offen
+
+**Ziel:** Änderungen an Wissensdokumenten und Projektanträgen sind nachvollziehbar und
+wiederherstellbar: wer hat wann was geändert, was stand vorher da.
+
+**Umfang:** Versionshistorie pro Dokument in der Oberfläche, Diff zwischen zwei Ständen,
+Wiederherstellen einer alten Version. Git im Hintergrund reicht für den Demonstrator, muss aber in der
+Oberfläche sichtbar werden. Herkunftsbox (Paket 9) zeigt die Versionsnummer.
+
+**Fertig wenn:** Eine Seite dreimal bearbeiten, die Historie zeigt drei Stände mit Autor und Zeit, ein
+alter Stand lässt sich per Klick zurückholen.
+
+### 13. Projektprüfung gegen das Unternehmenswissen — offen
+
+**Ziel:** Die Kernfunktion aus `PLAN.md`: Ein Projektantrag wird nicht isoliert bewertet, sondern
+gegen die Wissensdatenbank geprüft. Die Experten-Agenten holen sich Belege aus dem Wiki, nicht aus
+dem Allgemeinwissen des Sprachmodells.
+
+**Umfang:** Die Bewertung (Paket 4, Marcs Bewertungslogik) bekommt als Kontext die gefilterten
+Treffer aus `wiki.search_snippets(query, user)`, mit der Rolle des Agenten als Nutzer. Jede Aussage
+in der Stellungnahme verweist auf ein Wiki-Dokument (Paket 10). Fehlen Belege, sagt der Agent das,
+statt zu raten.
+
+**Fertig wenn:** Der CFO-Agent begründet seine Bewertung eines Antrags mit der Budgetseite aus
+Finance; der Betriebsrat-Agent findet dieselbe Seite nicht und sagt, dass ihm die Finanzdaten fehlen.
+
+**Abhängigkeiten:** Paket 4, 9, 10. Rechte: Agent = Nutzer der Rolle, siehe
+`docs/berechtigungen-und-herkunft.md`.
+
+### 14. Zurücklernen — offen
+
+**Ziel:** Die Wissensdatenbank wächst aus dem Prozess selbst: Eingereichte Projekte, getroffene
+Entscheidungen und Überarbeitungen fließen als neue Wissensdokumente zurück ins Wiki.
+
+**Umfang:** Nach einer Entscheidung entsteht automatisch ein Wissensdokument (Projekt, Ergebnis,
+Begründung, Datum) in der passenden Domäne mit Herkunft „System, aus Entscheidung zu Projekt X".
+Überarbeitungen eines Antrags aktualisieren dieses Dokument (Paket 12). Nächste Anträge finden
+frühere Entscheidungen als Belege.
+
+**Fertig wenn:** Nach der Entscheidung über Projekt A findet die Prüfung von Projekt B die Entscheidung
+zu A als Quelle.
+
+**Abhängigkeiten:** Paket 13, 12.
+
+### 15. Semantische Suche — offen
+
+**Ziel:** Die Suche versteht Bedeutung, nicht nur Wortgleichheit. Heute ist es Stichwortabgleich
+nach dem Karpathy-Light-Prinzip; „Budgetfreigabe" findet „Finanzierungszusage" nicht.
+
+**Umfang:** Embeddings pro Absatz, Vektorsuche, Kombination mit der Stichwortsuche (hybrid). Die
+Rechteprüfung bleibt **vor** der Suche: Es werden nur Absätze aus lesbaren Ordnern eingebettet und
+durchsucht, kein gemeinsamer Index über alle Domänen. Leak-Tests aus Paket 1 und 9 gelten weiter.
+
+**Fertig wenn:** Eine Frage mit anderen Wörtern als im Dokument findet den richtigen Absatz; die
+Security-Tests bleiben grün.
+
+### 16. Nachforderungsprozess — offen
+
+**Ziel:** Fehlen einem Agenten Informationen, endet die Prüfung nicht mit „nicht bewertbar", sondern
+mit einer Nachforderung an den Einreicher, wie in `PLAN.md` Abschnitt 4 (Eskalation) und Abschnitt 2
+(Completeness Check) vorgesehen.
+
+**Umfang:** Nachforderung als Objekt: was fehlt, warum, für welches Kriterium, an wen. Der Einreicher
+sieht offene Nachforderungen zu seinem Antrag, kann ergänzen (Text oder Upload, Paket 2), die
+Prüfung läuft danach erneut. Status pro Antrag: eingereicht, Nachforderung offen, bewertet.
+
+**Fertig wenn:** Ein Antrag ohne Kostenangabe erzeugt eine Nachforderung des CFO-Agenten; nach
+Ergänzung wird er bewertet.
+
+**Abhängigkeiten:** Paket 13.
+
+### 17. Serverinstallation mit Frontend — offen
+
+**Ziel:** Das System läuft nicht nur auf Laptops, sondern auf einem Server, erreichbar für alle
+Beteiligten, mit Login.
+
+**Umfang:** Container-Image, Deployment (Ziel laut Konzept: Azure Container Apps oder Fly.io für die
+Demo), echtes Login statt Nutzerauswahl (Schnittstelle `access.current_user`), HTTPS, Secrets als
+Umgebungsvariablen, persistente Ablage für `pages/` und `uploads/`.
+
+**Fertig wenn:** Eine URL, ein Login, das Wiki läuft mit allen Rechten wie lokal.
+
+### 18. SharePoint-Schnittstelle — offen
+
+**Ziel:** Dokumente kommen direkt aus SharePoint in die Wissensdatenbank, statt per Hand
+hochgeladen zu werden. Die Ablageorte des Korpus (`sharepoint_finance`, `sharepoint_hr`, …) sind
+dafür schon als Domänen angelegt.
+
+**Umfang:** Anbindung über Microsoft Graph, Abgleich pro Bibliothek, Zuordnung Bibliothek → Domäne
+(Paket 7), Übernahme der SharePoint-Berechtigungen als Lesegruppen, regelmäßiger Sync,
+Herkunft „Quelle: SharePoint, Pfad …" in der Herkunftsbox.
+
+**Fertig wenn:** Eine Datei in der Finance-Bibliothek erscheint nach dem Sync in `pages/finance/`
+und ist nur für Finance-Leser sichtbar.
+
+**Abhängigkeiten:** Paket 2, 7, 17.
+
+---
+
+## Bekannte Lücken (Stand 2026-09-05 abends)
+
+Transparent festgehalten, damit niemand denkt, es sei fertig. Details und Testfälle in
+`docs/USER-STORIES.md`, Abschnitt „Bekannte Lücken".
+
+| Nr | Lücke | Risiko | Gehört zu |
+|----|-------|--------|-----------|
+| L-1 | `/proposals/evaluate` liest Vorschläge **ungefiltert**: ein Mitarbeiter sieht die Bewertung von Finance-Vorschlägen | Rechte | Paket 4 (Marc), Einzeiler `list_proposals(user)` plus Security-Test |
+| L-2 | Bewertung nutzt nur den Vorschlagstext, **kein Wiki-Wissen**, Agent hat keine Rolle als Nutzer | Kernfunktion fehlt | Paket 13 (Backlog) |
+| L-3 | `pdf_ingest.py` ist fertig und getestet, aber **nicht an den Upload angebunden**; der Upload nutzt weiter pypdf roh aus `extractors.py` | Doppelte Module | Paket 8 (Florian) und 2 (Ekkehardt) |
+| L-4 | **Keine Tests** für Hash-Dublette, Bewertung, Projektanträge-Dashboard | Regressionen unbemerkt | Paket 4, 6 |
+| L-5 | Login ist eine **Auswahl**, kein Login; Cookie ist signiert, aber jeder darf jede Rolle wählen | Nur für Demo tragbar | Paket 17 (Backlog) |
+| L-6 | Zwei offene Doppelarbeiten: Franks PR #28 baut die Domänenordner, die Paket 9 schon hat | Merge-Konflikt, verlorene Arbeit | Paket 7 (Frank), Entscheidung im Team |
+
+---
+
+---
+
+## 19. Belegzitate zu jeder Bewertung in der Projektbewertung — Florian
 
 **Zustand:** ⬜ Offen
 
@@ -317,6 +460,8 @@ zu wenig — `PLAN.md` §10 verlangt ausdrücklich „die wesentlichen Informati
 **Schnittstellen:** Nutzt die Zitatprüfung aus Paket 10 und den Projekttext aus
 `evaluation._project_text`. Die Seitenzahl als Belegstelle kommt aus Paket 8. Für `PLAN.md` §8
 ist das der letzte Baustein: Damit ist das `assessment` jedes Experten-Agenten belegt.
+
+---
 
 ## Reihenfolge und Abhängigkeiten
 

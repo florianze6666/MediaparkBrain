@@ -111,8 +111,9 @@ a { color: var(--accent); }
 .proposal-list a:hover { text-decoration: underline; }
 
 .btn-dashboard {
-  background: var(--border);
-  color: var(--text);
+  background: #32cd32;
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -288,6 +289,8 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .btn[disabled] { opacity: 0.6; cursor: default; }
 
 .is-stale { opacity: 0.4; transition: opacity 0.2s ease; }
+
+.badge-status { background: rgba(154, 162, 181, 0.18); color: var(--text); }
 
 .dashboard-summary { display: flex; gap: 16px; margin: 20px 0 32px; }
 .stat-card {

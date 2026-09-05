@@ -1,0 +1,21 @@
+{
+  "gelesen_am": "2026-09-05T03:51:11+02:00",
+  "gelesen_von": "orchestrator",
+  "quellen": {
+    "Fikive_Geschäftsentwicklung.md": {
+      "pfad": "source\\Fikive_Geschäftsentwicklung.md",
+      "sha256": "b84fb06f7ef06287e1ff24d6673095d4ee59e3e0fa8d82f572146e45e6a7144a",
+      "bytes": 48750
+    },
+    "hackathon_agentisches_ki_wissensmanagement.md": {
+      "pfad": "source\\hackathon_agentisches_ki_wissensmanagement.md",
+      "sha256": "56aac87e128444268b068351a94f6a63af3df6ca9760663e8771fbb25c7e1f35",
+      "bytes": 20344
+    },
+    "CLAUDE.md": {
+      "pfad": "CLAUDE.md",
+      "sha256": "41c5a2745748a5e64edd3a32651ba5d7226a6aed6a8978b2fc1d5ecf6aa6f659",
+      "bytes": 82714
+    }
+  }
+}

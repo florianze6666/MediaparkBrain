@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block title %}Projektbewertung{% endblock %}
+{% block content %}
+  <h1>Projektbewertung</h1>
+  <p class="hint">
+    Bewertung der letzten drei eingereichten Projektvorschläge in allen vier
+    Experten-Dimensionen (Betriebsrat, CFO/Controlling, IT/Security, CEO/Strategie)
+    gemäß <code>Bewertungslogik_Experten-Agent_MVP.md</code>. Fehlen für eine
+    Dimension wesentliche Informationen, wird bewusst <strong>kein Score</strong>
+    vergeben statt eines geschätzten Wertes.
+  </p>
+
+  <div class="risk-legend">
+    <span><i class="risk-dot" style="background:#2f9e6e"></i> 7–10: starke Priorisierungsempfehlung</span>
+    <span><i class="risk-dot" style="background:#f0ad4e"></i> 4–6: moderat / kritisch abzuwägen</span>
+    <span><i class="risk-dot" style="background:#d9534f"></i> 0–3: erhebliche Bedenken</span>
+    <span><i class="risk-dot" style="background:var(--border)"></i> ohne Score: Information fehlt</span>
+  </div>
+
+  {% if not results %}
+    <p class="hint">Noch keine Projektvorschläge eingereicht. <a href="/proposals/new">Ersten Vorschlag einreichen</a>.</p>
+  {% endif %}
+
+  {% for r in results %}
+    {% set proposal = r.proposal %}
+    {% set data = r.data %}
+    <section class="eval-project">
+      <div class="eval-project-header">
+        <h2><a href="/proposals/{{ proposal.slug }}">{{ proposal.project_name }}</a></h2>
+        {% if data.error %}
+          <span class="risk-badge risk-neutral">Bewertung nicht möglich</span>
+        {% else %}
+          <span class="risk-badge {{ data._gesamtscore | risk_class }}">
+            Gesamtscore: {{ data._gesamtscore if data._gesamtscore is not none else "KEIN SCORE" }}
+            {% if data._gesamtscore is not none %}/10{% endif %}
+            ({{ data._anzahl_bewertet }}/4 Dimensionen bewertet)
+          </span>
+        {% endif %}
+      </div>
+      <p class="field-hint">Eingereicht am {{ proposal.submitted_at }}</p>
+
+      {% if data.error %}
+        <p class="hint error">{{ data.error }}</p>
+        {% if data.raw %}<pre class="hint">{{ data.raw }}</pre>{% endif %}
+      {% else %}
+        <div class="eval-roles">
+          {% for key, role in roles.items() %}
+            {% set r_data = data.get(key, {}) %}
+            <div class="eval-role">
+              <div class="eval-role-header">
+                <span class="eval-role-name">{{ role.name }}</span>
+                {% if r_data.status == "BEWERTET" %}
+                  <span class="risk-badge {{ r_data.score | risk_class }}">{{ r_data.score }}/10</span>
+                {% else %}
+                  <span class="risk-badge risk-neutral">KEIN SCORE</span>
+                {% endif %}
+              </div>
+              {% if r_data.status == "BEWERTET" %}
+                <p>{{ r_data.begruendung }}</p>
+              {% else %}
+                <p>{{ r_data.begruendung or "Information fehlt für eine belastbare Bewertung." }}</p>
+                {% if r_data.fehlende_informationen %}
+                  <ul>
+                    {% for info in r_data.fehlende_informationen %}
+                      <li>{{ info }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endblock %}

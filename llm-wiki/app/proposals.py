@@ -9,6 +9,7 @@ Altbestand ohne (oder mit fremdem) Kopf: eingereicht_von unbekannt, projekt, int
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -173,6 +174,33 @@ def get_proposal_for(slug: str, user: str) -> Proposal | None:
 def already_submitted(project_name: str) -> bool:
     """Prueft, ob unter diesem Projektnamen bereits ein Vorschlag eingereicht wurde."""
     return (proposals_dir() / f"{slugify(project_name)}.md").exists()
+
+
+def file_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def find_duplicate_file(uploaded_files: list[tuple[str, bytes]]) -> Proposal | None:
+    """Prueft anhand des Datei-Hashes, ob eine der hochgeladenen Projektdateien
+    inhaltsgleich zu einer bereits eingereichten Projektdatei ist - auch wenn
+    der Projektname diesmal ein anderer ist (z.B. erneute Einreichung desselben
+    Business Case unter neuem Titel)."""
+    if not uploaded_files or not uploads_dir().exists():
+        return None
+
+    new_hashes = {file_hash(data) for _, data in uploaded_files if data}
+    if not new_hashes:
+        return None
+
+    for proposal in list_proposals():
+        if not proposal.upload_dir.exists():
+            continue
+        for existing_file in proposal.upload_dir.iterdir():
+            if not existing_file.is_file():
+                continue
+            if file_hash(existing_file.read_bytes()) in new_hashes:
+                return proposal
+    return None
 
 
 def save_proposal(

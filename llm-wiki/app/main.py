@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 
 # access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
 # load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
-from . import access, extractors, llm, llm_metadata, proposals, stats, wiki  # noqa: E402
+from . import access, evaluation, extractors, llm, llm_metadata, proposals, stats, wiki  # noqa: E402
 from .access import PageMeta  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -44,6 +44,7 @@ def format_ts(value: str) -> str:
 
 templates.env.filters["ts"] = format_ts
 templates.env.filters["user_name"] = access.user_name
+templates.env.filters["risk_class"] = evaluation.risk_class
 
 
 def now_iso() -> str:
@@ -624,7 +625,34 @@ async def proposal_new_save(
     for f in files:
         if not f.filename:
             continue
+        if not f.filename.lower().endswith(".md"):
+            return templates.TemplateResponse(
+                request,
+                "proposal_new.html",
+                ctx(
+                    request,
+                    error=(
+                        f'Datei "{f.filename}" ist keine Markdown-Datei (.md). '
+                        "Nur .md-Dateien sind als Projektdatei zulaessig."
+                    ),
+                    project_name=project_name,
+                    description=description,
+                ),
+                status_code=415,
+            )
         uploaded_files.append((f.filename, await f.read()))
+
+    duplicate = proposals.find_duplicate_file(uploaded_files)
+    if duplicate is not None:
+        return _proposal_form(
+            request, 409,
+            error=(
+                "Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
+                f'"{duplicate.project_name}" (Hash identisch). Einreichung abgelehnt.'
+            ),
+            project_name=project_name, description=description,
+            vertraulichkeit=vertraulichkeit, domaene=domaene, empfaenger=empfaenger,
+        )
 
     proposal = proposals.save_proposal(
         project_name, description, uploaded_files, meta, rolle=access.user_name(user)
@@ -638,6 +666,24 @@ def require_proposal(slug: str, user: str) -> proposals.Proposal:
     if proposal is None:
         raise HTTPException(status_code=404, detail="Seite nicht gefunden")
     return proposal
+
+
+# Hinweis: muss VOR "/proposals/{slug}" registriert werden, sonst faengt die
+# Slug-Route "evaluate" faelschlich als Slug ab (Starlette matcht Routen in
+# Registrierungsreihenfolge).
+@app.get("/proposals/evaluate")
+def proposal_evaluate(request: Request):
+    """Bewertet die zuletzt eingereichten Projektvorschlaege in allen vier
+    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md."""
+    recent = proposals.list_proposals()[:3]  # bereits nach submitted_at absteigend sortiert
+    results = [
+        {"proposal": p, "data": evaluation.evaluate_proposal(p)} for p in recent
+    ]
+    return templates.TemplateResponse(
+        request,
+        "proposal_evaluation.html",
+        ctx(request, results=results, roles=evaluation.ROLE_CRITERIA),
+    )
 
 
 @app.get("/proposals/{slug}")

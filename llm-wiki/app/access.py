@@ -18,7 +18,7 @@ GUEST = "gast"
 UNKNOWN_CREATOR = "unbekannt"
 COOKIE_NAME = "mpb_user"
 
-VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich")
+VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich", "C-Level", "Betriebsrat-intern")
 
 ALLOW = "ALLOW"
 DENY = "DENY"
@@ -40,6 +40,17 @@ class PageMeta:
     empfaenger: list[str] = field(default_factory=list)
     ablageort: str = ""
     quelle: str = "wiki"
+    doc_id: str = ""
+    titel: str = ""
+    dokumenttyp: str = ""
+    datum: str = ""
+    verfasser: str = ""
+    rolle: str = ""
+    organisationseinheit: str = ""
+    projekt: str = ""
+    geschaeftsbereich: str = ""
+    informationsdomaene: list[str] = field(default_factory=list)
+    original_datei: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PageMeta":
@@ -49,7 +60,7 @@ class PageMeta:
             if key not in data or data[key] is None:
                 continue
             value = data[key]
-            if key == "empfaenger":
+            if key in ("empfaenger", "informationsdomaene"):
                 if isinstance(value, str):
                     value = [v.strip() for v in value.split(",") if v.strip()]
                 else:
@@ -65,6 +76,7 @@ class PageMeta:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +128,35 @@ def list_domains() -> list[str]:
     return list(load_permissions()["domaenen"].keys())
 
 
+def list_confidentiality_levels() -> list[dict[str, Any]]:
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    if not stufen:
+        return [
+            {"id": "intern", "name": "Intern (Standard)"},
+            {"id": "C-Level", "name": "C-Level"},
+            {"id": "Betriebsrat-intern", "name": "Betriebsrat-intern"},
+            {"id": "oeffentlich", "name": "Öffentlich"},
+        ]
+    return [
+        {"id": k, "name": v.get("name", k), "beschreibung": v.get("beschreibung", "")}
+        for k, v in stufen.items()
+    ]
+
+
+def default_confidentiality_for_user(user_id: str | None) -> str:
+    user = get_user(user_id)
+    uid = user["id"]
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    for k, v in stufen.items():
+        if uid in v.get("standard_fuer_rollen", []):
+            return k
+    if uid in ("ceo", "cfo"):
+        return "C-Level"
+    if uid == "betriebsrat":
+        return "Betriebsrat-intern"
+    return "intern"
+
+
 def get_user(user_id: str | None) -> dict[str, Any]:
     """Nutzer nach ID; unbekannte IDs (und None) werden zum Gast."""
     users = load_permissions()["nutzer"]
@@ -143,7 +184,7 @@ def user_name(user_id: str | None) -> str:
 
 
 def decide(user_id: str | None, meta: PageMeta) -> str:
-    """Genau die 5 Regeln aus dem Konzeptdokument. Unbekannte Domaene -> DENY."""
+    """Genau die Regeln aus dem Konzeptdokument + SSOT Vertraulichkeitsstufen."""
     # 1. oeffentlich -> ALLOW, auch fuer Gast
     if meta.vertraulichkeit == "oeffentlich":
         return ALLOW
@@ -163,7 +204,15 @@ def decide(user_id: str | None, meta: PageMeta) -> str:
     if not (groups & readers):
         return DENY
 
-    # 4. vertraulich und weder Ersteller noch Empfaenger (ID oder Gruppe) -> DENY
+    # 4. Vertraulichkeitsstufen-Rechte aus permissions.yaml pruefen
+    perm_stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    if meta.vertraulichkeit in perm_stufen:
+        stufe_info = perm_stufen[meta.vertraulichkeit]
+        allowed_groups = set(stufe_info.get("leseberechtigt") or [])
+        if allowed_groups and not (groups & allowed_groups):
+            return DENY
+
+    # 5. vertraulich und weder Ersteller noch Empfaenger (ID oder Gruppe) -> DENY
     if meta.vertraulichkeit == "vertraulich":
         recipients = set(meta.empfaenger)
         is_creator = meta.erstellt_von == user["id"]
@@ -171,8 +220,9 @@ def decide(user_id: str | None, meta: PageMeta) -> str:
         if not (is_creator or is_recipient):
             return DENY
 
-    # 5. sonst ALLOW
+    # 6. sonst ALLOW
     return ALLOW
+
 
 
 def is_allowed(user_id: str | None, meta: PageMeta) -> bool:

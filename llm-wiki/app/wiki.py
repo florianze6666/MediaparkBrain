@@ -11,6 +11,7 @@ from .access import PageMeta, decide, ALLOW
 
 # Standard-Ablage der Seiten; per Env MPB_PAGES_DIR ueberschreibbar (Tests).
 PAGES_DIR = Path(__file__).resolve().parent.parent / "pages"
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 SLUG_RE = re.compile(r"[^a-z0-9-]+")
 WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß0-9]+")
 FRONTMATTER_DELIM = "---"
@@ -19,6 +20,21 @@ FRONTMATTER_DELIM = "---"
 def pages_dir() -> Path:
     env = os.environ.get("MPB_PAGES_DIR")
     return Path(env) if env else PAGES_DIR
+
+
+def uploads_dir() -> Path:
+    env = os.environ.get("MPB_UPLOADS_DIR")
+    d = Path(env) if env else UPLOADS_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def save_uploaded_file(filename: str, content_bytes: bytes) -> Path:
+    d = uploads_dir()
+    target = d / filename
+    target.write_bytes(content_bytes)
+    return target
+
 
 
 def slugify(title: str) -> str:

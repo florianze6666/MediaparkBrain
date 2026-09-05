@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import access, llm, proposals, stats, wiki
+from . import access, extractors, llm, llm_metadata, proposals, stats, wiki
 from .access import PageMeta
 
 load_dotenv()
@@ -258,15 +258,21 @@ def index(request: Request):
 
 
 @app.get("/wiki/{slug}")
-def view_page(request: Request, slug: str, gespeichert: int = 0):
+def view_page(request: Request, slug: str, gespeichert: int = 0, uploaded: int = 0):
     user = access.current_user(request)
     page = require_page(slug, user)
     html = render_markdown(page.content)
     return templates.TemplateResponse(
         request,
         "index.html",
-        ctx(request, content_html=html, page=page, just_saved=bool(gespeichert)),
+        ctx(
+            request,
+            content_html=html,
+            page=page,
+            just_saved=bool(gespeichert or uploaded),
+        ),
     )
+
 
 
 @app.get("/wiki/{slug}/edit")
@@ -346,8 +352,107 @@ def new_page_save(
 
 
 # ---------------------------------------------------------------------------
+# Datei-Upload & Wissensdatenbank-Überführung (Arbeitspaket 2)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/upload")
+def upload_form(request: Request):
+    user = access.current_user(request)
+    conf_levels = access.list_confidentiality_levels()
+    default_conf = access.default_confidentiality_for_user(user)
+    domains = access.list_domains()
+    return templates.TemplateResponse(
+        request,
+        "upload.html",
+        ctx(
+            request,
+            confidentiality_levels=conf_levels,
+            default_confidentiality=default_conf,
+            domains=domains,
+            error=None,
+        ),
+    )
+
+
+@app.post("/upload")
+async def upload_submit(
+    request: Request,
+    file: UploadFile = File(...),
+    vertraulichkeit: str = Form("intern"),
+    domaene: str = Form("projekt"),
+):
+    user = access.current_user(request)
+    if not file.filename:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            ctx(
+                request,
+                confidentiality_levels=access.list_confidentiality_levels(),
+                default_confidentiality=access.default_confidentiality_for_user(user),
+                domains=access.list_domains(),
+                error="Bitte wähle eine Datei aus.",
+            ),
+        )
+
+    content_bytes = await file.read()
+    if not content_bytes:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            ctx(
+                request,
+                confidentiality_levels=access.list_confidentiality_levels(),
+                default_confidentiality=access.default_confidentiality_for_user(user),
+                domains=access.list_domains(),
+                error="Die hochgeladene Datei ist leer.",
+            ),
+        )
+
+    # 1. Originaldatei im Uploads-Ordner sichern
+    saved_path = wiki.save_uploaded_file(file.filename, content_bytes)
+
+    # 2. Text extrahieren
+    try:
+        extracted_text = extractors.extract_text_from_file(saved_path, file.filename)
+    except Exception as e:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            ctx(
+                request,
+                confidentiality_levels=access.list_confidentiality_levels(),
+                default_confidentiality=access.default_confidentiality_for_user(user),
+                domains=access.list_domains(),
+                error=f"Fehler bei der Textextraktion: {e}",
+            ),
+        )
+
+    # 3. LLM-Header generieren
+    header_block, meta, extracted_title = llm_metadata.generate_header(
+        extracted_text,
+        file.filename,
+        user,
+        custom_domain=domaene,
+        custom_confidentiality=vertraulichkeit,
+    )
+
+    # 4. Slug & Inhalt zusammensetzen
+    slug = wiki.slugify(extracted_title)
+    full_content = f"{extracted_text.strip()}\n"
+
+    # Speichern unter pages/
+    wiki.save_page(slug, extracted_title, full_content, meta=meta)
+
+    # 5. One-Click Redirect mit Erfolgs-Feedback (Sound & Badge)
+    return RedirectResponse(f"/wiki/{slug}?uploaded=1", status_code=303)
+
+
+# ---------------------------------------------------------------------------
 # Projektvorschläge
 # ---------------------------------------------------------------------------
+
 
 
 @app.get("/proposals")

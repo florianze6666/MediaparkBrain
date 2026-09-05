@@ -26,3 +26,26 @@ domaenen:            # Ablageort im Korpus -> Domaene
   br:        {lesen: [br]}                   # br_ablage - auch die Leitung liest hier NICHT
   gf:        {lesen: [gf]}                   # sharepoint_gf - nur Geschaeftsfuehrung
   mail:      {lesen: [gf]}                   # mailarchiv - nur Geschaeftsfuehrung
+
+vertraulichkeitsstufen:
+  intern:
+    name: "Intern (Standard)"
+    beschreibung: "Allgemeine betriebsinterne Dokumente"
+    leseberechtigt: [alle]
+    standard_fuer_rollen: [mitarbeiter, projektmanager, pmo-leitung, hr-leitung, it-security, orchestrator]
+  Betriebsrat-intern:
+    name: "Betriebsrat-intern"
+    beschreibung: "Dokumente des Betriebsrats"
+    leseberechtigt: [br]
+    standard_fuer_rollen: [betriebsrat]
+  C-Level:
+    name: "C-Level"
+    beschreibung: "Dokumente ausschließlich für Geschäftsführung und Finanzsteuerung"
+    leseberechtigt: [gf, finance]
+    standard_fuer_rollen: [ceo, cfo]
+  oeffentlich:
+    name: "Öffentlich"
+    beschreibung: "Öffentlich zugängliche Dokumente"
+    leseberechtigt: [alle, gast]
+    standard_fuer_rollen: []
+

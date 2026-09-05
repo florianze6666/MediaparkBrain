@@ -1,0 +1,68 @@
+﻿{% extends "layout.html" %}
+
+{% block title %}Datei hochladen{% endblock %}
+
+{% block content %}
+<article class="page">
+  <h1>Datei hochladen & in Wissensdatenbank überführen</h1>
+  <p class="meta-row">
+    <span>Arbeitspaket 2 · Automatische Konvertierung &amp; LLM-Kopfdatenerzeugung</span>
+  </p>
+
+  {% if error %}
+  <div class="alert alert-danger" style="background: #fed7d7; color: #9b2c2c; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+    <strong>Fehler beim Upload:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/upload" enctype="multipart/form-data" class="edit-form" style="background: #fff; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+    
+    <div style="margin-bottom: 1.5rem; border: 2px dashed #cbd5e0; padding: 2rem; text-align: center; border-radius: 8px; background: #f8fafc;">
+      <label for="file" style="display: block; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; cursor: pointer;">
+        Wähle eine Datei aus oder ziehe sie hierher
+      </label>
+      <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">
+        Unterstützte Formate: <strong>PDF, Word (DOCX), Excel (XLSX), Markdown (MD), Text (TXT)</strong>
+      </div>
+      <input type="file" id="file" name="file" required accept=".pdf,.docx,.doc,.xlsx,.xls,.md,.txt" style="font-size: 1rem; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 4px; background: #fff;">
+    </div>
+
+    <fieldset style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+      <legend style="font-weight: 600; padding: 0 0.5rem; color: #334155;">Klassifikation &amp; Metadaten (Vorauswahl)</legend>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label for="vertraulichkeit" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Vertraulichkeit:</label>
+          <select id="vertraulichkeit" name="vertraulichkeit" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 4px;">
+            {% for level in confidentiality_levels %}
+            <option value="{{ level.id }}" {% if level.id == default_confidentiality %}selected{% endif %}>
+              {{ level.name }}{% if level.beschreibung %} ({{ level.beschreibung }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="domaene" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Informationsdomäne:</label>
+          <select id="domaene" name="domaene" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 4px;">
+            {% for d in domains %}
+            <option value="{{ d }}" {% if d == 'projekt' %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="color: #64748b; font-size: 0.85rem;">
+        Angemeldet als <strong>{{ user_name }}</strong> (<code>{{ user }}</code>). Das LLM nutzt diese Vorbelegung und extrahiert die weiteren Kopfdaten automatisch aus dem Dokumentinhalt.
+      </div>
+    </fieldset>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <a href="/" class="btn" style="text-decoration: none;">Abbrechen</a>
+      <button type="submit" class="btn btn-proposal" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;">
+        🚀 Datei hochladen &amp; in Wissensdatenbank überführen (One-Click)
+      </button>
+    </div>
+  </form>
+</article>
+{% endblock %}

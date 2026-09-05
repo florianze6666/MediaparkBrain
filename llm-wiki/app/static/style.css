@@ -82,8 +82,22 @@ a { color: var(--accent); }
 
 .btn-ask { background: var(--accent-purple); }
 .btn-proposal { background: #a8722f; }
+.btn-upload, .btn-magenta {
+  background: #e5007d;
+  color: #ffffff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.btn-upload:hover, .btn-magenta:hover {
+  background: #c6146d;
+}
 
 .hint-inline { color: var(--muted); font-size: 12px; margin-left: 10px; }
+
 .hint.error { border-color: #c0392b; color: #ff9d90; }
 .proposal-list li { display: flex; align-items: baseline; padding: 6px 8px; }
 .proposal-list a { color: var(--text); text-decoration: none; }

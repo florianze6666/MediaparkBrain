@@ -1,0 +1,5 @@
+# HR-SharePoint
+domain: hr
+site_members: [grp-hr, grp-gf]
+owner: P-032
+default_classification: confidential

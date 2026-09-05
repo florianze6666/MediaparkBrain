@@ -1,0 +1,106 @@
+# Principals der Demo-Firma Lahnberg Thermotechnik (LTT), Stand 2026.
+# Quelle der Personen: data/canon/registry/people.md (P-IDs). Diese Datei ist DATEN, kein Konzept -
+# sie darf sich ändern, ohne dass docs/BERECHTIGUNGSKONZEPT.md angefasst wird.
+#
+# Regel: Rechte hängen an Gruppen. Ein Agent vertritt eine Person (represents) und erbt deren Gruppen.
+
+users:
+  P-001: {name: Dr. Martin Albrecht, rolle: Beirat, seit: 2022-10-01}
+  P-002: {name: Dr. Eva Kessler, rolle: CEO}
+  P-003: {name: Markus Heine, rolle: CFO}
+  P-004: {name: Dr. Jens Mahlberg, rolle: CTO}
+  P-006: {name: Dr. Cornelia Ritter, rolle: Beiratsvorsitz}
+  P-007: {name: Stefan Vogler, rolle: Beirat Audit Committee}
+  P-008: {name: Dr. Andreas Lindqvist, rolle: Beirat Technology Committee}
+  P-010: {name: Thomas Reinhardt, rolle: Leiter BU Industrial Heat Systems}
+  P-011: {name: Birgit Osterkamp, rolle: Leiterin BU District & Geo Energy}
+  P-012: {name: Dr. Frank Steinbach, rolle: Leiter BU Compressor Systems}
+  P-013: {name: Michael Aurich, rolle: Leiter BU Lifecycle & Service}
+  P-021: {name: Dr. Philipp Nowak, rolle: CIO}
+  P-022: {name: Andrea Faber, rolle: Leiterin IT-Applikationen}
+  P-023: {name: Sven Bruckner, rolle: Informationssicherheitsbeauftragter}
+  P-024: {name: Ulrich Damm, rolle: Leiter Supply Chain & Operations Planning}
+  P-025: {name: Petra Ehlers, rolle: Leiterin strategischer Einkauf}
+  P-026: {name: Hartmut Zeller, rolle: Leiter Operations}
+  P-027: {name: Dr. Ingrid Sommer, rolle: Leiterin Central Engineering}
+  P-028: {name: Martin Gehrke, rolle: Leiter Konstruktion mechanisch}
+  P-030: {name: Dr. Katrin Ludwig, rolle: Leiterin Technology & Development}
+  P-031: {name: Bernd Hoffmann, rolle: Leiter Qualitätsmanagement}
+  P-032: {name: Susanne Kirchner, rolle: Leiterin Personal}
+  P-033: {name: Dieter Anselm, rolle: Leiter Controlling}
+  P-034: {name: Jana Ostermann, rolle: Leiterin Vertrieb}
+  P-036: {name: Annette Puhl, rolle: Standortleiterin Eisenach}
+  P-040: {name: Gerd Sattler, rolle: Leiter Project Excellence Office}
+  P-041: {name: Nicole Brandt, rolle: Lead Project Manager IHS}
+  P-042: {name: Ahmet Yildirim, rolle: Projektleiter}
+  P-043: {name: Christian Delbrück, rolle: Projektleiter Großanlagen}
+  P-044: {name: Melanie Roth, rolle: Projektleiterin Quartiersprojekte}
+  P-045: {name: Jens Kowalski, rolle: Projektleiter Inbetriebnahme}
+  P-046: {name: Dr. Simone Hartwig, rolle: Programmleiterin ONE LTT, ausgeschieden: 2024-09-30}
+  P-047: {name: Oliver Bensch, rolle: Teilprojektleiter ERP und Stammdaten}
+  P-048: {name: Tobias Kern, rolle: Commercial Project Manager}
+  P-061: {name: Silke Marquardt, rolle: Vorsitzende Gesamtbetriebsrat}
+  P-062: {name: Detlef Rühl, rolle: Vorsitzender Betriebsrat Eisenach}
+  P-063: {name: Aylin Kaya, rolle: Betriebsratsmitglied Datenschutz}
+  P-064: {name: Manfred Ohlert, rolle: Betriebsratsmitglied Qualifizierung}
+  P-070: {name: Ralf Steinke, rolle: Key Account Manager}
+  P-071: {name: Maike Jansen, rolle: Vertriebsleiterin Benelux}
+  P-072: {name: David Corley, rolle: Vertriebsleiter USA}
+  P-073: {name: Li Wenjun, rolle: Leiterin Shanghai}
+  P-075: {name: Sabine Kroll, rolle: Datenschutzbeauftragte}
+  P-076: {name: Norbert Feld, rolle: Leiter Arbeitsvorbereitung}
+  P-077: {name: Elke Sandmann, rolle: Leiterin Servicedisposition}
+  # Demo-Persona ohne Leitungsfunktion: sieht nur Veröffentlichtes und sein Projektlaufwerk
+  P-900: {name: Max Mustermann, rolle: Projektingenieur BU IHS}
+
+groups:
+  grp-alle:          {members: [ALL]}
+  grp-gf:            {members: [P-002, P-003, P-004]}
+  grp-beirat:        {members: [P-001, P-006, P-007, P-008]}
+  grp-c-level:       {members: [grp-gf, grp-beirat]}
+  grp-management:    {members: [grp-gf, P-010, P-011, P-012, P-013, P-021, P-024, P-026, P-027,
+                                P-030, P-031, P-032, P-033, P-034, P-036, P-040, P-075]}
+  grp-finance:       {members: [P-003, P-033, P-048]}
+  grp-hr:            {members: [P-032]}
+  grp-hr-leitung:    {members: [P-032]}
+  grp-betriebsrat:   {members: [P-061, P-062, P-063, P-064]}
+  grp-it:            {members: [P-021, P-022, P-023, P-047]}
+  grp-it-security:   {members: [P-021, P-023]}
+  grp-einkauf:       {members: [P-024, P-025, P-073]}
+  grp-qm:            {members: [P-031]}
+  grp-projekte:      {members: [P-040, P-041, P-042, P-043, P-044, P-045, P-047, P-048, P-900]}
+  grp-vertrieb:      {members: [P-034, P-070, P-071, P-072]}
+  grp-datenschutz:   {members: [P-075]}
+  grp-engineering:   {members: [P-027, P-028, P-030]}
+
+# Ein Agent vertritt eine Rolle = erbt die Gruppen der Person, die diese Rolle innehat.
+# `groups` ergänzt oder ersetzt (ersetzt, wenn represents fehlt). Orchestrator: keine Inhalte.
+agents:
+  ceo:          {represents: P-002}
+  cfo:          {represents: P-003}
+  it:           {represents: P-021}
+  betriebsrat:  {represents: P-061}
+  orchestrator: {groups: [], content_access: false}
+
+# Eskalationen gehen an den Owner der Domäne (siehe data/drive/<ablageort>/.acl.yaml).
+
+# Auflösung von Namen und Einheiten aus Dokumentköpfen (verfasser, empfaenger) auf Principals.
+aliases:
+  "Geschäftsführung": grp-gf
+  "GF": grp-gf
+  "Beirat": grp-beirat
+  "Gesamtbetriebsrat": grp-betriebsrat
+  "Betriebsrat": grp-betriebsrat
+  "Portfolio-Board": grp-management
+  "Programmleitung ONE LTT": [P-046]
+  "Vertriebsleitung": [P-034]
+  "Vertrieb": grp-vertrieb
+  "PMO": grp-projekte
+  "Project Excellence Office": grp-projekte
+  "Operations": [P-026]
+  "Supply Chain & Operations Planning": [P-024]
+  "Elektrotechnik und Automatisierung": grp-engineering
+  "IT": grp-it
+  "Controlling": grp-finance
+  "HR": grp-hr
+  "Datenschutz": grp-datenschutz

@@ -1,0 +1,5 @@
+# QM-Lenkung: SOPs, Arbeitsanweisungen, Audits
+domain: qm
+site_members: [grp-qm, grp-management, grp-projekte, grp-it, grp-engineering]
+owner: P-031
+default_classification: internal

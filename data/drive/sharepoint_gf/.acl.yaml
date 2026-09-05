@@ -1,0 +1,5 @@
+# Geschäftsführungs-SharePoint
+domain: gf
+site_members: [grp-management]
+owner: P-002
+default_classification: internal

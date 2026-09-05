@@ -1,0 +1,5 @@
+# Projektlaufwerk
+domain: projekte
+site_members: [grp-projekte, grp-management, grp-finance, grp-it]
+owner: P-040
+default_classification: internal

@@ -37,6 +37,23 @@ body {
 
 .actions { display: flex; flex-direction: column; gap: 8px; margin: 18px 0; }
 
+/* --- Nutzerauswahl (Login-Simulation, Paket 1) --- */
+.user-select { margin-top: 16px; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.user-select-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.user-select-label strong { color: var(--text); font-weight: 600; }
+.user-select select {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.user-select select:focus { outline: none; border-color: var(--accent); }
+.user-select .btn { margin-top: 6px; width: 100%; }
+
 .btn {
   display: inline-block;
   background: var(--accent-strong);
@@ -81,6 +98,33 @@ body {
 
 h1 { font-size: 26px; margin-bottom: 8px; }
 
+/* --- Herkunft und Klassifikation einer Seite --- */
+.page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.page-meta strong { color: var(--text); font-weight: 600; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+.badge-oeffentlich { border-color: #2f9e6e; color: #7fd4a8; }
+.badge-intern { border-color: var(--accent); color: var(--accent); }
+.badge-vertraulich { border-color: #d9534f; color: #f19a97; }
+.badge-domain { text-transform: uppercase; font-size: 11px; }
+
 .markdown-body { line-height: 1.65; }
 .markdown-body code { background: var(--panel); padding: 2px 5px; border-radius: 4px; }
 .markdown-body pre { background: var(--panel); padding: 12px; border-radius: 8px; overflow-x: auto; }
@@ -99,6 +143,18 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   font-family: inherit;
 }
 .edit-form textarea { font-family: "SFMono-Regular", Consolas, monospace; resize: vertical; }
+.edit-form select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.form-row { display: flex; gap: 14px; }
+.form-row label { flex: 1; }
+.field-hint { font-size: 12px; color: var(--muted); }
 .form-actions { display: flex; align-items: center; gap: 16px; }
 .form-actions a { color: var(--muted); text-decoration: none; }
 

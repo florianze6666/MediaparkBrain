@@ -49,7 +49,9 @@ Inhalt …
 ```
 
 Seiten ohne Frontmatter (Altbestand) gelten als `erstellt_von: unbekannt`, `vertraulichkeit: intern`,
-`domaene: allgemein`. Sie werden beim nächsten Speichern mit Metadaten versehen.
+`domaene: allgemein`. Sie werden beim nächsten Speichern mit Metadaten versehen. Die drei Seed-Seiten (Start, Vier
+Experten-Agenten, Wissensmanagement) sind als `system` / `oeffentlich` markiert, damit auch der Gast
+einen Einstieg sieht.
 
 ### Rollen (aus `PLAN.md`) und Rechte-Datei `llm-wiki/permissions.yaml`
 
@@ -121,7 +123,8 @@ Projektmanager nicht sieht, und der Betriebsrat hat eine Ablage, die selbst die 
 5. Sonst ALLOW.
 
 Das Label verschärft nur: eine vertrauliche Seite ist nie für mehr Leute sichtbar als eine interne
-derselben Domäne. Der Ersteller sieht seine Seite immer, außer er ist Gast.
+derselben Domäne. Der Ersteller sieht seine vertrauliche Seite, solange er die Domäne lesen darf
+(Regel 3 greift vor Regel 4).
 
 ### Wo die Regel greift (ein Zugriffsweg, keine Ausnahmen)
 

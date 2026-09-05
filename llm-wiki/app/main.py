@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import markdown as md
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import llm, wiki
+from . import access, llm, wiki
+from .access import PageMeta
 
 load_dotenv()
 
@@ -24,10 +26,30 @@ def render_markdown(text: str) -> str:
     return md.markdown(text, extensions=["fenced_code", "tables"])
 
 
-def seed_if_empty() -> None:
-    if wiki.list_pages():
-        return
-    wiki.save_page(
+def format_ts(value: str) -> str:
+    """ISO-Zeitstempel lesbar: TT.MM.JJJJ HH:MM. Unlesbares wird durchgereicht."""
+    if not value:
+        return ""
+    try:
+        return datetime.fromisoformat(value).strftime("%d.%m.%Y %H:%M")
+    except ValueError:
+        return value
+
+
+templates.env.filters["ts"] = format_ts
+templates.env.filters["user_name"] = access.user_name
+
+
+def now_iso() -> str:
+    return datetime.now().replace(microsecond=0).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Seed / Demo-Seiten
+# ---------------------------------------------------------------------------
+
+SEED_PAGES = [
+    (
         "start",
         "Start",
         "Willkommen im **LLM-Wiki** von MediaparkBrain.\n\n"
@@ -36,8 +58,8 @@ def seed_if_empty() -> None:
         "verlinke sie und stelle unten Fragen - das Wiki sucht die "
         "passenden Stellen und lässt (bei konfiguriertem API-Key) "
         "ein LLM eine begruendete Antwort daraus formulieren.",
-    )
-    wiki.save_page(
+    ),
+    (
         "vier-experten-agenten",
         "Vier Experten-Agenten",
         "Das System nutzt vier Stakeholder-Agenten: Betriebsrat, "
@@ -46,8 +68,8 @@ def seed_if_empty() -> None:
         "mit Value Score, Risk Score und Strategy Score.\n\n"
         "Der Orchestrator-Agent koordiniert den Prozess, ist selbst aber "
         "kein fachlicher Gutachter.",
-    )
-    wiki.save_page(
+    ),
+    (
         "wissensmanagement",
         "Wissensmanagement",
         "Die Wissensbasis basiert auf einem RAG-System und enthaelt sowohl "
@@ -56,108 +78,305 @@ def seed_if_empty() -> None:
         "Regulatorik).\n\n"
         "Dokumente koennen widerspruechlich oder veraltet sein - Agenten "
         "muessen Aktualitaet und Herkunft beruecksichtigen.",
-    )
+    ),
+]
+
+# Demo-Seiten fuer die Rechte-Demo: Finance sieht der Einreicher nicht,
+# die BR-Ablage liest selbst die Leitung nicht. Keine echten Personennamen.
+DEMO_PAGES = [
+    (
+        "budgetfreigabe-q4",
+        "Budgetfreigabe Q4",
+        "Budgetantrag fuer den KI-Wissensassistenten, Freigabe Q4 (fiktive Zahlen).\n\n"
+        "| Position | Betrag |\n|---|---|\n"
+        "| Lizenzen Sprachmodell (12 Monate) | 48.000 EUR |\n"
+        "| Externe Entwicklung Demonstrator | 95.000 EUR |\n"
+        "| Interner Aufwand (0,8 FTE) | 62.000 EUR |\n"
+        "| Schulung und Rollout | 15.000 EUR |\n"
+        "| **Gesamt** | **220.000 EUR** |\n\n"
+        "Kostenstelle 4711, Projektnummer P-2026-031. Freigabe durch Controlling "
+        "unter Vorbehalt eines Zwischenberichts nach Phase 1. Erwartete Einsparung "
+        "durch kuerzere Recherchezeiten: rund 140.000 EUR pro Jahr ab 2027.",
+        PageMeta(erstellt_von="cfo", vertraulichkeit="intern", domaene="finance"),
+    ),
+    (
+        "betriebsratsprotokoll-juli",
+        "Betriebsratsprotokoll Juli",
+        "Protokoll der Betriebsratssitzung im Juli (fiktiv).\n\n"
+        "**TOP 3: KI-Wissensassistent und Leistungskontrolle**\n\n"
+        "Der Betriebsrat sieht in der Protokollierung von Suchanfragen die Gefahr "
+        "einer Verhaltens- und Leistungskontrolle nach BetrVG. Gefordert wird: "
+        "keine personenbezogene Auswertung von Anfragen, Loeschfrist von 30 Tagen "
+        "fuer Zugriffsprotokolle und eine Betriebsvereinbarung vor dem Rollout.\n\n"
+        "Beschluss: Die Zustimmung zur Einfuehrung wird bis zur Vorlage eines "
+        "Datenschutzkonzepts zurueckgestellt. Naechste Sitzung im August.",
+        PageMeta(erstellt_von="betriebsrat", vertraulichkeit="intern", domaene="br"),
+    ),
+]
+
+
+def seed_if_empty() -> None:
+    if wiki.list_pages():
+        return
+    for slug, title, content in SEED_PAGES:
+        wiki.save_page(
+            slug,
+            title,
+            content,
+            PageMeta(
+                erstellt_von="system",
+                erstellt_am=now_iso(),
+                vertraulichkeit="oeffentlich",
+                domaene="allgemein",
+            ),
+        )
+
+
+def ensure_demo_pages() -> None:
+    """Ergaenzt fehlende Demo-Seiten, auch wenn pages/ schon Seiten enthaelt."""
+    for slug, title, content, meta in DEMO_PAGES:
+        if wiki.get_page(slug) is None:
+            meta.erstellt_am = meta.erstellt_am or now_iso()
+            wiki.save_page(slug, title, content, meta)
 
 
 seed_if_empty()
+ensure_demo_pages()
+
+
+# ---------------------------------------------------------------------------
+# Hilfsfunktionen
+# ---------------------------------------------------------------------------
+
+
+def ctx(request: Request, **extra) -> dict:
+    """Gemeinsamer Template-Kontext: gefilterte Seitenliste + Nutzerauswahl."""
+    user = access.current_user(request)
+    base = {
+        "pages": wiki.list_pages(user),
+        "user": user,
+        "user_name": access.user_name(user),
+        "users": access.list_users(),
+        "domains": access.list_domains(),
+        "current_path": request.url.path,
+    }
+    base.update(extra)
+    return base
+
+
+def require_page(slug: str, user: str) -> wiki.Page:
+    """Seite aus Nutzersicht; fehlend und verboten sind nicht unterscheidbar (404)."""
+    page = wiki.get_page_for(slug, user)
+    if page is None:
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    return page
+
+
+def require_author(request: Request) -> str:
+    """Gast darf nichts anlegen, bearbeiten oder loeschen (403)."""
+    user = access.current_user(request)
+    if user == access.GUEST:
+        raise HTTPException(status_code=403, detail="Bitte erst Nutzer wählen")
+    return user
+
+
+def parse_recipients(raw: str) -> list[str]:
+    return [r.strip() for r in raw.split(",") if r.strip()]
+
+
+def _simple_page(title: str, text: str, status: int) -> HTMLResponse:
+    html = (
+        "<!doctype html><html lang='de'><head><meta charset='utf-8'>"
+        f"<title>{title}</title>"
+        "<link rel='stylesheet' href='/static/style.css?v=3'></head>"
+        f"<body><main class='content'><h1>{title}</h1><p>{text}</p>"
+        "<p><a href='/'>Zurück zur Startseite</a></p></main></body></html>"
+    )
+    return HTMLResponse(html, status_code=status)
+
+
+@app.exception_handler(403)
+def forbidden_handler(request: Request, exc: HTTPException):
+    return _simple_page(
+        "Bitte erst Nutzer wählen",
+        "Als Gast kannst du Seiten nur lesen. Wähle in der Seitenleiste, "
+        "als wer du arbeitest, und versuche es erneut.",
+        403,
+    )
+
+
+@app.exception_handler(404)
+def not_found_handler(request: Request, exc: HTTPException):
+    # Bewusst gleiche Antwort fuer "gibt es nicht" und "darfst du nicht sehen" (US-8).
+    return _simple_page(
+        "Seite nicht gefunden",
+        "Unter dieser Adresse gibt es keine Seite, die du sehen kannst.",
+        404,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Login-Simulation (Cookie), bis ein echtes Login existiert
+# ---------------------------------------------------------------------------
+
+
+def _safe_next(next_url: str | None) -> str:
+    # Nur lokale Pfade erlauben (kein Open Redirect)
+    if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+        return next_url
+    return "/"
+
+
+@app.post("/login")
+def login(user: str = Form(...), next: str = Form("/")):
+    uid = access.get_user(user)["id"]
+    resp = RedirectResponse(_safe_next(next), status_code=303)
+    resp.set_cookie(access.COOKIE_NAME, uid, httponly=True, samesite="lax")
+    return resp
+
+
+@app.post("/logout")
+def logout(next: str = Form("/")):
+    resp = RedirectResponse(_safe_next(next), status_code=303)
+    resp.delete_cookie(access.COOKIE_NAME)
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Seiten
+# ---------------------------------------------------------------------------
 
 
 @app.get("/")
 def index(request: Request):
-    pages = wiki.list_pages()
-    start = wiki.get_page("start")
+    user = access.current_user(request)
+    start = wiki.get_page_for("start", user)
     html = render_markdown(start.content) if start else ""
     return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"pages": pages, "content_html": html, "page": start},
+        request, "index.html", ctx(request, content_html=html, page=start)
     )
 
 
 @app.get("/wiki/{slug}")
 def view_page(request: Request, slug: str):
-    pages = wiki.list_pages()
-    page = wiki.get_page(slug)
-    if page is None:
-        return RedirectResponse("/")
+    user = access.current_user(request)
+    page = require_page(slug, user)
     html = render_markdown(page.content)
     return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"pages": pages, "content_html": html, "page": page},
+        request, "index.html", ctx(request, content_html=html, page=page)
     )
 
 
 @app.get("/wiki/{slug}/edit")
 def edit_page_form(request: Request, slug: str):
-    pages = wiki.list_pages()
-    page = wiki.get_page(slug)
+    user = access.current_user(request)
+    page = require_page(slug, user)
+    require_author(request)
     return templates.TemplateResponse(
-        request, "edit.html", {"pages": pages, "page": page, "slug": slug}
+        request, "edit.html", ctx(request, page=page, slug=slug)
     )
 
 
 @app.post("/wiki/{slug}/edit")
-def edit_page_save(slug: str, title: str = Form(...), content: str = Form(...)):
+def edit_page_save(
+    request: Request,
+    slug: str,
+    title: str = Form(...),
+    content: str = Form(...),
+    vertraulichkeit: str = Form("intern"),
+    domaene: str = Form("allgemein"),
+    empfaenger: str = Form(""),
+):
+    user = access.current_user(request)
+    page = require_page(slug, user)
+    require_author(request)
+    meta = page.meta
+    # US-3: Ersteller und Anlagedatum bleiben erhalten, nicht editierbar.
+    meta.geaendert_von = user
+    meta.geaendert_am = now_iso()
+    meta.vertraulichkeit = vertraulichkeit
+    meta.domaene = domaene
+    meta.empfaenger = parse_recipients(empfaenger)
     new_slug = wiki.slugify(title)
     if new_slug != slug:
         wiki.delete_page(slug)
-    wiki.save_page(new_slug, title, content)
+    wiki.save_page(new_slug, title, content, meta)
     return RedirectResponse(f"/wiki/{new_slug}", status_code=303)
 
 
 @app.post("/wiki/{slug}/delete")
-def delete_page_route(slug: str):
+def delete_page_route(request: Request, slug: str):
+    user = access.current_user(request)
+    require_page(slug, user)
+    require_author(request)
     wiki.delete_page(slug)
     return RedirectResponse("/", status_code=303)
 
 
 @app.get("/new")
 def new_page_form(request: Request):
-    pages = wiki.list_pages()
+    require_author(request)
     return templates.TemplateResponse(
-        request,
-        "edit.html",
-        {"pages": pages, "page": None, "slug": None},
+        request, "edit.html", ctx(request, page=None, slug=None)
     )
 
 
 @app.post("/new")
-def new_page_save(title: str = Form(...), content: str = Form(...)):
+def new_page_save(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    vertraulichkeit: str = Form("intern"),
+    domaene: str = Form("allgemein"),
+    empfaenger: str = Form(""),
+):
+    user = require_author(request)
     slug = wiki.slugify(title)
-    wiki.save_page(slug, title, content)
+    meta = PageMeta(
+        erstellt_von=user,
+        erstellt_am=now_iso(),
+        vertraulichkeit=vertraulichkeit,
+        domaene=domaene,
+        empfaenger=parse_recipients(empfaenger),
+    )
+    wiki.save_page(slug, title, content, meta)
     return RedirectResponse(f"/wiki/{slug}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Frag das Wiki
+# ---------------------------------------------------------------------------
 
 
 @app.get("/ask")
 def ask_form(request: Request):
-    pages = wiki.list_pages()
     return templates.TemplateResponse(
         request,
         "ask.html",
-        {
-            "pages": pages,
-            "question": "",
-            "answer": None,
-            "snippets": [],
-            "llm_configured": llm.is_configured(),
-        },
+        ctx(
+            request,
+            question="",
+            answer=None,
+            snippets=[],
+            llm_configured=llm.is_configured(),
+        ),
     )
 
 
 @app.post("/ask")
 def ask_submit(request: Request, question: str = Form(...)):
-    pages = wiki.list_pages()
-    snippets = wiki.search_snippets(question)
+    user = access.current_user(request)
+    # US-7: Rechte-Filter VOR der Trefferauswahl, das LLM sieht nur Erlaubtes.
+    snippets = wiki.search_snippets(question, user)
     answer = llm.ask_llm(question, snippets)
     return templates.TemplateResponse(
         request,
         "ask.html",
-        {
-            "pages": pages,
-            "question": question,
-            "answer": answer,
-            "snippets": snippets,
-            "llm_configured": llm.is_configured(),
-        },
+        ctx(
+            request,
+            question=question,
+            answer=answer,
+            snippets=snippets,
+            llm_configured=llm.is_configured(),
+        ),
     )

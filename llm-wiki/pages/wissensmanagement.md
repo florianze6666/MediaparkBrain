@@ -1,3 +1,14 @@
+---
+erstellt_von: system
+erstellt_am: '2026-09-05T15:12:00'
+geaendert_von: ''
+geaendert_am: ''
+vertraulichkeit: oeffentlich
+domaene: allgemein
+empfaenger: []
+ablageort: ''
+quelle: wiki
+---
 # Wissensmanagement
 
 Die Wissensbasis basiert auf einem RAG-System und enthaelt sowohl internes Wissen (Richtlinien, Architektur, Budgets) als auch extern recherchierte Informationen (Hersteller, Zertifizierungen, Regulatorik).

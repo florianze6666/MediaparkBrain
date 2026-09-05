@@ -156,6 +156,10 @@ class AllowedHit:
     freshness: Literal["aktuell", "überholt", "unbestimmt"]
     classification: Classification
     score: float
+    domain: str = ""
+    allow: list[str] = field(default_factory=list)   # fuer die Output-Klassifikation (Konzept §10)
+    dokumenttyp: str | None = None
+    projekt: str | None = None
 
 
 @dataclass

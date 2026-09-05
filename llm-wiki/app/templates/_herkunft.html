@@ -1,0 +1,35 @@
+{# Herkunftsbox (US-10): ein Partial fuer Wiki-Seite, Vorschlagsseite und Vorschlagsliste.
+   Parameter: meta (PageMeta), rolle (optional, Snapshot bei Vorschlaegen), kompakt (bool). #}
+{% set rolle = rolle if rolle is defined and rolle else none %}
+{% set kompakt = kompakt if kompakt is defined and kompakt else false %}
+{% set vert_label = meta.vertraulichkeit | replace("oeffentlich", "öffentlich") %}
+<div class="herkunft{% if kompakt %} herkunft-kompakt{% endif %}">
+  {% if meta.erstellt_von == "unbekannt" %}
+    <div class="herkunft-haupt">Herkunft unbekannt (Altbestand)</div>
+    <div class="herkunft-details">
+      <span>Domäne <span class="badge badge-domain">{{ meta.domaene }}</span></span>
+      <span class="badge badge-{{ meta.vertraulichkeit }}">{{ vert_label }}</span>
+    </div>
+  {% else %}
+    {% set anzeigename = meta.erstellt_von | user_name %}
+    <div class="herkunft-haupt">
+      Eingebracht von <strong>{{ anzeigename }}</strong>
+      <span class="herkunft-id">({{ meta.erstellt_von }})</span>,
+      Rolle <strong>{{ rolle if rolle else anzeigename }}</strong>
+    </div>
+    <div class="herkunft-details">
+      {% if meta.erstellt_am %}<span>{{ meta.erstellt_am | ts }}</span>{% endif %}
+      <span>Domäne <span class="badge badge-domain">{{ meta.domaene }}</span></span>
+      <span class="badge badge-{{ meta.vertraulichkeit }}">{{ vert_label }}</span>
+      {% if meta.vertraulichkeit == "vertraulich" and meta.empfaenger %}
+        <span>Empfänger: {{ meta.empfaenger | join(", ") }}</span>
+      {% endif %}
+      {% if not kompakt and meta.geaendert_von %}
+        <span>Zuletzt geändert von <strong>{{ meta.geaendert_von | user_name }}</strong>{% if meta.geaendert_am %} am {{ meta.geaendert_am | ts }}{% endif %}</span>
+      {% endif %}
+      {% if not kompakt and meta.ablageort %}<span>Ablage: {{ meta.ablageort }}</span>{% endif %}
+      {% if meta.quelle == "upload" %}<span>Quelle: Upload</span>
+      {% elif meta.quelle == "proposal" %}<span>Quelle: Projektvorschlag</span>{% endif %}
+    </div>
+  {% endif %}
+</div>

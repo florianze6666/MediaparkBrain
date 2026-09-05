@@ -5,6 +5,8 @@ import re
 
 import pytest
 
+from tests.conftest import as_user
+
 pytestmark = pytest.mark.security
 
 
@@ -13,7 +15,7 @@ def sidebar_slugs(html: str) -> set[str]:
 
 
 def test_mitarbeiter_sieht_finance_nicht(client):
-    c = {"mpb_user": "mitarbeiter"}
+    c = as_user("mitarbeiter")
     r = client.get("/", cookies=c)
     assert r.status_code == 200
     assert "budget-finance" not in sidebar_slugs(r.text)
@@ -28,7 +30,7 @@ def test_mitarbeiter_sieht_finance_nicht(client):
 
 
 def test_verbotene_und_fehlende_seite_nicht_unterscheidbar(client):
-    c = {"mpb_user": "mitarbeiter"}
+    c = as_user("mitarbeiter")
     r1 = client.get("/wiki/budget-finance", cookies=c)
     r2 = client.get("/wiki/gibt-es-nicht", cookies=c)
     assert r1.status_code == r2.status_code == 404
@@ -36,24 +38,25 @@ def test_verbotene_und_fehlende_seite_nicht_unterscheidbar(client):
 
 
 def test_cfo_sieht_finance(client):
-    c = {"mpb_user": "cfo"}
+    c = as_user("cfo")
     r = client.get("/", cookies=c)
     assert "budget-finance" in sidebar_slugs(r.text)
     r = client.get("/wiki/budget-finance", cookies=c)
     assert r.status_code == 200
-    assert "Angelegt von" in r.text
+    # US-10 (Stufe 2): Herkunftsbox ersetzt "Angelegt von" durch "Eingebracht von"
+    assert "Eingebracht von" in r.text
     assert "CFO / Controlling" in r.text
     assert "01.09.2026 10:00" in r.text
     assert client.get("/wiki/budget-finance/edit", cookies=c).status_code == 200
 
 
 def test_ceo_liest_br_nicht(client):
-    c = {"mpb_user": "ceo"}
+    c = as_user("ceo")
     r = client.get("/", cookies=c)
     assert "br-protokoll" not in sidebar_slugs(r.text)
     assert client.get("/wiki/br-protokoll", cookies=c).status_code == 404
     # Betriebsrat schon
-    assert client.get("/wiki/br-protokoll", cookies={"mpb_user": "betriebsrat"}).status_code == 200
+    assert client.get("/wiki/br-protokoll", cookies=as_user("betriebsrat")).status_code == 200
 
 
 def test_gast_sieht_nur_oeffentlich_und_darf_nicht_anlegen(client):
@@ -76,12 +79,12 @@ def test_gast_sieht_nur_oeffentlich_und_darf_nicht_anlegen(client):
 
 
 def test_unbekannter_cookie_ist_gast(client):
-    r = client.get("/", cookies={"mpb_user": "hacker"})
+    r = client.get("/", cookies=as_user("hacker"))
     assert sidebar_slugs(r.text) == {"oeffentlich"}
 
 
 def test_altbestand_sichtbar_mit_hinweis(client):
-    c = {"mpb_user": "mitarbeiter"}
+    c = as_user("mitarbeiter")
     r = client.get("/", cookies=c)
     assert "altbestand" in sidebar_slugs(r.text)
     r = client.get("/wiki/altbestand", cookies=c)
@@ -91,30 +94,34 @@ def test_altbestand_sichtbar_mit_hinweis(client):
 
 
 def test_vertraulich_nur_ersteller_und_empfaenger(client):
-    assert client.get("/wiki/vertraulich-projekt", cookies={"mpb_user": "projektmanager"}).status_code == 200
-    assert client.get("/wiki/vertraulich-projekt", cookies={"mpb_user": "pmo-leitung"}).status_code == 200
-    assert client.get("/wiki/vertraulich-projekt", cookies={"mpb_user": "mitarbeiter"}).status_code == 404
-    assert client.get("/wiki/vertraulich-projekt", cookies={"mpb_user": "ceo"}).status_code == 404
+    assert client.get("/wiki/vertraulich-projekt", cookies=as_user("projektmanager")).status_code == 200
+    assert client.get("/wiki/vertraulich-projekt", cookies=as_user("pmo-leitung")).status_code == 200
+    assert client.get("/wiki/vertraulich-projekt", cookies=as_user("mitarbeiter")).status_code == 404
+    assert client.get("/wiki/vertraulich-projekt", cookies=as_user("ceo")).status_code == 404
 
 
 def test_login_setzt_cookie_und_leitet_zurueck(client):
+    import app.access as access
+
     r = client.post("/login", data={"user": "cfo", "next": "/wiki/budget-finance"})
     assert r.status_code == 303
     assert r.headers["location"] == "/wiki/budget-finance"
-    assert r.cookies.get("mpb_user") == "cfo"
+    # Cookie ist signiert (<uid>.<hmac>), nicht der rohe Nutzername
+    assert r.cookies.get("mpb_user") != "cfo"
+    assert access.verify_user(r.cookies.get("mpb_user")) == "cfo"
     # Open-Redirect-Schutz
     r = client.post("/login", data={"user": "cfo", "next": "https://evil.example/"})
     assert r.headers["location"] == "/"
     # unbekannter Nutzer -> gast
     r = client.post("/login", data={"user": "root"})
-    assert r.cookies.get("mpb_user") == "gast"
+    assert access.verify_user(r.cookies.get("mpb_user")) == "gast"
     r = client.post("/logout")
     assert r.status_code == 303
 
 
 def test_neue_seite_traegt_aktuellen_nutzer(client):
     import app.wiki as wiki
-    c = {"mpb_user": "projektmanager"}
+    c = as_user("projektmanager")
     r = client.post("/new", cookies=c, data={
         "title": "Meine Notiz", "content": "Inhalt",
         "vertraulichkeit": "vertraulich", "domaene": "projekt",

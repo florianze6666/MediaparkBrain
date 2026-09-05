@@ -1,13 +1,18 @@
-"""Test-Setup: Seiten in tmp_path, echte permissions.yaml.
+"""Test-Setup: Seiten, Vorschlaege, permissions.yaml und Changelog in tmp_path.
 
+permissions.yaml wird pro Test als Kopie nach tmp gelegt, damit Admin-Tests
+(Stufe 2) schreiben koennen, ohne die echte Datei anzufassen.
+MPB_SECRET ist ein fester Testwert; Cookies werden ueber `as_user(uid)` erzeugt
+(korrekt signiert) - rohe `mpb_user=<uid>`-Werte gelten seit dem Security-Fix als Gast.
 Die Env-Variablen werden gesetzt, BEVOR app.main importiert wird, damit der
-Seed nicht in llm-wiki/pages/ schreibt. Pfade werden in access/wiki als
-Funktionen aufgeloest, daher reicht das Setzen der Env pro Test.
+Seed nicht in llm-wiki/pages/ schreibt. Pfade werden in access/wiki/proposals
+als Funktionen aufgeloest, daher reicht das Setzen der Env pro Test.
 """
 from __future__ import annotations
 
 import importlib
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -15,9 +20,20 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 PERMISSIONS_FILE = ROOT / "permissions.yaml"
+TEST_SECRET = "pytest-secret-nicht-fuer-produktion"
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+# Vor dem ersten Import von app.access setzen, damit Signaturen deterministisch sind.
+os.environ.setdefault("MPB_SECRET", TEST_SECRET)
+
+
+def as_user(uid: str) -> dict[str, str]:
+    """Cookie-Dict fuer den TestClient: korrekt signierter Identitaets-Cookie."""
+    import app.access as access
+
+    return {access.COOKIE_NAME: access.sign_user(uid)}
 
 
 FINANCE_TEXT = (
@@ -35,17 +51,25 @@ LEGACY_TEXT = "Altbestand ohne Frontmatter. Diese Notiz stammt aus der Zeit vor 
 
 @pytest.fixture
 def pages_env(tmp_path, monkeypatch):
-    """Setzt MPB_PAGES_DIR / MPB_PERMISSIONS_FILE und laedt die App-Module frisch."""
+    """Setzt MPB_PAGES_DIR / MPB_PERMISSIONS_FILE / MPB_PROPOSALS_DIR /
+    MPB_CHANGELOG_FILE und laedt die App-Module frisch."""
     pages = tmp_path / "pages"
     pages.mkdir()
+    perms = tmp_path / "permissions.yaml"
+    shutil.copy(PERMISSIONS_FILE, perms)
     monkeypatch.setenv("MPB_PAGES_DIR", str(pages))
-    monkeypatch.setenv("MPB_PERMISSIONS_FILE", str(PERMISSIONS_FILE))
+    monkeypatch.setenv("MPB_PERMISSIONS_FILE", str(perms))
+    monkeypatch.setenv("MPB_CHANGELOG_FILE", str(tmp_path / "permissions-changelog.md"))
+    monkeypatch.setenv("MPB_PROPOSALS_DIR", str(tmp_path / "project_proposals"))
+    monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
 
     import app.access as access
     import app.wiki as wiki
+    import app.proposals as proposals
 
     importlib.reload(access)
     importlib.reload(wiki)
+    importlib.reload(proposals)
 
     from app.access import PageMeta
 
@@ -78,8 +102,8 @@ def pages_env(tmp_path, monkeypatch):
                  vertraulichkeit="vertraulich", domaene="projekt",
                  empfaenger=["pmo-leitung"]),
     )
-    # Altbestand: kein Frontmatter
-    (pages / "altbestand.md").write_text(
+    # Altbestand: kein Frontmatter, liegt bereits im Domaenenordner allgemein/
+    (pages / "allgemein" / "altbestand.md").write_text(
         f"# Altbestand\n\n{LEGACY_TEXT}\n", encoding="utf-8"
     )
     return pages

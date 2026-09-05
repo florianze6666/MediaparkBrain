@@ -67,8 +67,13 @@ def _activity_for(page: wiki.Page) -> DocumentActivity:
     )
 
 
-def get_dashboard_stats(limit: int = 10) -> DashboardStats:
-    pages = wiki.list_pages()
+def get_dashboard_stats(user: str, limit: int = 10) -> DashboardStats:
+    """Statistik aus Sicht von `user` - zeigt nur Seiten, die er lesen darf.
+
+    Verhindert, dass Titel/Autor vertraulicher Dokumente ueber das Dashboard
+    an Nutzer ohne Zugriff durchsickern (siehe access.decide).
+    """
+    pages = wiki.list_pages(user)
     activities = [_activity_for(p) for p in pages]
     activities.sort(key=lambda a: a.uploaded_at or _MIN_DATETIME, reverse=True)
     return DashboardStats(

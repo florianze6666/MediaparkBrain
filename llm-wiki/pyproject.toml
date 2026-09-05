@@ -1,16 +1,16 @@
 [project]
 name = "llm-wiki"
 version = "0.1.0"
-description = "Minimales LLM-Wiki fuer MediaparkBrain: Markdown-Seiten + Retrieval + optionale Claude-Anbindung"
+description = "Minimales LLM-Wiki fuer MediaparkBrain: Markdown-Seiten + Retrieval + optionale LLM-Anbindung (OpenAI-kompatibler Endpoint)"
 authors = [
     { name = "pronoow-cmd", email = "pronoow@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=1.4.0",
     "fastapi>=0.141.1",
     "jinja2>=3.1.6",
     "markdown>=3.10.3",
+    "openai>=1.0.0",
     "openpyxl>=3.1.5",
     "pdfplumber>=0.11.10",
     "pypdf>=6.17.0",

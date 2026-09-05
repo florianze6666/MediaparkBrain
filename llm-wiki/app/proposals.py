@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .wiki import slugify
 
-PROPOSALS_DIR = Path(__file__).resolve().parent.parent / "proposals"
+PROPOSALS_DIR = Path(__file__).resolve().parent.parent.parent / "project_proposals"
 UPLOADS_DIR = PROPOSALS_DIR / "uploads"
 
 

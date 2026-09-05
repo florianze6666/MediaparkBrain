@@ -139,6 +139,10 @@ def _parse(raw: str, slug: str) -> Proposal:
             description_lines.append(line)
         elif section == "files" and line.strip().startswith("- "):
             files.append(line.strip()[2:].strip())
+    if not files and head and head.get("source_documents"):
+        # Altbestand mit fremdem Kopf (Marcs Format): Dateien stehen unter
+        # source_documents als Pfade, nicht im "## Hochgeladene Dateien"-Abschnitt.
+        files = [Path(str(s)).name for s in head["source_documents"] if str(s).strip()]
     return Proposal(
         slug=slug,
         project_name=project_name,

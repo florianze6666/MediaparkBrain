@@ -313,10 +313,48 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 }
 .dashboard-table th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
 .dashboard-table td.empty { color: var(--muted); text-align: center; padding: 24px; }
+.dashboard-table tbody tr:hover { background: var(--panel); }
+.dashboard-table th.col-center, .dashboard-table td.col-center { text-align: center; }
 
-.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-new { background: rgba(50, 205, 50, 0.18); color: #6fe06f; }
 .badge-update { background: rgba(110, 168, 254, 0.18); color: var(--accent); }
+
+/* --- Dashboard "Letzte Dokumente": Titel einzeilig, per Klick aufklappbar --- */
+.doc-title-cell { display: flex; align-items: center; gap: 6px; max-width: 320px; }
+.doc-title-link {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-title-cell.expanded { max-width: none; }
+.doc-title-cell.expanded .doc-title-link { white-space: normal; overflow: visible; }
+.title-expand-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  font-size: 12px;
+  cursor: pointer;
+}
+.title-expand-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* --- Dashboard "Projektanträge" --- */
+.doc-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 12px;
+}
 
 /* --- Projektbewertung: gaengiges Ampel-Colour-Coding (Rot/Gelb/Gruen) fuer
    Risk-/Portfolio-Reports. Bewusst die etablierten RAG-Statusfarben statt der

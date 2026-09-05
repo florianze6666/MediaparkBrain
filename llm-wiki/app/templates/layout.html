@@ -59,6 +59,13 @@
         // Web Audio API nicht verfuegbar - stumm weitermachen
       }
     }
+
+    // Dashboard "Letzte Dokumente": Titel stehen einzeilig mit "...", ein Klick
+    // auf das Symbol klappt den vollen Titel auf (der Link selbst bleibt normal
+    // klickbar und navigiert weiterhin zur Seite).
+    function toggleTitleExpand(btn) {
+      btn.closest(".doc-title-cell").classList.toggle("expanded");
+    }
   </script>
 </head>
 <body>
@@ -107,7 +114,6 @@
           </svg>
           Dashboards
         </a>
-        <a href="/proposals" class="btn btn-list">Projektvorschläge</a>
         {% if is_admin %}
         <a href="/admin" class="btn btn-admin">Admin</a>
         {% endif %}

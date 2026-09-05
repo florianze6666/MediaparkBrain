@@ -33,6 +33,7 @@ class ProposalActivity:
     submitted_by: str
     submitted_at: str
     status: str
+    domaene: str
 
 
 def _git_log(cwd, rel_path: str) -> list[tuple[str, str]]:
@@ -124,6 +125,7 @@ def get_proposal_stats(user: str) -> list[ProposalActivity]:
             submitted_by=p.submitted_by,
             submitted_at=p.submitted_at,
             status=p.status,
+            domaene=p.meta.domaene,
         )
         for p in proposals.list_proposals(user)
     ]

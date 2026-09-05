@@ -395,7 +395,10 @@ async def proposal_new_save(
             continue
         uploaded_files.append((f.filename, await f.read()))
 
-    proposal = proposals.save_proposal(project_name, description, uploaded_files)
+    submitted_by = access.current_user(request)
+    proposal = proposals.save_proposal(
+        project_name, description, uploaded_files, submitted_by
+    )
     return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
 
 
@@ -429,6 +432,16 @@ def dashboard(request: Request):
     dashboard_stats = stats.get_dashboard_stats(user)
     return templates.TemplateResponse(
         request, "dashboard.html", ctx(request, stats=dashboard_stats)
+    )
+
+
+@app.get("/dashboard/projektantraege")
+def dashboard_proposals(request: Request):
+    proposal_stats = stats.get_proposal_stats()
+    return templates.TemplateResponse(
+        request,
+        "dashboard_proposals.html",
+        ctx(request, proposal_stats=proposal_stats),
     )
 
 

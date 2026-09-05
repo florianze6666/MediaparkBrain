@@ -11,12 +11,17 @@ PROPOSALS_DIR = Path(__file__).resolve().parent.parent.parent / "project_proposa
 UPLOADS_DIR = PROPOSALS_DIR / "uploads"
 
 
+DEFAULT_STATUS = "Eingereicht"
+
+
 @dataclass
 class Proposal:
     slug: str
     project_name: str
     description: str
     submitted_at: str
+    submitted_by: str = "unbekannt"
+    status: str = DEFAULT_STATUS
     files: list[str] = field(default_factory=list)
 
     @property
@@ -32,12 +37,18 @@ def _parse(raw: str, slug: str) -> Proposal:
     lines = raw.splitlines()
     project_name = lines[0][2:].strip() if lines and lines[0].startswith("# ") else slug
     submitted_at = ""
+    submitted_by = "unbekannt"
+    status = DEFAULT_STATUS
     files: list[str] = []
     description_lines: list[str] = []
     section = None
     for line in lines[1:]:
         if line.startswith("Eingereicht am:"):
             submitted_at = line.split(":", 1)[1].strip()
+        elif line.startswith("Eingereicht von:"):
+            submitted_by = line.split(":", 1)[1].strip() or "unbekannt"
+        elif line.startswith("Status:"):
+            status = line.split(":", 1)[1].strip() or DEFAULT_STATUS
         elif line.strip() == "## Beschreibung":
             section = "description"
         elif line.strip() == "## Hochgeladene Dateien":
@@ -51,6 +62,8 @@ def _parse(raw: str, slug: str) -> Proposal:
         project_name=project_name,
         description="\n".join(description_lines).strip(),
         submitted_at=submitted_at,
+        submitted_by=submitted_by,
+        status=status,
         files=files,
     )
 
@@ -80,6 +93,7 @@ def save_proposal(
     project_name: str,
     description: str,
     uploaded_files: list[tuple[str, bytes]],
+    submitted_by: str = "unbekannt",
 ) -> Proposal:
     """Speichert einen neuen Projektvorschlag. Ruft VOR dem Aufruf already_submitted()
     auf, um Duplikate abzulehnen - diese Funktion selbst prueft das nicht erneut."""
@@ -92,6 +106,7 @@ def save_proposal(
         project_name=project_name,
         description=description.strip(),
         submitted_at=submitted_at,
+        submitted_by=submitted_by,
         files=[name for name, _ in uploaded_files if name],
     )
 
@@ -110,7 +125,9 @@ def save_proposal(
     )
     proposal.path.write_text(
         f"# {project_name}\n\n"
-        f"Eingereicht am: {submitted_at}\n\n"
+        f"Eingereicht am: {submitted_at}\n"
+        f"Eingereicht von: {submitted_by}\n"
+        f"Status: {proposal.status}\n\n"
         f"## Beschreibung\n\n{proposal.description}\n\n"
         f"## Hochgeladene Dateien\n\n{files_section}\n",
         encoding="utf-8",

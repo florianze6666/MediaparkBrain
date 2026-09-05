@@ -82,6 +82,13 @@ a { color: var(--accent); }
 
 .btn-ask { background: var(--accent-purple); }
 .btn-proposal { background: var(--accent); color: #3a1d06; }
+.btn-evaluate {
+  background: transparent;
+  border: 2px solid var(--accent-strong);
+  color: var(--accent-strong);
+  padding: 6px 12px;
+}
+.btn-evaluate:hover { background: var(--accent-strong); color: white; }
 
 .hint-inline { color: var(--muted); font-size: 12px; margin-left: 10px; }
 .hint.error { border-color: #c0392b; color: #ff9d90; }
@@ -293,6 +300,62 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-new { background: rgba(50, 205, 50, 0.18); color: #6fe06f; }
 .badge-update { background: rgba(110, 168, 254, 0.18); color: var(--accent); }
+
+/* --- Projektbewertung: gaengiges Ampel-Colour-Coding (Rot/Gelb/Gruen) fuer
+   Risk-/Portfolio-Reports. Bewusst die etablierten RAG-Statusfarben statt der
+   Marken-Palette, da dies eine feststehende Konvention im Risikomanagement ist -
+   gruen/rot decken sich mit den bereits vorhandenen Klassifikations-Badges
+   (badge-oeffentlich/badge-vertraulich) weiter oben. */
+.risk-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 24px; font-size: 13px; color: var(--muted); }
+.risk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.risk-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+.risk-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.risk-green  { background: rgba(47, 158, 110, 0.18);  color: #7fd4a8; border-color: #2f9e6e; }
+.risk-amber  { background: rgba(240, 173, 78, 0.18);  color: #f5c987; border-color: #f0ad4e; }
+.risk-red    { background: rgba(217, 83, 79, 0.18);   color: #f19a97; border-color: #d9534f; }
+.risk-neutral{ background: var(--panel); color: var(--muted); border-color: var(--border); }
+
+.eval-project {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+.eval-project-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.eval-project-header h2 { margin: 0; font-size: 20px; }
+.eval-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start; /* Karten wachsen nur mit ihrem eigenen Inhalt, statt sich
+                          auf die Hoehe der laengsten Nachbarkarte in der Zeile
+                          zu strecken (sonst grosse Leerflaechen bei kurzen
+                          Begruendungen neben langen Fehlende-Informationen-Listen) */
+  gap: 14px;
+  margin-top: 16px;
+}
+.eval-role { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-wrap: break-word; }
+.eval-role-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.eval-role-name { font-weight: 600; font-size: 13px; line-height: 1.4; flex: 1 1 auto; min-width: 0; }
+.eval-role .risk-badge { flex-shrink: 0; white-space: nowrap; }
+.eval-role p { margin: 0 0 8px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.eval-role ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.eval-role li { margin-bottom: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ask-spinner { animation: none; border-top-color: var(--border); }

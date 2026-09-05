@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import access, llm, proposals, stats, wiki
+from . import access, evaluation, llm, proposals, stats, wiki
 from .access import PageMeta
 
 load_dotenv()
@@ -38,6 +38,7 @@ def format_ts(value: str) -> str:
 
 templates.env.filters["ts"] = format_ts
 templates.env.filters["user_name"] = access.user_name
+templates.env.filters["risk_class"] = evaluation.risk_class
 
 
 def now_iso() -> str:
@@ -431,6 +432,24 @@ async def proposal_new_save(
 
     proposal = proposals.save_proposal(project_name, description, uploaded_files)
     return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
+
+
+# Hinweis: muss VOR "/proposals/{slug}" registriert werden, sonst faengt die
+# Slug-Route "evaluate" faelschlich als Slug ab (Starlette matcht Routen in
+# Registrierungsreihenfolge).
+@app.get("/proposals/evaluate")
+def proposal_evaluate(request: Request):
+    """Bewertet die zuletzt eingereichten Projektvorschlaege in allen vier
+    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md."""
+    recent = proposals.list_proposals()[:3]  # bereits nach submitted_at absteigend sortiert
+    results = [
+        {"proposal": p, "data": evaluation.evaluate_proposal(p)} for p in recent
+    ]
+    return templates.TemplateResponse(
+        request,
+        "proposal_evaluation.html",
+        ctx(request, results=results, roles=evaluation.ROLE_CRITERIA),
+    )
 
 
 @app.get("/proposals/{slug}")

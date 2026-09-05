@@ -10,6 +10,8 @@ Marc macht noch eine Zeile.
 
 Antje genehmigte diesen PR.
 
+Frank Jost arbeitet auch an diesem Projekt mit.
+
 ## Konzept
 
 Das Konzept für den Hackathon-Demonstrator (agentisches KI-Wissensmanagement für

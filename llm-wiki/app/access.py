@@ -35,7 +35,7 @@ LOBBY_DOMAIN = "allgemein"
 # IDs fuer Nutzer, Gruppen und Domaenen (Domaene = Ordnername unter pages/)
 ID_RE = re.compile(r"^[a-z0-9-]{2,40}$")
 
-VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich", "C-Level", "Betriebsrat-intern")
+VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich")
 
 ALLOW = "ALLOW"
 DENY = "DENY"
@@ -85,8 +85,9 @@ class PageMeta:
             else:
                 value = str(value)
             setattr(meta, key, value)
-        if meta.vertraulichkeit not in VERTRAULICHKEITEN:
-            meta.vertraulichkeit = "intern"
+        meta.vertraulichkeit, meta.empfaenger = normalize_confidentiality(
+            meta.vertraulichkeit, meta.empfaenger
+        )
         if not meta.erstellt_von:
             meta.erstellt_von = UNKNOWN_CREATOR
         return meta
@@ -157,6 +158,27 @@ def list_domains() -> list[str]:
     return list(load_permissions()["domaenen"].keys())
 
 
+def normalize_confidentiality(
+    vertraulichkeit: str,
+    empfaenger: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Uebersetzt Korpus-Stufen (z.B. C-Level, Betriebsrat-intern) auf das
+    Rechtemodell (vertraulichkeit + empfaenger) gemaess permissions.yaml."""
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    empf = list(empfaenger or [])
+    if vertraulichkeit in stufen:
+        cfg = stufen[vertraulichkeit]
+        target_vert = cfg.get("vertraulichkeit", vertraulichkeit)
+        default_empf = cfg.get("empfaenger") or []
+        for e in default_empf:
+            if e not in empf:
+                empf.append(e)
+        return target_vert, empf
+    if vertraulichkeit not in VERTRAULICHKEITEN:
+        vertraulichkeit = "intern"
+    return vertraulichkeit, empf
+
+
 def list_confidentiality_levels() -> list[dict[str, Any]]:
     stufen = load_permissions().get("vertraulichkeitsstufen") or {}
     if not stufen:
@@ -179,10 +201,6 @@ def default_confidentiality_for_user(user_id: str | None) -> str:
     for k, v in stufen.items():
         if uid in v.get("standard_fuer_rollen", []):
             return k
-    if uid in ("ceo", "cfo"):
-        return "C-Level"
-    if uid == "betriebsrat":
-        return "Betriebsrat-intern"
     return "intern"
 
 
@@ -239,7 +257,7 @@ def is_admin(user_id: str | None) -> bool:
 
 
 def decide(user_id: str | None, meta: PageMeta) -> str:
-    """Genau die Regeln aus dem Konzeptdokument + SSOT Vertraulichkeitsstufen."""
+    """Genau die Regeln aus dem Konzeptdokument."""
     # 1. oeffentlich -> ALLOW, auch fuer Gast
     if meta.vertraulichkeit == "oeffentlich":
         return ALLOW
@@ -259,15 +277,7 @@ def decide(user_id: str | None, meta: PageMeta) -> str:
     if not (groups & readers):
         return DENY
 
-    # 4. Vertraulichkeitsstufen-Rechte aus permissions.yaml pruefen
-    perm_stufen = load_permissions().get("vertraulichkeitsstufen") or {}
-    if meta.vertraulichkeit in perm_stufen:
-        stufe_info = perm_stufen[meta.vertraulichkeit]
-        allowed_groups = set(stufe_info.get("leseberechtigt") or [])
-        if allowed_groups and not (groups & allowed_groups):
-            return DENY
-
-    # 5. vertraulich und weder Ersteller noch Empfaenger (ID oder Gruppe) -> DENY
+    # 4. vertraulich und weder Ersteller noch Empfaenger (ID oder Gruppe) -> DENY
     if meta.vertraulichkeit == "vertraulich":
         recipients = set(meta.empfaenger)
         is_creator = meta.erstellt_von == user["id"]
@@ -275,7 +285,7 @@ def decide(user_id: str | None, meta: PageMeta) -> str:
         if not (is_creator or is_recipient):
             return DENY
 
-    # 6. sonst ALLOW
+    # 5. sonst ALLOW
     return ALLOW
 
 

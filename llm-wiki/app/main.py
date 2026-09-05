@@ -426,7 +426,7 @@ async def extract_document_api(
     request: Request,
     file: UploadFile = File(...),
 ):
-    user = access.current_user(request)
+    user = require_author(request)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Keine Datei ausgewählt.")
 
@@ -461,11 +461,10 @@ async def extract_document_api(
 
 @app.get("/upload")
 def upload_form(request: Request):
-
     user = access.current_user(request)
     conf_levels = access.list_confidentiality_levels()
     default_conf = access.default_confidentiality_for_user(user)
-    domains = access.list_domains()
+    domains = access.readable_domains(user)
     return templates.TemplateResponse(
         request,
         "upload.html",
@@ -486,16 +485,13 @@ async def upload_submit(
     vertraulichkeit: str = Form("intern"),
     domaene: str = Form("projekt"),
 ):
-    user = access.current_user(request)
+    user = require_author(request)
     if not file.filename:
         return templates.TemplateResponse(
             request,
             "upload.html",
             ctx(
                 request,
-                confidentiality_levels=access.list_confidentiality_levels(),
-                default_confidentiality=access.default_confidentiality_for_user(user),
-                domains=access.list_domains(),
                 error="Bitte wähle eine Datei aus.",
             ),
         )
@@ -507,15 +503,12 @@ async def upload_submit(
             "upload.html",
             ctx(
                 request,
-                confidentiality_levels=access.list_confidentiality_levels(),
-                default_confidentiality=access.default_confidentiality_for_user(user),
-                domains=access.list_domains(),
                 error="Die hochgeladene Datei ist leer.",
             ),
         )
 
-    # 1. Originaldatei im Uploads-Ordner sichern
-    saved_path = wiki.save_uploaded_file(file.filename, content_bytes)
+    # 1. Originaldatei im Uploads-Ordner sichern (nach Domaene)
+    saved_path = wiki.save_uploaded_file(file.filename, content_bytes, domaene=domaene)
 
     # 2. Text extrahieren
     try:
@@ -526,9 +519,6 @@ async def upload_submit(
             "upload.html",
             ctx(
                 request,
-                confidentiality_levels=access.list_confidentiality_levels(),
-                default_confidentiality=access.default_confidentiality_for_user(user),
-                domains=access.list_domains(),
                 error=f"Fehler bei der Textextraktion: {e}",
             ),
         )
@@ -542,14 +532,17 @@ async def upload_submit(
         custom_confidentiality=vertraulichkeit,
     )
 
-    # 4. Slug & Inhalt zusammensetzen
+    # 4. Pruefen ob der Nutzer in dieser Domaene mit dieser Einstufung schreiben darf (Write ⊆ Read)
+    require_writable(user, meta)
+
+    # 5. Slug & Inhalt zusammensetzen
     slug = wiki.slugify(extracted_title)
     full_content = f"{extracted_text.strip()}\n"
 
     # Speichern unter pages/
     wiki.save_page(slug, extracted_title, full_content, meta=meta)
 
-    # 5. One-Click Redirect mit Erfolgs-Feedback (Sound & Badge)
+    # 6. One-Click Redirect mit Erfolgs-Feedback (Sound & Badge)
     return RedirectResponse(f"/wiki/{slug}?uploaded=1", status_code=303)
 
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterator
@@ -52,9 +53,26 @@ def uploads_dir() -> Path:
     return d
 
 
-def save_uploaded_file(filename: str, content_bytes: bytes) -> Path:
+def sanitize_filename(filename: str) -> str:
+    """Extrahiert den reinen Dateinamen und filtert unsichere Zeichen,
+    um Path-Traversal (../, %2e%2e) sicher zu verhindern."""
+    base = Path(filename).name
+    clean = re.sub(r"[^A-Za-z0-9._-]", "_", base)
+    clean = clean.lstrip(".")
+    if not clean or clean in (".", ".."):
+        clean = f"upload_{secrets.token_hex(4)}"
+    return clean
+
+
+def save_uploaded_file(filename: str, content_bytes: bytes, domaene: str = "") -> Path:
+    safe_name = sanitize_filename(filename)
     d = uploads_dir()
-    target = d / filename
+    if domaene and is_valid_slug(domaene):
+        d = d / domaene
+    d.mkdir(parents=True, exist_ok=True)
+    target = (d / safe_name).resolve()
+    if not target.is_relative_to(uploads_dir().resolve()):
+        raise ValueError("Ungültiger Dateiname / Pfadüberlauf")
     target.write_bytes(content_bytes)
     return target
 

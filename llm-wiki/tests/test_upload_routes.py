@@ -90,3 +90,69 @@ def test_api_extract_document_prepopulate(client):
     assert "domaene" in data
     assert len(data["content"]) > 50
 
+
+def test_upload_path_traversal_prevention(client, pages_env):
+    """Path-Traversal im Dateinamen (z.B. ../, %2e%2e) darf nicht aus uploads_dir ausbrechen."""
+    payload = b"Inhalt fuer Traversal Test"
+    res = client.post(
+        "/upload",
+        files={"file": ("../../traversal-test.txt", payload, "text/plain")},
+        data={"vertraulichkeit": "intern", "domaene": "projekt"},
+        cookies=as_user("projektmanager"),
+    )
+    assert res.status_code == 303
+    # Datei darf keinesfalls im Root oder ausserhalb von uploads/ liegen
+    uploads_dir = wiki.uploads_dir()
+    assert (uploads_dir / "projekt" / "traversal-test.txt").exists() or (uploads_dir / "traversal-test.txt").exists()
+    root_traversal = uploads_dir.parent / "traversal-test.txt"
+    assert not root_traversal.exists()
+
+
+def test_guest_cannot_upload_or_extract(client, pages_env):
+    """Gast darf weder ueber /upload noch /api/extract-document hochladen (403)."""
+    payload = b"Gast Upload Versuch"
+    # Ohne Cookie (Gast)
+    res_upload = client.post(
+        "/upload",
+        files={"file": ("test.txt", payload, "text/plain")},
+        data={"vertraulichkeit": "intern", "domaene": "allgemein"},
+    )
+    assert res_upload.status_code == 403
+
+    res_extract = client.post(
+        "/api/extract-document",
+        files={"file": ("test.txt", payload, "text/plain")},
+    )
+    assert res_extract.status_code == 403
+
+
+def test_foreign_domain_write_forbidden(client, pages_env):
+    """Mitarbeiter darf nicht in fremde Domaene (z.B. finance) hochladen (Write ⊆ Read)."""
+    payload = b"Injektion in Finance"
+    res = client.post(
+        "/upload",
+        files={"file": ("finance_inj.txt", payload, "text/plain")},
+        data={"vertraulichkeit": "intern", "domaene": "finance"},
+        cookies=as_user("mitarbeiter"),
+    )
+    assert res.status_code == 403
+
+
+def test_betriebsrat_intern_normalization(client, pages_env):
+    """Betriebsrat-intern wird zu vertraulich mit empfaenger=[br] normalisiert."""
+    payload = b"Vertrauliche Notiz des Betriebsrats."
+    res = client.post(
+        "/upload",
+        files={"file": ("br_notiz.txt", payload, "text/plain")},
+        data={"vertraulichkeit": "Betriebsrat-intern", "domaene": "br"},
+        cookies=as_user("betriebsrat"),
+    )
+    assert res.status_code == 303
+    redirect_url = res.headers["location"]
+
+    # Betriebsrat darf lesen
+    assert client.get(redirect_url, cookies=as_user("betriebsrat")).status_code == 200
+    # CEO darf BR-intern NICHT lesen (404)
+    assert client.get(redirect_url, cookies=as_user("ceo")).status_code == 404
+
+

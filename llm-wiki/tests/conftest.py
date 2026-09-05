@@ -61,6 +61,9 @@ def pages_env(tmp_path, monkeypatch):
     monkeypatch.setenv("MPB_PERMISSIONS_FILE", str(perms))
     monkeypatch.setenv("MPB_CHANGELOG_FILE", str(tmp_path / "permissions-changelog.md"))
     monkeypatch.setenv("MPB_PROPOSALS_DIR", str(tmp_path / "project_proposals"))
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    monkeypatch.setenv("MPB_UPLOADS_DIR", str(uploads))
     monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
 
     import app.access as access

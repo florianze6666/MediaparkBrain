@@ -13,10 +13,12 @@
   </form>
 
   {% if answer %}
+    <p class="fresh-badge">Yeah, Yeah!</p>
     <section class="answer">
       <h2>Antwort</h2>
       <p>{{ answer }}</p>
     </section>
+    <script>yeahYeah();</script>
   {% endif %}
 
   {% if snippets %}

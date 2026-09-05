@@ -75,7 +75,7 @@ def index(request: Request):
 
 
 @app.get("/wiki/{slug}")
-def view_page(request: Request, slug: str):
+def view_page(request: Request, slug: str, gespeichert: int = 0):
     pages = wiki.list_pages()
     page = wiki.get_page(slug)
     if page is None:
@@ -84,7 +84,12 @@ def view_page(request: Request, slug: str):
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"pages": pages, "content_html": html, "page": page},
+        {
+            "pages": pages,
+            "content_html": html,
+            "page": page,
+            "just_saved": bool(gespeichert),
+        },
     )
 
 
@@ -103,7 +108,7 @@ def edit_page_save(slug: str, title: str = Form(...), content: str = Form(...)):
     if new_slug != slug:
         wiki.delete_page(slug)
     wiki.save_page(new_slug, title, content)
-    return RedirectResponse(f"/wiki/{new_slug}", status_code=303)
+    return RedirectResponse(f"/wiki/{new_slug}?gespeichert=1", status_code=303)
 
 
 @app.post("/wiki/{slug}/delete")
@@ -126,7 +131,7 @@ def new_page_form(request: Request):
 def new_page_save(title: str = Form(...), content: str = Form(...)):
     slug = wiki.slugify(title)
     wiki.save_page(slug, title, content)
-    return RedirectResponse(f"/wiki/{slug}", status_code=303)
+    return RedirectResponse(f"/wiki/{slug}?gespeichert=1", status_code=303)
 
 
 @app.get("/ask")

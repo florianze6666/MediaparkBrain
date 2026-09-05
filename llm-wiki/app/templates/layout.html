@@ -5,6 +5,61 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Wird gerufen, sobald dem Nutzer neue Informationen bereitgestellt werden
+    // (frische LLM-Antwort) - spricht "Yeah, Yeah!" laut aus.
+    // Muss im <head> stehen, damit Aufrufe weiter unten im Content-Block
+    // (der vor diesem Script-Tag im body gerendert wuerde) die Funktion
+    // bereits definiert vorfinden.
+    function yeahYeah() {
+      try {
+        const u = new SpeechSynthesisUtterance("Yeah, Yeah!");
+        u.lang = "de-DE";
+        u.pitch = 1.15;
+        u.rate = 1.05;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        // Web Speech API nicht verfuegbar - stumm weitermachen
+      }
+    }
+
+    // Klatsch-Sound beim Speichern einer Seite - rein per Web Audio API
+    // synthetisiert (kein Audio-Asset noetig): mehrere kurze gefilterte
+    // Rauschstoesse, die wie Haendeklatschen klingen.
+    function clapHands() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const clapTimes = [0, 0.09, 0.16];
+        clapTimes.forEach((delay) => {
+          const duration = 0.08;
+          const bufferSize = ctx.sampleRate * duration;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+          }
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const bandpass = ctx.createBiquadFilter();
+          bandpass.type = "bandpass";
+          bandpass.frequency.value = 1200;
+          bandpass.Q.value = 0.7;
+
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.9, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+
+          noise.connect(bandpass).connect(gain).connect(ctx.destination);
+          noise.start(ctx.currentTime + delay);
+          noise.stop(ctx.currentTime + delay + duration);
+        });
+      } catch (e) {
+        // Web Audio API nicht verfuegbar - stumm weitermachen
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="layout">

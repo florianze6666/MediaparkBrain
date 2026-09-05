@@ -247,19 +247,6 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 
 .is-stale { opacity: 0.4; transition: opacity 0.2s ease; }
 
-.dashboard-tabs { display: flex; gap: 4px; margin: 18px 0 8px; border-bottom: 1px solid var(--border); }
-.dashboard-tabs a {
-  display: inline-block;
-  padding: 8px 14px;
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 14px;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.dashboard-tabs a:hover { color: var(--text); }
-.dashboard-tabs a.active { color: var(--text); border-bottom-color: #32cd32; font-weight: 600; }
-
 .badge-status { background: rgba(154, 162, 181, 0.18); color: var(--text); }
 
 .dashboard-summary { display: flex; gap: 16px; margin: 20px 0 32px; }

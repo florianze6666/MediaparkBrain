@@ -25,8 +25,9 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | 🟡 In Arbeit |
 | 6 | Statistik: Wie viele Dokumente sind drin? | Antje | 🟡 In Arbeit |
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
-| 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | ⬜ Offen |
+| 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | 🟡 In Arbeit |
 | 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
+| 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | ⬜ Offen |
 
 ---
 
@@ -171,7 +172,7 @@ Ablageort nutzt.
 
 ## 8. PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen — Florian
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit
 
 **Ziel:** Wer im Datei-Upload ein PDF hochlädt, findet dessen **Inhalt** anschließend unter „Frag das
 Wiki" wieder — nicht nur den Dateinamen.
@@ -235,6 +236,47 @@ Frontmatter-Schema aus Paket 1 und den Ablageort aus Paket 7. Paket 6 zählt die
 - Ein Vorschlag zeigt oben „Eingebracht von … in der Rolle …".
 
 **Schnittstellen:** Paket 7 legt Ablageorte künftig als Domänen im Admin-Dashboard an. Paket 4 liest Vorschläge nur gefiltert.
+
+---
+
+## 10. Quellenzitat zu jeder Antwort im „Frag das Wiki" — Florian
+
+**Zustand:** ⬜ Offen
+
+**Ziel:** Keine Aussage ohne Beleg. Zu jedem Fakt, den das Wiki liefert, steht **darüber** eine
+Zitatbox mit dem wörtlichen Satz aus dem Originaldokument, aus dem dieser Fakt stammt.
+
+**Ausgangslage:** Heute liefert `/ask` einen Fließtext von Claude und darunter, getrennt davon, eine
+Liste der gefundenen Ausschnitte. Wer die Antwort liest, sieht nicht, welcher Satz welche Aussage
+trägt — und ob überhaupt einer.
+
+**Umfang**
+- Die Antwort wird **strukturiert** statt als ein Textblock: eine Liste von Fakten, jeder mit
+  wörtlichem Zitat, Seitentitel und Link auf die Wiki-Seite. Dafür gibt `llm.ask_llm()` ein
+  festes Format zurück, statt freien Text.
+- **Darstellung:** Über jedem Fakt eine abgesetzte Zitatbox — typografische Anführungszeichen,
+  Serifenschrift, linker Balken, gedämpfter Hintergrund. Darunter, in der normalen Schrift, die
+  daraus abgeleitete Aussage. So ist auf einen Blick zu unterscheiden, was **im Dokument steht**
+  und was das Modell **daraus macht**.
+- Quellenangabe an jeder Box: Seitentitel als Link auf `/wiki/<slug>`, dazu die Belegstelle
+  (bei eingelesenen PDFs die Seitenzahl aus Paket 8).
+- **Zitatprüfung im Code:** Ein Zitat wird nur angezeigt, wenn es **wörtlich** im übergebenen
+  Kontext vorkommt. Erfundene oder umformulierte Zitate werden verworfen, der zugehörige Fakt
+  wird als „ohne Beleg" gekennzeichnet statt still ausgegeben. Das ist der eigentliche Wert des
+  Pakets: Es macht Halluzinationen sichtbar, statt sie hübsch zu rahmen.
+- Fakten ohne Beleg werden nicht unterschlagen, sondern ausdrücklich als Informationslücke
+  ausgewiesen (`PLAN.md` §7, Phase 5).
+
+**Fertig wenn**
+- Eine Frage an das Wiki liefert mehrere Fakten, jeder mit einer Zitatbox darüber, die den
+  wörtlichen Satz und einen Link zur Quellseite zeigt.
+- Ein Zitat, das nicht wörtlich in der Wissensbasis steht, erscheint nicht als Beleg.
+- Die Zitate stammen ausschließlich aus Seiten, die der Fragende sehen darf — der Rechtefilter aus
+  Paket 1 bleibt wirksam, auch für die Zitattexte.
+
+**Schnittstellen:** Nutzt die Treffer aus `wiki.search_snippets()`, die Paket 1 bereits nach Rechten
+filtert. Die Seitenzahl als Belegstelle kommt aus Paket 8. Für die Experten-Agenten aus `PLAN.md` §8
+ist das die Vorarbeit: deren `assessment` soll später genauso belegt sein.
 
 ---
 

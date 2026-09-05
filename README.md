@@ -49,3 +49,7 @@ TODO: Wie führt man Tests, Linter und Typprüfung aus?
 ## Lizenz
 
 TODO: Lizenz festlegen (oder bewusst "privat, keine Lizenz" vermerken).
+
+## Mitwirkende
+
+Frank Jost arbeitet an diesem Projekt mit.

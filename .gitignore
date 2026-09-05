@@ -1,9 +1,0 @@
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.env
-*.secrets
-.DS_Store
-audit.jsonl
-data/index/

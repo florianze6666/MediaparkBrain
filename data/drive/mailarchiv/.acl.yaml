@@ -1,5 +1,0 @@
-# Mailarchiv: kein Site-Zugriff, nur Verfasser und Empfaenger (acl-rules.yaml, Regel 6)
-domain: mail
-site_members: []
-owner: P-021
-default_classification: confidential

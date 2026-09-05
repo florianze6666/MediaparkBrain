@@ -1,11 +1,5 @@
 # Hackathon-Konzept: Agentisches KI-Wissensmanagement für Projekt-Portfolio-Entscheidungen
 
-> **Ergänzungen (2026-09-05):** Die Abschnitte 14 und 15 am Ende beschreiben, was dieses
-> Konzept offen lässt — wie Wissen ins System kommt und aktuell bleibt, und wie Berechtigungen
-> durch die gesamte Kette getragen werden. Die ausgearbeiteten Konzepte liegen unter
-> [`docs/`](docs/README.md). Die Demo-Firma (Lahnberg Thermotechnik, 136 Dokumente 2011–2025)
-> liegt unter `data/` — siehe [`docs/DEMOCOMPANY.md`](docs/DEMOCOMPANY.md).
-
 ## 1. Zielbild
 
 Im Hackathon soll ein prototypisches *agentisches KI-System für die Bewertung von Projekten im Portfolio-Management* entwickelt werden.
@@ -551,47 +545,3 @@ Die zentrale Story des Demonstrators lautet damit:
 Damit ist das Wissensmanagement nicht lediglich eine Datenquelle für die Agenten, sondern ein zentraler Bestandteil des gesamten agentischen Entscheidungsprozesses.
 
 Die wichtigste neue Eigenschaft der Wissensbasis ist damit, dass sie *nicht als widerspruchsfreie „Single Source of Truth“ modelliert wird*, sondern als realistische Unternehmenswissenslandschaft mit Versionen, zeitlicher Gültigkeit und potentiell konkurrierenden Aussagen. Das ist für den RAG-/Agenten-Teil des Hackathons konzeptionell sehr wertvoll.
-
----
-
-## 14. Ingest und Aktualisierung der Wissensbasis
-
-*(Ergänzung 2026-09-05 — ausgearbeitet in [`docs/ARCHITEKTUR-RAG.md`](docs/ARCHITEKTUR-RAG.md))*
-
-Abschnitt 3 beschreibt, *was* in der Wissensbasis liegt, nicht, *wie es hineinkommt und aktuell
-bleibt*. Das ist für ein Enterprise-System die Hälfte der Arbeit:
-
-- **Quelle:** Der Drive bzw. SharePoint des Unternehmens mit seinen Ablageorten. Die Demo-Firma
-  bringt neun mit (`sharepoint_gf`, `sharepoint_finance`, `sharepoint_hr`, `br_ablage`,
-  `it_doku`, `einkauf_scm`, `qm_lenkung`, `projektlaufwerk`, `mailarchiv`).
-- **Einlesen:** Discovery → Fingerprint → **ACL berechnen** → Extraktion (PDF, DOCX, XLSX, MD)
-  → Chunking → Metadaten → Index und Katalog. Die Reihenfolge ist Pflicht: Rechte vor Index.
-- **Änderungen:** Ein Katalog mit Inhalts- und Rechte-Hash erkennt fünf Fälle — neu, geändert,
-  gelöscht, verschoben, nur Rechte geändert. Verschieben ist eine Rechteänderung.
-- **Dubletten:** exakt (Hash), normalisiert, Version, Near-Duplicate, Boilerplate. Dieselbe
-  Datei an zwei Orten ist ein Dokument mit zwei Standorten.
-- **Aktualität:** Jeder Treffer trägt Datum und Status (aktuell / überholt / unbestimmt);
-  Widersprüche werden gemeldet, nicht aufgelöst.
-- **Rückschreiben:** Was Agenten ins System zurückführen (Phase 4), erbt die Rechte seiner
-  Quellen.
-
-## 15. Berechtigungen — Verbindung der Rollenwelten
-
-*(Ergänzung 2026-09-05 — ausgearbeitet in [`docs/BERECHTIGUNGSKONZEPT.md`](docs/BERECHTIGUNGSKONZEPT.md) und [`docs/ROLLEN.md`](docs/ROLLEN.md))*
-
-Abschnitt 4 fordert Zugriffsrechte für Agenten, Abschnitt 6 beschreibt vier Rollen. Offen blieb,
-wie beides mit den Berechtigungen zusammenhängt, die im Unternehmen schon existieren. Die
-Antwort:
-
-- **Ein Agent vertritt eine Rolle** und hat exakt die Rechte der Person, die sie innehat. Der
-  CFO-Agent darf, was der CFO darf — nicht mehr. Der CEO-Agent sieht keine
-  Betriebsratsunterlagen, weil die Geschäftsführung sie auch nicht sieht.
-- **Rechte entstehen beim Einlesen** aus Ablageort (Site-Mitglieder) und Dokumentkopf
-  (Vertraulichkeit, Informationsdomänen, Verteiler). Sie sind Metadaten jedes Chunks.
-- **Durchsetzung als Vorfilter vor der Suche**, im Code, nie im Prompt. Verweigerte
-  Dokumente sind als Stub sichtbar (Auslöser der Eskalation aus Abschnitt 4); `restricted`
-  bleibt verborgen.
-- **Ein einziger Zugriffsweg:** Agenten erreichen Wissen ausschließlich über `retrieve()`.
-- **Output-Klassifikation:** Scores sind immer sichtbar; die Begründung nur, wenn der
-  Empfänger die zitierten Quellen selbst lesen dürfte.
-- **Personen sind Daten** (`data/permissions.yaml`), das Konzept ist personenunabhängig.

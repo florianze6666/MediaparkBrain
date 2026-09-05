@@ -21,10 +21,11 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ✅ Fertig |
 | 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
 | 3 | Funktionsbeschreibung des Systems | Florian | ⬜ Offen |
-| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | ⬜ Offen |
-| 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | ⬜ Offen |
-| 6 | Statistik: Wie viele Dokumente sind drin? | Antje | ⬜ Offen |
+| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | 🟡 In Arbeit |
+| 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | 🟡 In Arbeit |
+| 6 | Statistik: Wie viele Dokumente sind drin? | Antje | 🟡 In Arbeit |
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
+| 8 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | 🟡 In Arbeit |
 
 ---
 
@@ -93,7 +94,7 @@ Ablageort nutzt.
 
 ## 4. Bewertungslogik: Gab es das Projekt schon? — Marc
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit (PR #17 und #21 gemerged: Einreichung mit Namens-Dublettenprüfung)
 
 **Ziel:** Ein neuer Projektvorschlag wird gegen die vorhandenen Projekte abgeglichen. Das System sagt:
 „Das gab es schon", mit Verweis auf das bestehende Projekt.
@@ -114,7 +115,7 @@ Ablageort nutzt.
 
 ## 5. Upload-Feedback: pinker Rahmen und Sound — Oxana
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit (PR #20 gemerged: Markenpalette, Badge und Sound beim Speichern)
 
 **Ziel:** Ein erfolgreicher Upload ist unübersehbar und unüberhörbar.
 
@@ -132,7 +133,7 @@ Ablageort nutzt.
 
 ## 6. Statistik: Wie viele Dokumente sind drin? — Antje
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit (Dashboard gemerged, nutzt Rechtefilter)
 
 **Ziel:** Auf einen Blick sehen, wie groß die Wissensbasis ist.
 
@@ -164,6 +165,27 @@ Ablageort nutzt.
 - Ein hochgeladenes Dokument liegt im richtigen Ordner und die Wiki-Seite zeigt den Ablageort.
 
 **Schnittstellen:** Paket 1 leitet aus dem Ablageort Rechte ab, Paket 6 zählt danach.
+
+---
+
+## 8. Erweitertes Berechtigungsmanagement — Anselm
+
+**Zustand:** 🟡 In Arbeit (Konzept: `docs/berechtigungen-stufe-2-admin-und-ablage.md`)
+
+**Ziel:** Herkunft und Rechte ziehen sich durch das ganze System, nicht nur durch Wiki-Seiten.
+
+**Umfang**
+- Herkunftsbox als Hauptinformation auf jedem Dokument und jedem Projektvorschlag: wer, welche Rolle, wann.
+- Projektvorschläge bekommen dieselben Metadaten und dieselbe Rechteprüfung wie Wiki-Seiten.
+- Admin-Dashboard `/admin`: Nutzer, Gruppen, Domänenrechte pflegen, mit Änderungsprotokoll.
+- Wiki-Dateien physisch nach Domäne und Vertraulichkeit getrennt abgelegt; der Agent öffnet nur Ordner, die der Nutzer lesen darf.
+
+**Fertig wenn**
+- Eine Datei ohne Kopf in `pages/finance/` findet der Mitarbeiter nicht, der CFO schon.
+- Ein Admin gibt dem Mitarbeiter im Dashboard die Gruppe `finance`, danach sieht er Finance sofort.
+- Ein Vorschlag zeigt oben „Eingebracht von … in der Rolle …".
+
+**Schnittstellen:** Paket 7 legt Ablageorte künftig als Domänen im Admin-Dashboard an. Paket 4 liest Vorschläge nur gefiltert.
 
 ---
 

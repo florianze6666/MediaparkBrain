@@ -1,0 +1,4 @@
+
+# Windows-Batchdateien mit CRLF ausliefern
+*.cmd text eol=crlf
+*.bat text eol=crlf

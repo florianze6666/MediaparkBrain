@@ -369,3 +369,73 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   }
   .is-stale { transition: none; }
 }
+
+/* --- Herkunftsbox (Stufe 2, US-10): Herkunft ist Hauptinformation --- */
+.herkunft {
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 0 0 20px;
+}
+.herkunft-haupt { font-size: 18px; line-height: 1.4; color: var(--text); }
+.herkunft-haupt strong { color: var(--accent); font-weight: 700; }
+.herkunft-id { color: var(--muted); font-size: 14px; }
+.herkunft-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.herkunft-details strong { color: var(--text); font-weight: 600; }
+.herkunft-kompakt { padding: 8px 12px; margin: 6px 0 0; border-width: 1px; }
+.herkunft-kompakt .herkunft-haupt { font-size: 14px; }
+.herkunft-kompakt .herkunft-details { font-size: 12px; margin-top: 4px; }
+
+.proposal-cards { list-style: none; padding: 0; margin: 12px 0; }
+.proposal-card { padding: 10px 0 14px; border-bottom: 1px solid var(--border); }
+.proposal-title { color: var(--text); font-size: 17px; font-weight: 600; text-decoration: none; }
+.proposal-title:hover { text-decoration: underline; }
+
+/* --- Sidebar: Seiten nach Domaene gruppiert --- */
+.page-group-title {
+  margin: 14px 0 4px;
+  padding: 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.btn-list { background: var(--border); color: var(--text); }
+.btn-admin { background: var(--accent); color: #1c1a1c; font-weight: 600; }
+
+/* --- Admin-Dashboard --- */
+.admin-table td, .admin-table th { vertical-align: middle; }
+.admin-group-col { text-align: center !important; font-size: 12px; padding: 6px 4px !important; }
+.admin-input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 140px;
+}
+.admin-actions { white-space: nowrap; }
+.btn-small { padding: 5px 10px; font-size: 13px; }
+.link-btn.danger { color: #f19a97; background: none; border: none; cursor: pointer; font-size: 13px; margin-left: 8px; }
+.admin-inline-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 8px 0 24px; }
+.admin-inline-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.admin-checks { display: flex; flex-wrap: wrap; gap: 6px 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin: 0; }
+.admin-checks legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.admin-check { flex-direction: row !important; align-items: center; gap: 4px !important; color: var(--text) !important; }
+.admin-groups .badge { margin-right: 4px; }
+.admin-log { list-style: none; padding: 0; font-size: 13px; font-family: "SFMono-Regular", Consolas, monospace; }
+.admin-log li { padding: 5px 0; border-bottom: 1px solid var(--border); color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: 11px; }
+.hint.ok { border-color: #2f9e6e; color: #7fd4a8; }

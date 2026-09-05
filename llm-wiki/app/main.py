@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import markdown as md
 from dotenv import load_dotenv
@@ -10,10 +13,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import access, evaluation, llm, proposals, stats, wiki
-from .access import PageMeta
-
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
+
+# access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
+# load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
+from . import access, evaluation, llm, proposals, stats, wiki  # noqa: E402
+from .access import PageMeta  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -141,6 +147,9 @@ def ensure_demo_pages() -> None:
             wiki.save_page(slug, title, content, meta)
 
 
+# Stufe 2 (US-19): flache Altdateien zuerst in Domaenenordner einsortieren,
+# dann erst pruefen, ob Seed/Demo-Seiten fehlen.
+wiki.migrate_flat_pages()
 seed_if_empty()
 ensure_demo_pages()
 
@@ -158,7 +167,10 @@ def ctx(request: Request, **extra) -> dict:
         "user": user,
         "user_name": access.user_name(user),
         "users": access.list_users(),
-        "domains": access.list_domains(),
+        # Formulare zeigen nur Domaenen, in die der Nutzer schreiben darf
+        # (Write ⊆ Read); der POST prueft trotzdem noch einmal (require_writable).
+        "domains": access.readable_domains(user),
+        "is_admin": access.is_admin(user),
         "current_path": request.url.path,
     }
     base.update(extra)
@@ -173,11 +185,30 @@ def require_page(slug: str, user: str) -> wiki.Page:
     return page
 
 
+GUEST_403 = "Bitte erst Nutzer wählen"
+WRITE_403 = "Du darfst in dieser Domäne nichts anlegen"
+
+
 def require_author(request: Request) -> str:
     """Gast darf nichts anlegen, bearbeiten oder loeschen (403)."""
     user = access.current_user(request)
     if user == access.GUEST:
-        raise HTTPException(status_code=403, detail="Bitte erst Nutzer wählen")
+        raise HTTPException(status_code=403, detail=GUEST_403)
+    return user
+
+
+def require_writable(user: str, meta: PageMeta) -> None:
+    """Schreiben nur, wo man lesen darf (Write ⊆ Read): Zieldomaene muss lesbar
+    sein und decide muss die Seite mit diesen Metadaten erlauben, sonst 403."""
+    if not access.can_write(user, meta):
+        raise HTTPException(status_code=403, detail=WRITE_403)
+
+
+def require_admin(request: Request) -> str:
+    """Admin-Dashboard existiert fuer Nicht-Admins nicht (404, US-16)."""
+    user = access.current_user(request)
+    if not access.is_admin(user):
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
     return user
 
 
@@ -198,12 +229,16 @@ def _simple_page(title: str, text: str, status: int) -> HTMLResponse:
 
 @app.exception_handler(403)
 def forbidden_handler(request: Request, exc: HTTPException):
-    return _simple_page(
-        "Bitte erst Nutzer wählen",
-        "Als Gast kannst du Seiten nur lesen. Wähle in der Seitenleiste, "
-        "als wer du arbeitest, und versuche es erneut.",
-        403,
-    )
+    detail = getattr(exc, "detail", None) or GUEST_403
+    if detail == GUEST_403:
+        return _simple_page(
+            GUEST_403,
+            "Als Gast kannst du Seiten nur lesen. Wähle in der Seitenleiste, "
+            "als wer du arbeitest, und versuche es erneut.",
+            403,
+        )
+    # Dieselbe 403-Seite, anderer Text (z. B. Schreiben in fremder Domaene).
+    return _simple_page("Nicht erlaubt", detail, 403)
 
 
 @app.exception_handler(404)
@@ -217,7 +252,8 @@ def not_found_handler(request: Request, exc: HTTPException):
 
 
 # ---------------------------------------------------------------------------
-# Login-Simulation (Cookie), bis ein echtes Login existiert
+# Login-Simulation (signierter Cookie), bis ein echtes Login existiert.
+# Der Cookie traegt `<uid>.<hmac>`; ein roher oder manipulierter Wert ist Gast.
 # ---------------------------------------------------------------------------
 
 
@@ -232,7 +268,11 @@ def _safe_next(next_url: str | None) -> str:
 def login(user: str = Form(...), next: str = Form("/")):
     uid = access.get_user(user)["id"]
     resp = RedirectResponse(_safe_next(next), status_code=303)
-    resp.set_cookie(access.COOKIE_NAME, uid, httponly=True, samesite="lax")
+    # secure=False bleibt bewusst (localhost/http); httponly + lax wie bisher.
+    resp.set_cookie(
+        access.COOKIE_NAME, access.sign_user(uid),
+        httponly=True, samesite="lax", secure=False,
+    )
     return resp
 
 
@@ -300,9 +340,20 @@ def edit_page_save(
     meta.vertraulichkeit = vertraulichkeit
     meta.domaene = domaene
     meta.empfaenger = parse_recipients(empfaenger)
+    # Write ⊆ Read: gilt fuer die NEUE Domaene - Verschieben in eine fremde
+    # Domaene ist verboten (403), die Datei bleibt, wo sie ist.
+    require_writable(user, meta)
     new_slug = wiki.slugify(title)
     if new_slug != slug:
+        if wiki.slug_exists(new_slug):
+            return templates.TemplateResponse(
+                request, "edit.html",
+                ctx(request, page=page, slug=slug,
+                    error=f'Der Titel "{title}" ist bereits vergeben (Adresse /wiki/{new_slug}).'),
+                status_code=409,
+            )
         wiki.delete_page(slug)
+    # US-17: save_page legt die Datei im Ordner ihrer Domaene ab und verschiebt bei Wechsel.
     wiki.save_page(new_slug, title, content, meta)
     return RedirectResponse(f"/wiki/{new_slug}?gespeichert=1", status_code=303)
 
@@ -342,6 +393,17 @@ def new_page_save(
         domaene=domaene,
         empfaenger=parse_recipients(empfaenger),
     )
+    require_writable(user, meta)  # Write ⊆ Read (403 in fremder Domaene)
+    # US-17: Slugs sind global eindeutig - egal in welchem Ordner der Slug liegt.
+    # (Fehlt/verboten wird hier bewusst nicht unterschieden: Anlegen wird abgelehnt.)
+    if wiki.slug_exists(slug):
+        draft = wiki.Page(slug=slug, title=title, content=content, meta=meta)
+        return templates.TemplateResponse(
+            request, "edit.html",
+            ctx(request, page=None, slug=None, draft=draft,
+                error=f'Der Titel "{title}" ist bereits vergeben (Adresse /wiki/{slug}). Bitte anderen Titel wählen.'),
+            status_code=409,
+        )
     wiki.save_page(slug, title, content, meta)
     return RedirectResponse(f"/wiki/{slug}?gespeichert=1", status_code=303)
 
@@ -353,20 +415,34 @@ def new_page_save(
 
 @app.get("/proposals")
 def proposal_list(request: Request):
+    user = access.current_user(request)
+    # US-12: Liste gefiltert ueber decide, wie die Seitenliste.
     return templates.TemplateResponse(
         request,
         "proposal_list.html",
-        ctx(request, proposals=proposals.list_proposals()),
+        ctx(request, proposals=proposals.list_proposals(user)),
+    )
+
+
+def _proposal_form(request: Request, status: int = 200, **fields):
+    defaults = {
+        "error": None,
+        "project_name": "",
+        "description": "",
+        "vertraulichkeit": "intern",
+        "domaene": proposals.DEFAULT_DOMAIN,
+        "empfaenger": "",
+    }
+    defaults.update(fields)
+    return templates.TemplateResponse(
+        request, "proposal_new.html", ctx(request, **defaults), status_code=status
     )
 
 
 @app.get("/proposals/new")
 def proposal_new_form(request: Request):
-    return templates.TemplateResponse(
-        request,
-        "proposal_new.html",
-        ctx(request, error=None, project_name="", description=""),
-    )
+    require_author(request)  # Gast darf nicht einreichen (403, US-12)
+    return _proposal_form(request)
 
 
 @app.post("/proposals/new")
@@ -374,22 +450,31 @@ async def proposal_new_save(
     request: Request,
     project_name: str = Form(...),
     description: str = Form(...),
+    vertraulichkeit: str = Form("intern"),
+    domaene: str = Form(proposals.DEFAULT_DOMAIN),
+    empfaenger: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
+    user = require_author(request)
+    # US-11: Einreicher und Rolle (Anzeigename jetzt) kommen aus dem aktuellen Nutzer.
+    meta = PageMeta(
+        erstellt_von=user,
+        erstellt_am=now_iso(),
+        vertraulichkeit=vertraulichkeit,
+        domaene=domaene,
+        empfaenger=parse_recipients(empfaenger),
+        quelle=proposals.SOURCE,
+    )
+    require_writable(user, meta)  # Write ⊆ Read (403 in fremder Domaene)
     if proposals.already_submitted(project_name):
-        return templates.TemplateResponse(
-            request,
-            "proposal_new.html",
-            ctx(
-                request,
-                error=(
-                    f'Ein Projektvorschlag mit dem Namen "{project_name}" wurde '
-                    "bereits eingereicht. Einreichung abgelehnt."
-                ),
-                project_name=project_name,
-                description=description,
+        return _proposal_form(
+            request, 409,
+            error=(
+                f'Ein Projektvorschlag mit dem Namen "{project_name}" wurde '
+                "bereits eingereicht. Einreichung abgelehnt."
             ),
-            status_code=409,
+            project_name=project_name, description=description,
+            vertraulichkeit=vertraulichkeit, domaene=domaene, empfaenger=empfaenger,
         )
 
     uploaded_files = []
@@ -415,23 +500,28 @@ async def proposal_new_save(
 
     duplicate = proposals.find_duplicate_file(uploaded_files)
     if duplicate is not None:
-        return templates.TemplateResponse(
-            request,
-            "proposal_new.html",
-            ctx(
-                request,
-                error=(
-                    "Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
-                    f'"{duplicate.project_name}" (Hash identisch). Einreichung abgelehnt.'
-                ),
-                project_name=project_name,
-                description=description,
+        return _proposal_form(
+            request, 409,
+            error=(
+                "Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
+                f'"{duplicate.project_name}" (Hash identisch). Einreichung abgelehnt.'
             ),
-            status_code=409,
+            project_name=project_name, description=description,
+            vertraulichkeit=vertraulichkeit, domaene=domaene, empfaenger=empfaenger,
         )
 
-    proposal = proposals.save_proposal(project_name, description, uploaded_files)
+    proposal = proposals.save_proposal(
+        project_name, description, uploaded_files, meta, rolle=access.user_name(user)
+    )
     return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
+
+
+def require_proposal(slug: str, user: str) -> proposals.Proposal:
+    """Vorschlag aus Nutzersicht; fehlend und verboten sind nicht unterscheidbar (404)."""
+    proposal = proposals.get_proposal_for(slug, user)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    return proposal
 
 
 # Hinweis: muss VOR "/proposals/{slug}" registriert werden, sonst faengt die
@@ -454,9 +544,8 @@ def proposal_evaluate(request: Request):
 
 @app.get("/proposals/{slug}")
 def proposal_view(request: Request, slug: str):
-    proposal = proposals.get_proposal(slug)
-    if proposal is None:
-        return RedirectResponse("/proposals")
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
     description_html = render_markdown(proposal.description)
     return templates.TemplateResponse(
         request,
@@ -466,7 +555,10 @@ def proposal_view(request: Request, slug: str):
 
 
 @app.post("/proposals/{slug}/delete")
-def proposal_delete(slug: str):
+def proposal_delete(request: Request, slug: str):
+    user = access.current_user(request)
+    require_proposal(slug, user)
+    require_author(request)
     proposals.delete_proposal(slug)
     return RedirectResponse("/proposals", status_code=303)
 
@@ -522,3 +614,237 @@ def ask_submit(request: Request, question: str = Form(...)):
             llm_configured=llm.is_configured(),
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Admin-Dashboard (Stufe 2, US-13 bis US-16). Nur Gruppe admin, sonst 404.
+# Jede Aenderung geht ueber access.save_permissions -> permissions.yaml + Changelog.
+# ---------------------------------------------------------------------------
+
+ADMIN_MESSAGES = {
+    "ungueltige-id": "Ungültige Kennung: erlaubt sind 2–40 Zeichen aus a–z, 0–9 und Bindestrich.",
+    "nutzer-existiert": "Diesen Nutzer gibt es bereits.",
+    "nutzer-fehlt": "Diesen Nutzer gibt es nicht.",
+    "gast-nicht-loeschbar": "Der Gast kann nicht entfernt werden.",
+    "selbst-nicht-loeschbar": "Du kannst dich nicht selbst entfernen.",
+    "admin-selbst": "Du kannst dir die Gruppe admin nicht selbst entziehen (sonst sperrst du dich aus).",
+    "domaene-existiert": "Diese Domäne gibt es bereits.",
+    "domaene-fehlt": "Diese Domäne gibt es nicht.",
+    "domaene-nicht-leer": "Die Domäne hat noch Seiten in ihrem Ordner und kann nicht entfernt werden.",
+    "gruppe-existiert": "Diese Gruppe gibt es bereits.",
+    "gruppe-unbekannt": "Mindestens eine gewählte Gruppe existiert nicht.",
+    "gespeichert": "Änderung gespeichert und protokolliert.",
+    "unveraendert": "Keine Änderung – nichts gespeichert.",
+}
+
+
+def _admin_redirect(code: str) -> RedirectResponse:
+    return RedirectResponse(f"/admin?meldung={quote(code)}", status_code=303)
+
+
+def _valid_id(value: str) -> bool:
+    return bool(access.ID_RE.match(value or ""))
+
+
+def _fmt_list(values: list[str]) -> str:
+    return "[" + ", ".join(values) + "]"
+
+
+def _ordered_groups(selected: list[str], all_groups: list[str]) -> list[str]:
+    """Gewaehlte Gruppen in der Reihenfolge der Gruppenliste (stabile Protokollzeilen)."""
+    chosen = set(selected)
+    return [g for g in all_groups if g in chosen]
+
+
+def _copy_permissions() -> dict:
+    data = access.load_permissions()
+    return {
+        "gruppen": list(data["gruppen"]),
+        "nutzer": {uid: {"name": u.get("name", uid), "gruppen": list(u.get("gruppen") or [])}
+                   for uid, u in data["nutzer"].items()},
+        "domaenen": {dom: {"lesen": list((spec or {}).get("lesen") or [])}
+                     for dom, spec in data["domaenen"].items()},
+    }
+
+
+@app.get("/admin")
+def admin_dashboard(request: Request, meldung: str = ""):
+    admin = require_admin(request)
+    data = access.load_permissions()
+    domain_folders = {
+        dom: sum(1 for _ in (wiki.pages_dir() / dom).rglob("*.md"))
+        if (wiki.pages_dir() / dom).is_dir() else 0
+        for dom in data["domaenen"]
+    }
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        ctx(
+            request,
+            admin=admin,
+            gruppen=list(data["gruppen"]),
+            nutzer=access.list_users(),
+            domaenen={dom: list((spec or {}).get("lesen") or []) for dom, spec in data["domaenen"].items()},
+            domain_counts=domain_folders,
+            changelog=access.read_changelog(20),
+            meldung=ADMIN_MESSAGES.get(meldung, ""),
+            meldung_ist_fehler=bool(meldung) and meldung not in ("gespeichert", "unveraendert"),
+        ),
+    )
+
+
+@app.post("/admin/users/save")
+def admin_user_save(
+    request: Request,
+    user_id: str = Form(...),
+    name: str = Form(""),
+    gruppen: list[str] = Form(default=[]),
+):
+    admin = require_admin(request)
+    data = _copy_permissions()
+    if user_id not in data["nutzer"]:
+        return _admin_redirect("nutzer-fehlt")
+    if not set(gruppen) <= set(data["gruppen"]):
+        return _admin_redirect("gruppe-unbekannt")
+    new_groups = _ordered_groups(gruppen, data["gruppen"])
+    if user_id == access.GUEST:
+        new_groups = []  # Gast bleibt ohne Gruppen (Regel 2)
+    if user_id == admin and access.ADMIN_GROUP not in new_groups:
+        return _admin_redirect("admin-selbst")  # Aussperrung verhindern
+    entry = data["nutzer"][user_id]
+    old_name, old_groups = entry["name"], entry["gruppen"]
+    new_name = (name or "").strip() or old_name
+    notes = []
+    if new_name != old_name:
+        notes.append(f"Name {old_name} → {new_name}")
+    if new_groups != old_groups:
+        notes.append(f"Gruppen {_fmt_list(old_groups)} → {_fmt_list(new_groups)}")
+    if not notes:
+        return _admin_redirect("unveraendert")
+    entry["name"], entry["gruppen"] = new_name, new_groups
+    access.save_permissions(data, admin, f"Nutzer {user_id}: " + "; ".join(notes))
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/users/new")
+def admin_user_new(
+    request: Request,
+    user_id: str = Form(...),
+    name: str = Form(""),
+    gruppen: list[str] = Form(default=[]),
+):
+    admin = require_admin(request)
+    user_id = (user_id or "").strip().lower()
+    if not _valid_id(user_id):
+        return _admin_redirect("ungueltige-id")
+    data = _copy_permissions()
+    if user_id in data["nutzer"]:
+        return _admin_redirect("nutzer-existiert")
+    if not set(gruppen) <= set(data["gruppen"]):
+        return _admin_redirect("gruppe-unbekannt")
+    new_groups = _ordered_groups(gruppen, data["gruppen"])
+    new_name = (name or "").strip() or user_id
+    data["nutzer"][user_id] = {"name": new_name, "gruppen": new_groups}
+    access.save_permissions(
+        data, admin, f"Nutzer {user_id} angelegt: Name {new_name}, Gruppen {_fmt_list(new_groups)}"
+    )
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/users/delete")
+def admin_user_delete(request: Request, user_id: str = Form(...)):
+    admin = require_admin(request)
+    if user_id == access.GUEST:
+        return _admin_redirect("gast-nicht-loeschbar")
+    if user_id == admin:
+        return _admin_redirect("selbst-nicht-loeschbar")
+    data = _copy_permissions()
+    entry = data["nutzer"].pop(user_id, None)
+    if entry is None:
+        return _admin_redirect("nutzer-fehlt")
+    access.save_permissions(
+        data, admin,
+        f"Nutzer {user_id} entfernt (Name {entry['name']}, Gruppen {_fmt_list(entry['gruppen'])})",
+    )
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/domains/save")
+def admin_domain_save(
+    request: Request,
+    domaene: str = Form(...),
+    lesen: list[str] = Form(default=[]),
+):
+    admin = require_admin(request)
+    data = _copy_permissions()
+    if domaene not in data["domaenen"]:
+        return _admin_redirect("domaene-fehlt")
+    if not set(lesen) <= set(data["gruppen"]):
+        return _admin_redirect("gruppe-unbekannt")
+    new_readers = _ordered_groups(lesen, data["gruppen"])
+    old_readers = data["domaenen"][domaene]["lesen"]
+    if new_readers == old_readers:
+        return _admin_redirect("unveraendert")
+    data["domaenen"][domaene]["lesen"] = new_readers
+    access.save_permissions(
+        data, admin,
+        f"Domäne {domaene}: Lesegruppen {_fmt_list(old_readers)} → {_fmt_list(new_readers)}",
+    )
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/domains/new")
+def admin_domain_new(
+    request: Request,
+    domaene: str = Form(...),
+    lesen: list[str] = Form(default=[]),
+):
+    admin = require_admin(request)
+    domaene = (domaene or "").strip().lower()
+    if not _valid_id(domaene):
+        return _admin_redirect("ungueltige-id")
+    data = _copy_permissions()
+    if domaene in data["domaenen"]:
+        return _admin_redirect("domaene-existiert")
+    if not set(lesen) <= set(data["gruppen"]):
+        return _admin_redirect("gruppe-unbekannt")
+    new_readers = _ordered_groups(lesen, data["gruppen"])
+    data["domaenen"][domaene] = {"lesen": new_readers}
+    access.save_permissions(
+        data, admin, f"Domäne {domaene} angelegt: Lesegruppen {_fmt_list(new_readers)}"
+    )
+    # US-14: neue Domaene bekommt sofort ihren Ordner unter pages/
+    (wiki.pages_dir() / domaene).mkdir(parents=True, exist_ok=True)
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/domains/delete")
+def admin_domain_delete(request: Request, domaene: str = Form(...)):
+    admin = require_admin(request)
+    data = _copy_permissions()
+    if domaene not in data["domaenen"]:
+        return _admin_redirect("domaene-fehlt")
+    folder = wiki.pages_dir() / domaene
+    if folder.is_dir() and any(folder.rglob("*.md")):
+        return _admin_redirect("domaene-nicht-leer")
+    old_readers = data["domaenen"].pop(domaene)["lesen"]
+    access.save_permissions(
+        data, admin, f"Domäne {domaene} entfernt (Lesegruppen {_fmt_list(old_readers)})"
+    )
+    if folder.is_dir():
+        shutil.rmtree(folder)  # nur leere Ordner (ggf. mit leerem vertraulich/)
+    return _admin_redirect("gespeichert")
+
+
+@app.post("/admin/groups/new")
+def admin_group_new(request: Request, gruppe: str = Form(...)):
+    admin = require_admin(request)
+    gruppe = (gruppe or "").strip().lower()
+    if not _valid_id(gruppe):
+        return _admin_redirect("ungueltige-id")
+    data = _copy_permissions()
+    if gruppe in data["gruppen"]:
+        return _admin_redirect("gruppe-existiert")
+    data["gruppen"].append(gruppe)
+    access.save_permissions(data, admin, f"Gruppe {gruppe} angelegt")
+    return _admin_redirect("gespeichert")

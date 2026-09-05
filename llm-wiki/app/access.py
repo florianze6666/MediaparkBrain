@@ -2,21 +2,38 @@
 
 Ein Zugriffsweg: jede Sichtbarkeitsentscheidung laeuft ueber `decide`.
 Nutzer, Gruppen und Domaenen sind Daten in permissions.yaml, kein Code.
-Vertrag: docs/berechtigungen-und-herkunft.md
+Vertrag: docs/berechtigungen-und-herkunft.md (Stufe 1),
+docs/berechtigungen-stufe-2-admin-und-ablage.md (Stufe 2: Admin, Changelog).
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+import logging
 import os
+import re
+import secrets
 from dataclasses import dataclass, field, asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 from fastapi import Request
 
+log = logging.getLogger(__name__)
+
 GUEST = "gast"
 UNKNOWN_CREATOR = "unbekannt"
 COOKIE_NAME = "mpb_user"
+ADMIN_GROUP = "admin"
+# Die Lobby: pages/allgemein/ darf jeder betreten, auch der Gast. Innerhalb
+# entscheidet weiterhin `decide` pro Seite (Gast sieht dort nur oeffentlich).
+LOBBY_DOMAIN = "allgemein"
+
+# IDs fuer Nutzer, Gruppen und Domaenen (Domaene = Ordnername unter pages/)
+ID_RE = re.compile(r"^[a-z0-9-]{2,40}$")
 
 VERTRAULICHKEITEN = ("oeffentlich", "intern", "vertraulich")
 
@@ -79,7 +96,19 @@ def permissions_path() -> Path:
     return Path(__file__).resolve().parent.parent / "permissions.yaml"
 
 
+def changelog_path() -> Path:
+    env = os.environ.get("MPB_CHANGELOG_FILE")
+    if env:
+        return Path(env)
+    return permissions_path().parent / "permissions-changelog.md"
+
+
 _cache: dict[str, Any] = {"key": None, "data": None}
+
+
+def clear_cache() -> None:
+    _cache["key"] = None
+    _cache["data"] = None
 
 
 def load_permissions() -> dict[str, Any]:
@@ -137,6 +166,32 @@ def user_name(user_id: str | None) -> str:
     return user_id
 
 
+def readable_domains(user_id: str | None) -> list[str]:
+    """Domaenenordner, die der Nutzer betreten darf (Ordner-Schranke, US-18).
+
+    Immer dabei: die Lobby `allgemein` (auch fuer den Gast). Dazu jede Domaene,
+    deren Lesegruppen sich mit den Gruppen des Nutzers schneiden (Regel 3 auf
+    Ordnerebene). Reihenfolge wie in permissions.yaml.
+
+    Der Ordner ist die einzige Wahrheit: `wiki.list_pages(user)` betritt NUR
+    diese Ordner; ein Label `oeffentlich` in einem fremden Ordner oeffnet ihn nicht.
+    """
+    groups = set(user_groups(user_id))
+    out: list[str] = []
+    for dom, spec in load_permissions()["domaenen"].items():
+        readers = set((spec or {}).get("lesen") or [])
+        if dom == LOBBY_DOMAIN or (groups & readers):
+            out.append(dom)
+    if LOBBY_DOMAIN not in out:
+        out.insert(0, LOBBY_DOMAIN)
+    return out
+
+
+def is_admin(user_id: str | None) -> bool:
+    """Gruppe admin verwaltet Rechte, liest aber nichts zusaetzlich (decide unveraendert)."""
+    return ADMIN_GROUP in user_groups(user_id)
+
+
 # ---------------------------------------------------------------------------
 # Entscheidungsregel
 # ---------------------------------------------------------------------------
@@ -179,11 +234,190 @@ def is_allowed(user_id: str | None, meta: PageMeta) -> bool:
     return decide(user_id, meta) == ALLOW
 
 
+def can_read(user_id: str | None, meta: PageMeta) -> bool:
+    """Ordner-Schranke UND Seitenregel: Der Nutzer darf den Domaenenordner
+    betreten (readable_domains) und `decide` erlaubt die Seite.
+    Das Label `oeffentlich` erweitert nie die Ordnerrechte (Label verschaerft nur)."""
+    return meta.domaene in readable_domains(user_id) and decide(user_id, meta) == ALLOW
+
+
+def can_write(user_id: str | None, meta: PageMeta) -> bool:
+    """Schreiben nur, wo man lesen darf (Write ⊆ Read).
+
+    True nur, wenn die Zieldomaene lesbar ist UND `decide` die Seite mit genau
+    diesen Metadaten erlaubt - ein Autor kann eine vertrauliche Seite also nur so
+    anlegen, dass er sie selbst noch sieht (als Ersteller automatisch erfuellt).
+    Beim Bearbeiten gilt die Pruefung fuer die NEUE Domaene: Verschieben in eine
+    fremde Domaene ist verboten.
+    """
+    return can_read(user_id, meta)
+
+
 # ---------------------------------------------------------------------------
-# Aktueller Nutzer (Simulation per Cookie, bis ein echtes Login existiert)
+# Aktueller Nutzer: signierter Identitaets-Cookie (bis ein echtes Login existiert)
 # ---------------------------------------------------------------------------
+
+
+def _load_secret() -> bytes:
+    """Secret fuer die Cookie-Signatur aus MPB_SECRET. Fehlt es, gilt ein
+    zufaelliges Secret bis zum Neustart (Sessions ueberleben den Neustart nicht)."""
+    env = os.environ.get("MPB_SECRET", "").strip()
+    if env:
+        return env.encode("utf-8")
+    log.warning("MPB_SECRET nicht gesetzt, Sessions gelten nur bis zum Neustart")
+    return secrets.token_hex(32).encode("utf-8")
+
+
+_SECRET = _load_secret()
+
+
+def _signature(uid: str) -> str:
+    return hmac.new(_SECRET, uid.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def sign_user(uid: str) -> str:
+    """Cookie-Wert `<uid>.<hex-signatur>` (HMAC-SHA256 ueber die Nutzer-ID)."""
+    return f"{uid}.{_signature(uid)}"
+
+
+def verify_user(value: str | None) -> str | None:
+    """Nutzer-ID aus einem Cookie-Wert; None bei fehlender, unsignierter oder
+    manipulierter Signatur. Vergleich in konstanter Zeit."""
+    if not value or "." not in value:
+        return None
+    uid, sig = value.rsplit(".", 1)
+    if not ID_RE.match(uid):
+        return None
+    if not hmac.compare_digest(_signature(uid), sig):
+        return None
+    return uid
 
 
 def current_user(request: Request) -> str:
-    raw = request.cookies.get(COOKIE_NAME)
-    return get_user(raw)["id"]
+    """Nutzer aus dem signierten Cookie; ungueltig oder unsigniert -> Gast."""
+    return get_user(verify_user(request.cookies.get(COOKIE_NAME)))["id"]
+
+
+# ---------------------------------------------------------------------------
+# Rechte-Datei schreiben (Admin, Stufe 2) + Protokoll
+# ---------------------------------------------------------------------------
+
+
+def _yaml_str(value: str) -> str:
+    # JSON-Doppelquotes sind gueltiges YAML, inkl. Umlaute.
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _yaml_list(values: list[str]) -> str:
+    return "[" + ", ".join(str(v) for v in values) + "]"
+
+
+_KEY_LINE_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*:.*?(#.*)$")
+
+
+def _existing_layout(path: Path) -> tuple[list[str], dict[str, str]]:
+    """Kopfkommentar und Zeilenkommentare der bestehenden Datei.
+
+    Zeilenkommentare werden per Abschnitt+Schluessel gemerkt ("domaenen/finance"),
+    damit die Zuordnung Ablageort -> Domaene (Paket 7) beim Speichern erhalten bleibt.
+    """
+    header: list[str] = []
+    comments: dict[str, str] = {}
+    if not path.exists():
+        return header, comments
+    section = ""
+    in_header = True
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if in_header:
+            if line.startswith("#") or not line.strip():
+                header.append(line)
+                continue
+            in_header = False
+        m = _KEY_LINE_RE.match(line)
+        if line and not line[0].isspace():
+            section = line.split(":", 1)[0].strip()
+            if m:
+                comments[section] = m.group(2)
+            continue
+        if m and section:
+            comments[f"{section}/{m.group(1)}"] = m.group(2)
+    while header and not header[-1].strip():
+        header.pop()
+    return header, comments
+
+
+def render_permissions(data: dict[str, Any], header: list[str], comments: dict[str, str]) -> str:
+    def with_comment(text: str, key: str, width: int) -> str:
+        c = comments.get(key)
+        if not c:
+            return text
+        return f"{text:<{width}} {c}"
+
+    lines = list(header) + ([""] if header else [])
+    lines.append(with_comment(f"gruppen: {_yaml_list(data.get('gruppen') or [])}", "gruppen", 0))
+    lines.append("")
+    lines.append(with_comment("nutzer:", "nutzer", 0))
+    users = data.get("nutzer") or {}
+    for uid, u in users.items():
+        u = u or {}
+        key = f"{uid}:"
+        text = (
+            f"  {key:<16} {{name: {_yaml_str(u.get('name', uid))},"
+            f" gruppen: {_yaml_list(list(u.get('gruppen') or []))}}}"
+        )
+        lines.append(with_comment(text, f"nutzer/{uid}", 60))
+    lines.append("")
+    lines.append(with_comment("domaenen:", "domaenen", 20))
+    for dom, spec in (data.get("domaenen") or {}).items():
+        spec = spec or {}
+        key = f"{dom}:"
+        text = f"  {key:<10} {{lesen: {_yaml_list(list(spec.get('lesen') or []))}}}"
+        lines.append(with_comment(text, f"domaenen/{dom}", 42))
+    return "\n".join(lines) + "\n"
+
+
+def save_permissions(data: dict[str, Any], changed_by: str, change_note: str) -> None:
+    """Schreibt permissions.yaml (Kopfkommentar und Reihenfolge bleiben) und
+    haengt eine Protokollzeile an permissions-changelog.md. Cache wird geleert,
+    die Aenderung gilt sofort (kein Neustart)."""
+    path = permissions_path()
+    header, comments = _existing_layout(path)
+    text = render_permissions(data, header, comments)
+    # Sicherheitsnetz: was wir schreiben, muss sich wieder lesen lassen.
+    parsed = yaml.safe_load(text) or {}
+    for key in ("gruppen", "nutzer", "domaenen"):
+        if parsed.get(key) != data.get(key):
+            raise ValueError(f"permissions.yaml: Abschnitt {key} liesse sich nicht identisch zurücklesen")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    clear_cache()
+    append_changelog(changed_by, change_note)
+
+
+def append_changelog(changed_by: str, change_note: str) -> None:
+    path = changelog_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(
+            "# Protokoll Rechteänderungen\n\n"
+            "Jede Änderung an permissions.yaml über das Admin-Dashboard. "
+            "Format: `- Zeit · Admin · Änderung (vorher → nachher)`.\n\n",
+            encoding="utf-8",
+        )
+    stamp = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    note = " ".join(change_note.split())
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(f"- {stamp} · {changed_by} · {note}\n")
+
+
+def read_changelog(n: int = 20) -> list[str]:
+    """Die letzten n Protokollzeilen, neueste zuerst."""
+    path = changelog_path()
+    if not path.exists():
+        return []
+    entries = [
+        line[2:].strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.startswith("- ")
+    ]
+    return list(reversed(entries[-n:]))

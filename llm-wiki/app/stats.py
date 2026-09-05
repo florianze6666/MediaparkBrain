@@ -110,6 +110,19 @@ def get_dashboard_stats(user: str, limit: int = 10) -> DashboardStats:
     )
 
 
+def _submitted_by_for(p: proposals.Proposal) -> str:
+    """`submitted_by`, mit Git-Commit-Autor als Fallback.
+
+    Altbestand (Marcs PLAN.md-Format) hat kein eingereicht_von-Feld im Kopf -
+    submitted_by bleibt dann "unbekannt". Zeigt stattdessen den Autor des
+    Commits, der die Antragsdatei angelegt hat (wie beim Dateien-Dashboard).
+    """
+    if p.submitted_by and p.submitted_by != access.UNKNOWN_CREATOR:
+        return p.submitted_by
+    commits = _git_log(p.path.parent, p.path.name)
+    return commits[0][0] if commits else p.submitted_by
+
+
 def get_proposal_stats(user: str) -> list[ProposalActivity]:
     """Projektantraege aus Sicht von `user`, neuester zuerst.
 
@@ -122,7 +135,7 @@ def get_proposal_stats(user: str) -> list[ProposalActivity]:
             title=p.project_name,
             slug=p.slug,
             document_count=len(p.files),
-            submitted_by=p.submitted_by,
+            submitted_by=_submitted_by_for(p),
             submitted_at=p.submitted_at,
             status=p.status,
             domaene=p.meta.domaene,

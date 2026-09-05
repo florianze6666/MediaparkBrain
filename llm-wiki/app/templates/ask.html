@@ -7,6 +7,7 @@
       angezeigt (reine Volltextsuche, keine LLM-Antwort). Key in <code>llm-wiki/.env</code> eintragen,
       um echte, kontextbasierte Antworten zu erhalten.</p>
   {% endif %}
+  <p class="page-meta"><span>Suche als: <strong>{{ user_name }}</strong> — nur Seiten, die du lesen darfst, werden durchsucht.</span></p>
   <form method="post" action="/ask" class="ask-form">
     <input type="text" name="question" placeholder="z.B. Welche Agenten bewerten ein Projekt?" value="{{ question }}" required autofocus>
     <button type="submit" class="btn">Fragen</button>

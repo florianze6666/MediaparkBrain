@@ -4,14 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar">
       <div class="brand"><a href="/">MediaparkBrain<br>LLM-Wiki</a></div>
+      <div class="user-select">
+        <div class="user-select-label">Angemeldet als: <strong>{{ user_name }}</strong></div>
+        <form method="post" action="/login">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <select name="user" onchange="this.form.submit()" aria-label="Als Nutzer arbeiten">
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if u.id == user %}selected{% endif %}>{{ u.name }}</option>
+            {% endfor %}
+          </select>
+          <noscript><button type="submit" class="btn">Wechseln</button></noscript>
+        </form>
+      </div>
       <nav class="actions">
         <a href="/new" class="btn">+ Neue Seite</a>
+        <a href="/proposals/new" class="btn btn-proposal">+ Projektvorschlag einreichen</a>
         <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
         <a href="/dashboard" class="btn btn-dashboard">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -2,9 +2,42 @@
 {% block title %}{{ "Bearbeiten" if page else "Neue Seite" }}{% endblock %}
 {% block content %}
   <h1>{{ "Seite bearbeiten" if page else "Neue Seite" }}</h1>
+  {% if page %}
+    <div class="page-meta">
+      {% if page.meta.erstellt_von == "unbekannt" %}
+        <span>Herkunft unbekannt (Altbestand) — wird beim Speichern als von dir geändert markiert</span>
+      {% else %}
+        <span>Angelegt von <strong>{{ page.meta.erstellt_von | user_name }}</strong>{% if page.meta.erstellt_am %} am {{ page.meta.erstellt_am | ts }}{% endif %}</span>
+      {% endif %}
+      <span>Bearbeitet als <strong>{{ user_name }}</strong></span>
+    </div>
+  {% else %}
+    <div class="page-meta"><span>Wird angelegt als <strong>{{ user_name }}</strong></span></div>
+  {% endif %}
+  {% set meta = page.meta if page else none %}
   <form method="post" action="{% if page %}/wiki/{{ slug }}/edit{% else %}/new{% endif %}" class="edit-form">
     <label>Titel
       <input type="text" name="title" value="{{ page.title if page else '' }}" required>
+    </label>
+    <div class="form-row">
+      <label>Vertraulichkeit
+        <select name="vertraulichkeit">
+          {% for v, label in [("oeffentlich", "öffentlich"), ("intern", "intern"), ("vertraulich", "vertraulich")] %}
+          <option value="{{ v }}" {% if (meta.vertraulichkeit if meta else "intern") == v %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Domäne
+        <select name="domaene">
+          {% for d in domains %}
+          <option value="{{ d }}" {% if (meta.domaene if meta else "allgemein") == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label>Empfänger
+      <input type="text" name="empfaenger" value="{{ meta.empfaenger | join(', ') if meta else '' }}" placeholder="z.B. pmo-leitung, finance">
+      <span class="field-hint">nur bei vertraulich, Nutzer oder Gruppen, komma-getrennt</span>
     </label>
     <label>Inhalt (Markdown)
       <textarea name="content" rows="18" required>{{ page.content if page else '' }}</textarea>

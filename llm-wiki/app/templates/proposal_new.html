@@ -7,6 +7,7 @@
     Case / Charter als Datei). Ein Projektname darf nur einmal eingereicht werden -
     wurde er bereits eingereicht, wird die Einreichung abgelehnt.
   </p>
+  <div class="page-meta"><span>Wird eingereicht von <strong>{{ user_name }}</strong> ({{ user }}) — Nutzer und Rolle werden automatisch gespeichert.</span></div>
 
   {% if error %}
     <p class="hint error">{{ error }}</p>
@@ -16,11 +17,31 @@
     <label>Projektname
       <input type="text" name="project_name" value="{{ project_name or '' }}" required>
     </label>
+    <div class="form-row">
+      <label>Vertraulichkeit
+        <select name="vertraulichkeit">
+          {% for v, label in [("oeffentlich", "öffentlich"), ("intern", "intern"), ("vertraulich", "vertraulich")] %}
+          <option value="{{ v }}" {% if vertraulichkeit == v %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Domäne
+        <select name="domaene">
+          {% for d in domains %}
+          <option value="{{ d }}" {% if domaene == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label>Empfänger
+      <input type="text" name="empfaenger" value="{{ empfaenger or '' }}" placeholder="z.B. pmo-leitung, finance">
+      <span class="field-hint">nur bei vertraulich, Nutzer oder Gruppen, komma-getrennt</span>
+    </label>
     <label>Beschreibung
       <textarea name="description" rows="10" required>{{ description or '' }}</textarea>
     </label>
-    <label>Dateien (Project Charter, Business Case, ...)
-      <input type="file" name="files" multiple>
+    <label>Dateien (Project Charter, Business Case, ... als Markdown)
+      <input type="file" name="files" accept=".md" multiple>
     </label>
     <div class="form-actions">
       <button type="submit" class="btn">Einreichen</button>

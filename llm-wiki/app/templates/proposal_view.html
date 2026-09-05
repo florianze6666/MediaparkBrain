@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}{{ proposal.project_name }}{% endblock %}
 {% block content %}
+  {% with meta=proposal.meta, rolle=proposal.rolle, kompakt=false %}{% include "_herkunft.html" %}{% endwith %}
   <div class="page-header">
     <h1>{{ proposal.project_name }}</h1>
     <div class="page-actions">
@@ -9,7 +10,7 @@
       </form>
     </div>
   </div>
-  <p class="hint">Eingereicht am {{ proposal.submitted_at }}</p>
+  {% if proposal.submitted_at %}<p class="hint">Eingereicht am {{ proposal.submitted_at }}</p>{% endif %}
 
   <h2>Beschreibung</h2>
   <article class="markdown-body">{{ description_html | safe }}</article>

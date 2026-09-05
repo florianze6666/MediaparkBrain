@@ -4,7 +4,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
-  <link rel="stylesheet" href="/static/style.css?v=3">
+  <link rel="stylesheet" href="/static/style.css?v=5">
+  <script>
+    // Wird gerufen, sobald dem Nutzer neue Informationen bereitgestellt werden
+    // (frische LLM-Antwort) - spricht "Yeah, Yeah!" laut aus.
+    // Muss im <head> stehen, damit Aufrufe weiter unten im Content-Block
+    // (der vor diesem Script-Tag im body gerendert wuerde) die Funktion
+    // bereits definiert vorfinden.
+    function yeahYeah() {
+      try {
+        const u = new SpeechSynthesisUtterance("Yeah, Yeah!");
+        u.lang = "de-DE";
+        u.pitch = 1.15;
+        u.rate = 1.05;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        // Web Speech API nicht verfuegbar - stumm weitermachen
+      }
+    }
+
+    // Klatsch-Sound beim Speichern einer Seite - rein per Web Audio API
+    // synthetisiert (kein Audio-Asset noetig): mehrere kurze gefilterte
+    // Rauschstoesse, die wie Haendeklatschen klingen.
+    function clapHands() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const clapTimes = [0, 0.09, 0.16];
+        clapTimes.forEach((delay) => {
+          const duration = 0.08;
+          const bufferSize = ctx.sampleRate * duration;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+          }
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const bandpass = ctx.createBiquadFilter();
+          bandpass.type = "bandpass";
+          bandpass.frequency.value = 1200;
+          bandpass.Q.value = 0.7;
+
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.9, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+
+          noise.connect(bandpass).connect(gain).connect(ctx.destination);
+          noise.start(ctx.currentTime + delay);
+          noise.stop(ctx.currentTime + delay + duration);
+        });
+      } catch (e) {
+        // Web Audio API nicht verfuegbar - stumm weitermachen
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="layout">
@@ -23,7 +78,14 @@
         </form>
       </div>
       <nav class="actions">
-        <a href="/new" class="btn">+ Neue Seite</a>
+        <a href="/new" class="btn" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Wissen hochladen
+        </a>
         <a href="/proposals/new" class="btn btn-proposal">+ Projektvorschlag einreichen</a>
         <a href="/dashboard/projektantraege" class="btn btn-dashboard">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -34,6 +96,7 @@
           </svg>
           Projektanträge eingereicht
         </a>
+        <a href="/proposals/evaluate" class="btn btn-evaluate">Projektbewertung</a>
         <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
         <a href="/dashboard" class="btn btn-dashboard">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -44,16 +107,26 @@
           </svg>
           Dashboards
         </a>
+        <a href="/proposals" class="btn btn-list">Projektvorschläge</a>
+        {% if is_admin %}
+        <a href="/admin" class="btn btn-admin">Admin</a>
+        {% endif %}
       </nav>
-      <ul class="page-list">
-        {% for p in pages %}
-        <li class="{% if page and page.slug == p.slug %}active{% endif %}">
-          <a href="/wiki/{{ p.slug }}">{{ p.title }}</a>
-        </li>
-        {% else %}
-        <li class="empty">Noch keine Seiten</li>
+      {# Seitenliste nach Domaene gruppiert (Stufe 2) - nur Seiten, die der Nutzer sehen darf #}
+      {% if pages %}
+        {% for dom, group in pages | groupby("meta.domaene") %}
+        <div class="page-group-title">{{ dom }}</div>
+        <ul class="page-list">
+          {% for p in group %}
+          <li class="{% if page and page.slug == p.slug %}active{% endif %}">
+            <a href="/wiki/{{ p.slug }}">{{ p.title }}</a>
+          </li>
+          {% endfor %}
+        </ul>
         {% endfor %}
-      </ul>
+      {% else %}
+        <ul class="page-list"><li class="empty">Noch keine Seiten</li></ul>
+      {% endif %}
     </aside>
     <main class="content">
       {% block content %}{% endblock %}

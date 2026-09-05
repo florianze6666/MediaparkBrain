@@ -1,11 +1,12 @@
 :root {
-  --bg: #0f1115;
-  --panel: #161923;
-  --border: #262b38;
-  --text: #e4e7ef;
-  --muted: #9aa2b5;
-  --accent: #6ea8fe;
-  --accent-strong: #4c8dff;
+  --bg: #1c1a1c;
+  --panel: #2a262a;
+  --border: #4f4f4f;
+  --text: #f5eef1;
+  --muted: #b09aac;
+  --accent: #f59342;
+  --accent-strong: #c6146d;
+  --accent-purple: #7c4c79;
 }
 
 * { box-sizing: border-box; }
@@ -15,6 +16,18 @@ body {
   font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Basis-Linkfarbe, damit kein Element (z.B. Quellen- oder Markdown-Links)
+   auf das Browser-Standardblau zurueckfaellt. Spezifischere Regeln weiter
+   unten (Sidebar, Buttons, ...) ueberschreiben das gezielt. */
+a { color: var(--accent); }
+
+::selection { background: var(--accent-strong); color: white; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .layout { display: flex; min-height: 100vh; }
@@ -67,10 +80,31 @@ body {
   cursor: pointer;
 }
 
-.btn-ask { background: #2f9e6e; }
-.btn-proposal { background: #a8722f; }
+.btn-ask { background: var(--accent-purple); }
+.btn-proposal { background: var(--accent); color: #3a1d06; }
+.btn-evaluate {
+  background: transparent;
+  border: 2px solid var(--accent-strong);
+  color: var(--accent-strong);
+  padding: 6px 12px;
+}
+.btn-evaluate:hover { background: var(--accent-strong); color: white; }
+.btn-upload, .btn-magenta {
+  background: #e5007d;
+  color: #ffffff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.btn-upload:hover, .btn-magenta:hover {
+  background: #c6146d;
+}
 
 .hint-inline { color: var(--muted); font-size: 12px; margin-left: 10px; }
+
 .hint.error { border-color: #c0392b; color: #ff9d90; }
 .proposal-list li { display: flex; align-items: baseline; padding: 6px 8px; }
 .proposal-list a { color: var(--text); text-decoration: none; }
@@ -86,7 +120,7 @@ body {
   gap: 6px;
   font-weight: 600;
 }
-.btn-dashboard:hover { background: #3ddb3d; }
+.btn-dashboard:hover { background: var(--accent-purple); color: white; }
 .btn-icon { flex-shrink: 0; }
 
 .page-list { list-style: none; padding: 0; margin: 0; }
@@ -196,6 +230,15 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 
 .hint { color: var(--muted); font-size: 13px; background: var(--panel); border: 1px solid var(--border); padding: 10px 12px; border-radius: 6px; }
 
+.fresh-badge {
+  display: inline-block;
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
 /* --- Ladeanzeige "Frag das Wiki" (Vollbild-Overlay) --- */
 .ask-loading {
   display: none;
@@ -275,6 +318,62 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .badge-new { background: rgba(50, 205, 50, 0.18); color: #6fe06f; }
 .badge-update { background: rgba(110, 168, 254, 0.18); color: var(--accent); }
 
+/* --- Projektbewertung: gaengiges Ampel-Colour-Coding (Rot/Gelb/Gruen) fuer
+   Risk-/Portfolio-Reports. Bewusst die etablierten RAG-Statusfarben statt der
+   Marken-Palette, da dies eine feststehende Konvention im Risikomanagement ist -
+   gruen/rot decken sich mit den bereits vorhandenen Klassifikations-Badges
+   (badge-oeffentlich/badge-vertraulich) weiter oben. */
+.risk-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 24px; font-size: 13px; color: var(--muted); }
+.risk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.risk-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+.risk-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.risk-green  { background: rgba(47, 158, 110, 0.18);  color: #7fd4a8; border-color: #2f9e6e; }
+.risk-amber  { background: rgba(240, 173, 78, 0.18);  color: #f5c987; border-color: #f0ad4e; }
+.risk-red    { background: rgba(217, 83, 79, 0.18);   color: #f19a97; border-color: #d9534f; }
+.risk-neutral{ background: var(--panel); color: var(--muted); border-color: var(--border); }
+
+.eval-project {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+.eval-project-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.eval-project-header h2 { margin: 0; font-size: 20px; }
+.eval-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start; /* Karten wachsen nur mit ihrem eigenen Inhalt, statt sich
+                          auf die Hoehe der laengsten Nachbarkarte in der Zeile
+                          zu strecken (sonst grosse Leerflaechen bei kurzen
+                          Begruendungen neben langen Fehlende-Informationen-Listen) */
+  gap: 14px;
+  margin-top: 16px;
+}
+.eval-role { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-wrap: break-word; }
+.eval-role-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.eval-role-name { font-weight: 600; font-size: 13px; line-height: 1.4; flex: 1 1 auto; min-width: 0; }
+.eval-role .risk-badge { flex-shrink: 0; white-space: nowrap; }
+.eval-role p { margin: 0 0 8px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.eval-role ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.eval-role li { margin-bottom: 4px; }
+
 @media (prefers-reduced-motion: reduce) {
   .ask-spinner { animation: none; border-top-color: var(--border); }
   .ask-spinner::after {
@@ -287,3 +386,73 @@ h1 { font-size: 26px; margin-bottom: 8px; }
   }
   .is-stale { transition: none; }
 }
+
+/* --- Herkunftsbox (Stufe 2, US-10): Herkunft ist Hauptinformation --- */
+.herkunft {
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 0 0 20px;
+}
+.herkunft-haupt { font-size: 18px; line-height: 1.4; color: var(--text); }
+.herkunft-haupt strong { color: var(--accent); font-weight: 700; }
+.herkunft-id { color: var(--muted); font-size: 14px; }
+.herkunft-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.herkunft-details strong { color: var(--text); font-weight: 600; }
+.herkunft-kompakt { padding: 8px 12px; margin: 6px 0 0; border-width: 1px; }
+.herkunft-kompakt .herkunft-haupt { font-size: 14px; }
+.herkunft-kompakt .herkunft-details { font-size: 12px; margin-top: 4px; }
+
+.proposal-cards { list-style: none; padding: 0; margin: 12px 0; }
+.proposal-card { padding: 10px 0 14px; border-bottom: 1px solid var(--border); }
+.proposal-title { color: var(--text); font-size: 17px; font-weight: 600; text-decoration: none; }
+.proposal-title:hover { text-decoration: underline; }
+
+/* --- Sidebar: Seiten nach Domaene gruppiert --- */
+.page-group-title {
+  margin: 14px 0 4px;
+  padding: 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.btn-list { background: var(--border); color: var(--text); }
+.btn-admin { background: var(--accent); color: #1c1a1c; font-weight: 600; }
+
+/* --- Admin-Dashboard --- */
+.admin-table td, .admin-table th { vertical-align: middle; }
+.admin-group-col { text-align: center !important; font-size: 12px; padding: 6px 4px !important; }
+.admin-input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 140px;
+}
+.admin-actions { white-space: nowrap; }
+.btn-small { padding: 5px 10px; font-size: 13px; }
+.link-btn.danger { color: #f19a97; background: none; border: none; cursor: pointer; font-size: 13px; margin-left: 8px; }
+.admin-inline-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 8px 0 24px; }
+.admin-inline-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.admin-checks { display: flex; flex-wrap: wrap; gap: 6px 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin: 0; }
+.admin-checks legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.admin-check { flex-direction: row !important; align-items: center; gap: 4px !important; color: var(--text) !important; }
+.admin-groups .badge { margin-right: 4px; }
+.admin-log { list-style: none; padding: 0; font-size: 13px; font-family: "SFMono-Regular", Consolas, monospace; }
+.admin-log li { padding: 5px 0; border-bottom: 1px solid var(--border); color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: 11px; }
+.hint.ok { border-color: #2f9e6e; color: #7fd4a8; }

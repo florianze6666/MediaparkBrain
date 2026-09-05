@@ -1,14 +1,41 @@
+"""Projektvorschlaege in project_proposals/<slug>.md.
+
+Stufe 2 (docs/berechtigungen-stufe-2-admin-und-ablage.md): Jeder Vorschlag traegt
+einen YAML-Kopf mit eingereicht_von, rolle (Snapshot des Anzeigenamens),
+eingereicht_am, vertraulichkeit, domaene, empfaenger. Rechte laufen ueber
+denselben Weg wie bei Wiki-Seiten: access.can_read(user, meta) - Ordner-Schranke
+(readable_domains) plus decide; das Label oeffentlich oeffnet keine fremde Domaene.
+Altbestand ohne (oder mit fremdem) Kopf: eingereicht_von unbekannt, projekt, intern.
+"""
 from __future__ import annotations
 
+import hashlib
+import os
 import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
-from .wiki import slugify
+import yaml
 
+from . import access
+from .access import PageMeta, UNKNOWN_CREATOR
+from .wiki import slugify, is_valid_slug, split_frontmatter_raw, FRONTMATTER_DELIM
+
+# Standardablage; per Env MPB_PROPOSALS_DIR ueberschreibbar (Tests).
 PROPOSALS_DIR = Path(__file__).resolve().parent.parent.parent / "project_proposals"
-UPLOADS_DIR = PROPOSALS_DIR / "uploads"
+DEFAULT_DOMAIN = "projekt"
+SOURCE = "proposal"
+
+
+def proposals_dir() -> Path:
+    env = os.environ.get("MPB_PROPOSALS_DIR")
+    return Path(env) if env else PROPOSALS_DIR
+
+
+def uploads_dir() -> Path:
+    return proposals_dir() / "uploads"
 
 
 DEFAULT_STATUS = "Eingereicht"
@@ -23,19 +50,74 @@ class Proposal:
     submitted_by: str = "unbekannt"
     status: str = DEFAULT_STATUS
     files: list[str] = field(default_factory=list)
+    meta: PageMeta = field(default_factory=lambda: _default_meta())
+    rolle: str = UNKNOWN_CREATOR
 
     @property
     def path(self) -> Path:
-        return PROPOSALS_DIR / f"{self.slug}.md"
+        return proposals_dir() / f"{self.slug}.md"
 
     @property
     def upload_dir(self) -> Path:
-        return UPLOADS_DIR / self.slug
+        return uploads_dir() / self.slug
+
+
+def _default_meta() -> PageMeta:
+    return PageMeta(erstellt_von=UNKNOWN_CREATOR, vertraulichkeit="intern",
+                    domaene=DEFAULT_DOMAIN, quelle=SOURCE)
+
+
+def _meta_from_head(head: dict[str, Any] | None) -> tuple[PageMeta, str]:
+    """Kopf -> (PageMeta, rolle). Fremde Koepfe (Altbestand von Marc) haben keine
+    unserer Felder und landen bei den Defaults."""
+    meta = _default_meta()
+    rolle = UNKNOWN_CREATOR
+    if not head:
+        return meta, rolle
+    mapped = PageMeta.from_dict({
+        "erstellt_von": head.get("eingereicht_von"),
+        "erstellt_am": head.get("eingereicht_am"),
+        "vertraulichkeit": head.get("vertraulichkeit"),
+        "domaene": head.get("domaene"),
+        "empfaenger": head.get("empfaenger"),
+    })
+    if head.get("eingereicht_von"):
+        meta.erstellt_von = mapped.erstellt_von
+        meta.erstellt_am = mapped.erstellt_am
+        meta.vertraulichkeit = mapped.vertraulichkeit
+        meta.domaene = mapped.domaene or DEFAULT_DOMAIN
+        meta.empfaenger = mapped.empfaenger
+        rolle = str(head.get("rolle") or "").strip() or access.user_name(meta.erstellt_von)
+    return meta, rolle
+
+
+def _render_head(meta: PageMeta, rolle: str) -> str:
+    body = yaml.safe_dump(
+        {
+            "eingereicht_von": meta.erstellt_von,
+            "rolle": rolle,
+            "eingereicht_am": meta.erstellt_am,
+            "vertraulichkeit": meta.vertraulichkeit,
+            "domaene": meta.domaene,
+            "empfaenger": list(meta.empfaenger),
+        },
+        sort_keys=False, allow_unicode=True, default_flow_style=False,
+    ).rstrip("\n")
+    return f"{FRONTMATTER_DELIM}\n{body}\n{FRONTMATTER_DELIM}\n"
 
 
 def _parse(raw: str, slug: str) -> Proposal:
-    lines = raw.splitlines()
-    project_name = lines[0][2:].strip() if lines and lines[0].startswith("# ") else slug
+    head, body = split_frontmatter_raw(raw)
+    meta, rolle = _meta_from_head(head)
+    lines = body.splitlines()
+    if head and head.get("project_name"):
+        # Altbestand mit fremdem Kopf (Marcs Format): dort steht der echte Name,
+        # die Ueberschrift lautet generisch "Projektvorschlag".
+        project_name = str(head["project_name"])
+    elif lines and lines[0].startswith("# "):
+        project_name = lines[0][2:].strip()
+    else:
+        project_name = slug
     submitted_at = ""
     submitted_by = "unbekannt"
     status = DEFAULT_STATUS
@@ -65,42 +147,101 @@ def _parse(raw: str, slug: str) -> Proposal:
         submitted_by=submitted_by,
         status=status,
         files=files,
+        meta=meta,
+        rolle=rolle,
     )
 
 
-def list_proposals() -> list[Proposal]:
-    PROPOSALS_DIR.mkdir(parents=True, exist_ok=True)
-    proposals = [
-        _parse(f.read_text(encoding="utf-8"), f.stem)
-        for f in sorted(PROPOSALS_DIR.glob("*.md"))
-    ]
+def list_proposals(user: str | None = None) -> list[Proposal]:
+    """Alle Vorschlaege; mit `user` nur die, die `decide` erlaubt (US-12).
+    Ohne Argument ungefiltert (Rohzugriff)."""
+    d = proposals_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    proposals = []
+    for f in sorted(d.glob("*.md")):
+        p = _parse(f.read_text(encoding="utf-8"), f.stem)
+        if user is not None and not access.can_read(user, p.meta):
+            continue
+        proposals.append(p)
     return sorted(proposals, key=lambda p: p.submitted_at, reverse=True)
 
 
 def get_proposal(slug: str) -> Proposal | None:
-    f = PROPOSALS_DIR / f"{slug}.md"
+    """Ungefilterter Rohzugriff. Fuer Nutzer-Sicht `get_proposal_for` verwenden."""
+    if not is_valid_slug(slug):
+        return None  # kein Pfad aus fremden Zeichen (../ etc.) bauen
+    f = proposals_dir() / f"{slug}.md"
     if not f.exists():
         return None
     return _parse(f.read_text(encoding="utf-8"), slug)
 
 
+def get_proposal_for(slug: str, user: str) -> Proposal | None:
+    """Vorschlag aus Sicht eines Nutzers: None, wenn er fehlt ODER verboten ist."""
+    p = get_proposal(slug)
+    if p is None or not access.can_read(user, p.meta):
+        return None
+    return p
+
+
 def already_submitted(project_name: str) -> bool:
     """Prueft, ob unter diesem Projektnamen bereits ein Vorschlag eingereicht wurde."""
-    return (PROPOSALS_DIR / f"{slugify(project_name)}.md").exists()
+    return (proposals_dir() / f"{slugify(project_name)}.md").exists()
+
+
+def file_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def find_duplicate_file(uploaded_files: list[tuple[str, bytes]]) -> Proposal | None:
+    """Prueft anhand des Datei-Hashes, ob eine der hochgeladenen Projektdateien
+    inhaltsgleich zu einer bereits eingereichten Projektdatei ist - auch wenn
+    der Projektname diesmal ein anderer ist (z.B. erneute Einreichung desselben
+    Business Case unter neuem Titel)."""
+    if not uploaded_files or not uploads_dir().exists():
+        return None
+
+    new_hashes = {file_hash(data) for _, data in uploaded_files if data}
+    if not new_hashes:
+        return None
+
+    for proposal in list_proposals():
+        if not proposal.upload_dir.exists():
+            continue
+        for existing_file in proposal.upload_dir.iterdir():
+            if not existing_file.is_file():
+                continue
+            if file_hash(existing_file.read_bytes()) in new_hashes:
+                return proposal
+    return None
 
 
 def save_proposal(
     project_name: str,
     description: str,
     uploaded_files: list[tuple[str, bytes]],
-    submitted_by: str = "unbekannt",
+    meta: PageMeta | None = None,
+    rolle: str = "",
 ) -> Proposal:
     """Speichert einen neuen Projektvorschlag. Ruft VOR dem Aufruf already_submitted()
-    auf, um Duplikate abzulehnen - diese Funktion selbst prueft das nicht erneut."""
+    auf, um Duplikate abzulehnen - diese Funktion selbst prueft das nicht erneut.
+
+    `meta.erstellt_von` ist der Einreicher (US-11) und zugleich die einzige
+    Quelle fuer `submitted_by` (Paket 6, Projektantraege-Dashboard) - kein
+    zweites, separat uebergebenes Feld dafuer. `rolle` ist sein Anzeigename
+    zum Zeitpunkt der Einreichung (Snapshot); fehlt sie, wird sie nachgeschlagen.
+    """
     slug = slugify(project_name)
     submitted_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    meta = meta or _default_meta()
+    meta.quelle = SOURCE
+    meta.domaene = meta.domaene or DEFAULT_DOMAIN
+    if not meta.erstellt_am:
+        meta.erstellt_am = datetime.now().replace(microsecond=0).isoformat()
+    rolle = rolle or access.user_name(meta.erstellt_von)
+    submitted_by = meta.erstellt_von
 
-    PROPOSALS_DIR.mkdir(parents=True, exist_ok=True)
+    proposals_dir().mkdir(parents=True, exist_ok=True)
     proposal = Proposal(
         slug=slug,
         project_name=project_name,
@@ -108,6 +249,8 @@ def save_proposal(
         submitted_at=submitted_at,
         submitted_by=submitted_by,
         files=[name for name, _ in uploaded_files if name],
+        meta=meta,
+        rolle=rolle,
     )
 
     if proposal.files:
@@ -124,6 +267,7 @@ def save_proposal(
         else "*(keine Dateien hochgeladen)*"
     )
     proposal.path.write_text(
+        f"{_render_head(meta, rolle)}"
         f"# {project_name}\n\n"
         f"Eingereicht am: {submitted_at}\n"
         f"Eingereicht von: {submitted_by}\n"
@@ -136,9 +280,9 @@ def save_proposal(
 
 
 def delete_proposal(slug: str) -> None:
-    f = PROPOSALS_DIR / f"{slug}.md"
+    f = proposals_dir() / f"{slug}.md"
     if f.exists():
         f.unlink()
-    upload_dir = UPLOADS_DIR / slug
+    upload_dir = uploads_dir() / slug
     if upload_dir.exists():
         shutil.rmtree(upload_dir)

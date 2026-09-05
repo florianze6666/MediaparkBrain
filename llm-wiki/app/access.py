@@ -57,6 +57,17 @@ class PageMeta:
     empfaenger: list[str] = field(default_factory=list)
     ablageort: str = ""
     quelle: str = "wiki"
+    doc_id: str = ""
+    titel: str = ""
+    dokumenttyp: str = ""
+    datum: str = ""
+    verfasser: str = ""
+    rolle: str = ""
+    organisationseinheit: str = ""
+    projekt: str = ""
+    geschaeftsbereich: str = ""
+    informationsdomaene: list[str] = field(default_factory=list)
+    original_datei: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PageMeta":
@@ -66,7 +77,7 @@ class PageMeta:
             if key not in data or data[key] is None:
                 continue
             value = data[key]
-            if key == "empfaenger":
+            if key in ("empfaenger", "informationsdomaene"):
                 if isinstance(value, str):
                     value = [v.strip() for v in value.split(",") if v.strip()]
                 else:
@@ -74,14 +85,16 @@ class PageMeta:
             else:
                 value = str(value)
             setattr(meta, key, value)
-        if meta.vertraulichkeit not in VERTRAULICHKEITEN:
-            meta.vertraulichkeit = "intern"
+        meta.vertraulichkeit, meta.empfaenger = normalize_confidentiality(
+            meta.vertraulichkeit, meta.empfaenger
+        )
         if not meta.erstellt_von:
             meta.erstellt_von = UNKNOWN_CREATOR
         return meta
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +158,52 @@ def list_domains() -> list[str]:
     return list(load_permissions()["domaenen"].keys())
 
 
+def normalize_confidentiality(
+    vertraulichkeit: str,
+    empfaenger: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Uebersetzt Korpus-Stufen (z.B. C-Level, Betriebsrat-intern) auf das
+    Rechtemodell (vertraulichkeit + empfaenger) gemaess permissions.yaml."""
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    empf = list(empfaenger or [])
+    if vertraulichkeit in stufen:
+        cfg = stufen[vertraulichkeit]
+        target_vert = cfg.get("vertraulichkeit", vertraulichkeit)
+        default_empf = cfg.get("empfaenger") or []
+        for e in default_empf:
+            if e not in empf:
+                empf.append(e)
+        return target_vert, empf
+    if vertraulichkeit not in VERTRAULICHKEITEN:
+        vertraulichkeit = "intern"
+    return vertraulichkeit, empf
+
+
+def list_confidentiality_levels() -> list[dict[str, Any]]:
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    if not stufen:
+        return [
+            {"id": "intern", "name": "Intern (Standard)"},
+            {"id": "C-Level", "name": "C-Level"},
+            {"id": "Betriebsrat-intern", "name": "Betriebsrat-intern"},
+            {"id": "oeffentlich", "name": "Öffentlich"},
+        ]
+    return [
+        {"id": k, "name": v.get("name", k), "beschreibung": v.get("beschreibung", "")}
+        for k, v in stufen.items()
+    ]
+
+
+def default_confidentiality_for_user(user_id: str | None) -> str:
+    user = get_user(user_id)
+    uid = user["id"]
+    stufen = load_permissions().get("vertraulichkeitsstufen") or {}
+    for k, v in stufen.items():
+        if uid in v.get("standard_fuer_rollen", []):
+            return k
+    return "intern"
+
+
 def get_user(user_id: str | None) -> dict[str, Any]:
     """Nutzer nach ID; unbekannte IDs (und None) werden zum Gast."""
     users = load_permissions()["nutzer"]
@@ -198,7 +257,7 @@ def is_admin(user_id: str | None) -> bool:
 
 
 def decide(user_id: str | None, meta: PageMeta) -> str:
-    """Genau die 5 Regeln aus dem Konzeptdokument. Unbekannte Domaene -> DENY."""
+    """Genau die Regeln aus dem Konzeptdokument."""
     # 1. oeffentlich -> ALLOW, auch fuer Gast
     if meta.vertraulichkeit == "oeffentlich":
         return ALLOW
@@ -228,6 +287,7 @@ def decide(user_id: str | None, meta: PageMeta) -> str:
 
     # 5. sonst ALLOW
     return ALLOW
+
 
 
 def is_allowed(user_id: str | None, meta: PageMeta) -> bool:

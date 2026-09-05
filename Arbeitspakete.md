@@ -19,7 +19,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | Nr | Paket | Verantwortlich | Zustand |
 |----|-------|----------------|---------|
 | 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ✅ Fertig |
-| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
+| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | 🟡 In Arbeit |
 | 3 | Funktionsbeschreibung des Systems | Florian | 🟡 In Arbeit |
 | 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | 🟡 In Arbeit |
 | 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | 🟡 In Arbeit |
@@ -57,7 +57,8 @@ Ablageort nutzt.
 
 ## 2. Datei-Upload und Überführung in die Wissensdatenbank — Ekkehardt
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit
+
 
 **Ziel:** Nutzer laden Dateien (PDF, DOCX, XLSX, MD, TXT) hoch, der Inhalt landet durchsuchbar im Wiki.
 

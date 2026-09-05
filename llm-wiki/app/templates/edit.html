@@ -1,7 +1,21 @@
 {% extends "layout.html" %}
-{% block title %}{{ "Bearbeiten" if page else "Neue Seite" }}{% endblock %}
+{% block title %}{{ "Bearbeiten" if page else "Wissen hochladen" }}{% endblock %}
 {% block content %}
-  <h1>{{ "Seite bearbeiten" if page else "Neue Seite" }}</h1>
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1 style="margin: 0;">{{ "Seite bearbeiten" if page else "Wissen hochladen" }}</h1>
+    <div>
+      <button type="button" class="btn btn-magenta" id="btn-doc-upload" onclick="document.getElementById('doc-upload-input').click()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px;">
+        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        Dokument hochladen ...
+      </button>
+      <input type="file" id="doc-upload-input" style="display: none;" accept=".pdf,.docx,.doc,.xlsx,.xls,.md,.txt" onchange="handleDocUpload(this)">
+    </div>
+  </div>
+
   {% if page %}
     <div class="page-meta">
       {% if page.meta.erstellt_von == "unbekannt" %}
@@ -23,20 +37,22 @@
   {% set meta = form.meta if form else none %}
   <form method="post" action="{% if page %}/wiki/{{ slug }}/edit{% else %}/new{% endif %}" class="edit-form">
     <label>Titel
-      <input type="text" name="title" value="{{ form.title if form else '' }}" required>
+      <input type="text" name="title" value="{{ form.title if form else '' }}" required placeholder="Titel des Dokuments / der Seite">
     </label>
     <div class="form-row">
       <label>Vertraulichkeit
         <select name="vertraulichkeit">
-          {% for v, label in [("oeffentlich", "öffentlich"), ("intern", "intern"), ("vertraulich", "vertraulich")] %}
-          <option value="{{ v }}" {% if (meta.vertraulichkeit if meta else "intern") == v %}selected{% endif %}>{{ label }}</option>
+          {% for level in confidentiality_levels %}
+          <option value="{{ level.id }}" {% if (meta.vertraulichkeit if meta else default_confidentiality) == level.id %}selected{% endif %}>
+            {{ level.name }}
+          </option>
           {% endfor %}
         </select>
       </label>
       <label>Domäne
         <select name="domaene">
           {% for d in domains %}
-          <option value="{{ d }}" {% if (meta.domaene if meta else "allgemein") == d %}selected{% endif %}>{{ d }}</option>
+          <option value="{{ d }}" {% if (meta.domaene if meta else 'allgemein') == d %}selected{% endif %}>{{ d }}</option>
           {% endfor %}
         </select>
         <span class="field-hint">Domänenwechsel verschiebt die Datei in den Ordner der Domäne</span>
@@ -47,11 +63,64 @@
       <span class="field-hint">nur bei vertraulich, Nutzer oder Gruppen, komma-getrennt</span>
     </label>
     <label>Inhalt (Markdown)
-      <textarea name="content" rows="18" required>{{ form.content if form else '' }}</textarea>
+      <textarea name="content" rows="18" required placeholder="Hier Text eingeben oder oben 'Dokument hochladen ...' klicken...">{{ form.content if form else '' }}</textarea>
     </label>
     <div class="form-actions">
       <button type="submit" class="btn">Speichern</button>
       <a href="{% if page %}/wiki/{{ page.slug }}{% else %}/{% endif %}">Abbrechen</a>
     </div>
   </form>
+
+  <script>
+    async function handleDocUpload(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const btn = document.getElementById('btn-doc-upload');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerText = "Extrahiere & analysiere...";
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/extract-document', {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          alert("Fehler beim Dokument-Upload: " + (errData.detail || "Unbekannter Fehler"));
+          return;
+        }
+        const data = await res.json();
+        if (data.title) {
+          const titleInput = document.querySelector('input[name="title"]');
+          if (titleInput) titleInput.value = data.title;
+        }
+        if (data.content) {
+          const contentArea = document.querySelector('textarea[name="content"]');
+          if (contentArea) contentArea.value = data.content;
+        }
+        if (data.vertraulichkeit) {
+          const vertSelect = document.querySelector('select[name="vertraulichkeit"]');
+          if (vertSelect) vertSelect.value = data.vertraulichkeit;
+        }
+        if (data.domaene) {
+          const domSelect = document.querySelector('select[name="domaene"]');
+          if (domSelect) domSelect.value = data.domaene;
+        }
+        if (data.empfaenger !== undefined) {
+          const empfInput = document.querySelector('input[name="empfaenger"]');
+          if (empfInput) empfInput.value = data.empfaenger;
+        }
+      } catch (err) {
+        alert("Netzwerkfehler beim Dokument-Upload: " + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        input.value = "";
+      }
+    }
+  </script>
 {% endblock %}

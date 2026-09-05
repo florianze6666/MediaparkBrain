@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterator
@@ -27,8 +28,10 @@ log = logging.getLogger(__name__)
 
 # Standard-Ablage der Seiten; per Env MPB_PAGES_DIR ueberschreibbar (Tests).
 PAGES_DIR = Path(__file__).resolve().parent.parent / "pages"
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 SLUG_RE = re.compile(r"[^a-z0-9-]+")          # was slugify entfernt
 VALID_SLUG_RE = re.compile(r"^[a-z0-9-]+$")    # was ein Slug sein darf (URL, Dateiname)
+
 WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß0-9]+")
 FRONTMATTER_DELIM = "---"
 VERTRAULICH_DIR = "vertraulich"
@@ -41,6 +44,38 @@ _warned_folders: set[str] = set()
 def pages_dir() -> Path:
     env = os.environ.get("MPB_PAGES_DIR")
     return Path(env) if env else PAGES_DIR
+
+
+def uploads_dir() -> Path:
+    env = os.environ.get("MPB_UPLOADS_DIR")
+    d = Path(env) if env else UPLOADS_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def sanitize_filename(filename: str) -> str:
+    """Extrahiert den reinen Dateinamen und filtert unsichere Zeichen,
+    um Path-Traversal (../, %2e%2e) sicher zu verhindern."""
+    base = Path(filename).name
+    clean = re.sub(r"[^A-Za-z0-9._-]", "_", base)
+    clean = clean.lstrip(".")
+    if not clean or clean in (".", ".."):
+        clean = f"upload_{secrets.token_hex(4)}"
+    return clean
+
+
+def save_uploaded_file(filename: str, content_bytes: bytes, domaene: str = "") -> Path:
+    safe_name = sanitize_filename(filename)
+    d = uploads_dir()
+    if domaene and is_valid_slug(domaene):
+        d = d / domaene
+    d.mkdir(parents=True, exist_ok=True)
+    target = (d / safe_name).resolve()
+    if not target.is_relative_to(uploads_dir().resolve()):
+        raise ValueError("Ungültiger Dateiname / Pfadüberlauf")
+    target.write_bytes(content_bytes)
+    return target
+
 
 
 def slugify(title: str) -> str:
@@ -248,18 +283,22 @@ def slug_exists_elsewhere(slug: str, meta: PageMeta) -> bool:
 def save_page(slug: str, title: str, content: str, meta: PageMeta | None = None) -> Page:
     """Schreibt die Seite in den Ordner ihrer Domaene/Vertraulichkeit.
     Liegt der Slug bereits woanders, wird die alte Datei geloescht (= Verschieben)."""
-    page = Page(slug=slug, title=title, content=content, meta=meta or PageMeta())
+    clean_content = content.strip()
+    if clean_content.startswith(f"# {title}"):
+        clean_content = clean_content[len(f"# {title}") :].lstrip("\n")
+    page = Page(slug=slug, title=title, content=clean_content, meta=meta or PageMeta())
     target = page_path(slug, page.meta)
     found = _find_file(slug)
     if found is not None and found[2] != target:
         found[2].unlink()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
-        f"{_render_frontmatter(page.meta)}# {title}\n\n{content.strip()}\n",
+        f"{_render_frontmatter(page.meta)}# {title}\n\n{clean_content}\n",
         encoding="utf-8",
     )
     page.file = target
     return page
+
 
 
 def delete_page(slug: str) -> None:

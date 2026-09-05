@@ -20,7 +20,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 |----|-------|----------------|---------|
 | 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ✅ Fertig |
 | 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ⬜ Offen |
-| 3 | Funktionsbeschreibung des Systems | Florian | ⬜ Offen |
+| 3 | Funktionsbeschreibung des Systems | Florian | 🟡 In Arbeit |
 | 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | ⬜ Offen |
 | 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | ⬜ Offen |
 | 6 | Statistik: Wie viele Dokumente sind drin? | Antje | ⬜ Offen |
@@ -74,7 +74,7 @@ Ablageort nutzt.
 
 ## 3. Funktionsbeschreibung des Systems — Florian
 
-**Zustand:** ⬜ Offen
+**Zustand:** 🟡 In Arbeit
 
 **Ziel:** Jeder im Team und jeder Zuschauer versteht in fünf Minuten, was das System macht.
 

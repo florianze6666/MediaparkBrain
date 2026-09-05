@@ -144,12 +144,16 @@ def get_page_for(slug: str, user: str) -> Page | None:
 def save_page(slug: str, title: str, content: str, meta: PageMeta | None = None) -> Page:
     d = pages_dir()
     d.mkdir(parents=True, exist_ok=True)
-    page = Page(slug=slug, title=title, content=content, meta=meta or PageMeta())
+    clean_content = content.strip()
+    if clean_content.startswith(f"# {title}"):
+        clean_content = clean_content[len(f"# {title}") :].lstrip("\n")
+    page = Page(slug=slug, title=title, content=clean_content, meta=meta or PageMeta())
     page.path.write_text(
-        f"{_render_frontmatter(page.meta)}# {title}\n\n{content.strip()}\n",
+        f"{_render_frontmatter(page.meta)}# {title}\n\n{clean_content}\n",
         encoding="utf-8",
     )
     return page
+
 
 
 def delete_page(slug: str) -> None:

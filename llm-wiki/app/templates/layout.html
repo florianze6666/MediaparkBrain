@@ -78,18 +78,14 @@
         </form>
       </div>
       <nav class="actions">
-        <a href="/new" class="btn">+ Neue Seite</a>
-        <button type="button" class="btn btn-magenta" onclick="document.getElementById('sidebar-file-upload').click()" title="Dokument auswählen und sofort hochladen">
+        <a href="/new" class="btn" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          Dokument Upload
-        </button>
-        <form id="sidebar-upload-form" method="post" action="/upload" enctype="multipart/form-data" style="display:none;">
-          <input type="file" id="sidebar-file-upload" name="file" accept=".pdf,.docx,.doc,.xlsx,.xls,.md,.txt" onchange="document.getElementById('sidebar-upload-form').submit()">
-        </form>
+          Wissen hochladen
+        </a>
         <a href="/proposals/new" class="btn btn-proposal">+ Projektvorschlag einreichen</a>
         <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
         <a href="/dashboard" class="btn btn-dashboard">
@@ -102,6 +98,7 @@
           Dashboards
         </a>
       </nav>
+
 
       <ul class="page-list">
         {% for p in pages %}

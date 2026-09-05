@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 import pytest
 from app import wiki
 
@@ -67,3 +67,25 @@ def test_upload_c_level_confidentiality_isolation(client, pages_env):
     # Suche: Mitarbeiter findet nichts, CEO findet es
     assert len(wiki.search_snippets("Rothenberg", user="mitarbeiter")) == 0
     assert len(wiki.search_snippets("Rothenberg", user="ceo")) > 0
+
+
+def test_api_extract_document_prepopulate(client):
+    docx_file = TEST_DATA_DIR / "__Project_Charter_M-Companion_anonymisiert 1.docx"
+    assert docx_file.exists()
+
+    with open(docx_file, "rb") as f:
+        file_bytes = f.read()
+
+    res = client.post(
+        "/api/extract-document",
+        files={"file": ("Project_Charter_M_Companion.docx", file_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        cookies={"mpb_user": "projektmanager"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "title" in data
+    assert "content" in data
+    assert "vertraulichkeit" in data
+    assert "domaene" in data
+    assert len(data["content"]) > 50
+

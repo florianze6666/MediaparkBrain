@@ -158,10 +158,13 @@ def ctx(request: Request, **extra) -> dict:
         "user_name": access.user_name(user),
         "users": access.list_users(),
         "domains": access.list_domains(),
+        "confidentiality_levels": access.list_confidentiality_levels(),
+        "default_confidentiality": access.default_confidentiality_for_user(user),
         "current_path": request.url.path,
     }
     base.update(extra)
     return base
+
 
 
 def require_page(slug: str, user: str) -> wiki.Page:
@@ -356,8 +359,47 @@ def new_page_save(
 # ---------------------------------------------------------------------------
 
 
+@app.post("/api/extract-document")
+async def extract_document_api(
+    request: Request,
+    file: UploadFile = File(...),
+):
+    user = access.current_user(request)
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Keine Datei ausgewählt.")
+
+    content_bytes = await file.read()
+    if not content_bytes:
+        raise HTTPException(status_code=400, detail="Die Datei ist leer.")
+
+    # 1. Originaldatei im Upload-Ordner sichern
+    saved_path = wiki.save_uploaded_file(file.filename, content_bytes)
+
+    # 2. Text extrahieren
+    try:
+        extracted_text = extractors.extract_text_from_file(saved_path, file.filename)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Extraktion fehlgeschlagen: {e}")
+
+    # 3. LLM-Header generieren
+    header_block, meta, extracted_title = llm_metadata.generate_header(
+        extracted_text,
+        file.filename,
+        user,
+    )
+
+    return {
+        "title": extracted_title,
+        "content": extracted_text.strip(),
+        "vertraulichkeit": meta.vertraulichkeit,
+        "domaene": meta.domaene or "allgemein",
+        "empfaenger": ", ".join(meta.empfaenger) if meta.empfaenger else "",
+    }
+
+
 @app.get("/upload")
 def upload_form(request: Request):
+
     user = access.current_user(request)
     conf_levels = access.list_confidentiality_levels()
     default_conf = access.default_confidentiality_for_user(user)

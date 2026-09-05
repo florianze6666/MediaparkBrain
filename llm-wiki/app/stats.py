@@ -4,7 +4,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from . import wiki
+from . import access, wiki
 
 _MIN_DATETIME = datetime.min.replace(tzinfo=timezone.utc)
 
@@ -25,15 +25,10 @@ class DashboardStats:
     recent_documents: list[DocumentActivity]
 
 
-def _git_history(page: wiki.Page) -> list[tuple[str, str]]:
-    """Autor + ISO-Datum je Commit, der die Seite betrifft. Neuester zuerst.
-
-    Nutzt --follow, damit auch Umbenennungen (Titel-/Slug-Aenderung) als
-    Fortsetzung derselben Seite erkannt werden.
-    """
+def _git_log(cwd, rel_path: str) -> list[tuple[str, str]]:
     result = subprocess.run(
-        ["git", "log", "--follow", "--format=%an|%aI", "--", page.path.name],
-        cwd=page.path.parent,
+        ["git", "log", "--follow", "--format=%an|%aI", "--", rel_path],
+        cwd=cwd,
         capture_output=True,
         text=True,
     )
@@ -45,6 +40,26 @@ def _git_history(page: wiki.Page) -> list[tuple[str, str]]:
             continue
         author, date = line.split("|", 1)
         entries.append((author, date))
+    return entries
+
+
+def _git_history(page: wiki.Page) -> list[tuple[str, str]]:
+    """Autor + ISO-Datum je Commit, der die Seite betrifft. Neuester zuerst.
+
+    Nutzt --follow, damit auch Umbenennungen und das Verschieben in den
+    Domaenenordner (Stufe 2) als Fortsetzung derselben Seite erkannt werden.
+    Solange die Verschiebung noch nicht committet ist, kennt git den neuen
+    Pfad nicht - dann wird die Historie der alten flachen Datei genutzt.
+    """
+    root = wiki.pages_dir()
+    try:
+        rel = page.path.relative_to(root).as_posix()
+    except ValueError:
+        rel = page.path.name
+        root = page.path.parent
+    entries = _git_log(root, rel)
+    if not entries and "/" in rel:
+        entries = _git_log(root, f"{page.slug}.md")
     return entries
 
 
@@ -78,6 +93,7 @@ def get_dashboard_stats(user: str, limit: int = 10) -> DashboardStats:
     activities.sort(key=lambda a: a.uploaded_at or _MIN_DATETIME, reverse=True)
     return DashboardStats(
         total_files=len(pages),
-        total_folders=1 if pages else 0,
+        # Ordner = Domaenenordner, die der Nutzer lesen darf (Stufe 2, Paket 6)
+        total_folders=len(access.readable_domains(user)),
         recent_documents=activities[:limit],
     )

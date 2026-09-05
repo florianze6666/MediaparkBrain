@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
-  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link rel="stylesheet" href="/static/style.css?v=5">
   <script>
     // Wird gerufen, sobald dem Nutzer neue Informationen bereitgestellt werden
     // (frische LLM-Antwort) - spricht "Yeah, Yeah!" laut aus.
@@ -90,16 +90,26 @@
           </svg>
           Dashboards
         </a>
+        <a href="/proposals" class="btn btn-list">Projektvorschläge</a>
+        {% if is_admin %}
+        <a href="/admin" class="btn btn-admin">Admin</a>
+        {% endif %}
       </nav>
-      <ul class="page-list">
-        {% for p in pages %}
-        <li class="{% if page and page.slug == p.slug %}active{% endif %}">
-          <a href="/wiki/{{ p.slug }}">{{ p.title }}</a>
-        </li>
-        {% else %}
-        <li class="empty">Noch keine Seiten</li>
+      {# Seitenliste nach Domaene gruppiert (Stufe 2) - nur Seiten, die der Nutzer sehen darf #}
+      {% if pages %}
+        {% for dom, group in pages | groupby("meta.domaene") %}
+        <div class="page-group-title">{{ dom }}</div>
+        <ul class="page-list">
+          {% for p in group %}
+          <li class="{% if page and page.slug == p.slug %}active{% endif %}">
+            <a href="/wiki/{{ p.slug }}">{{ p.title }}</a>
+          </li>
+          {% endfor %}
+        </ul>
         {% endfor %}
-      </ul>
+      {% else %}
+        <ul class="page-list"><li class="empty">Noch keine Seiten</li></ul>
+      {% endif %}
     </aside>
     <main class="content">
       {% block content %}{% endblock %}

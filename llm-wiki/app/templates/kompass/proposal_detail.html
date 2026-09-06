@@ -9,7 +9,8 @@
        decision_enabled bool, primary_action {label, url}} #}
 {% block title %}{{ p.name or 'Neuer Antrag' }} · Kompass{% endblock %}
 {% block head %}
-<a class="kp-crumb" href="/proposals">Anträge ›</a>
+{# "Anträge" ist kein Menüpunkt mehr; die Liste steht auf dem Dashboard. #}
+<a class="kp-crumb" href="/">Anträge ›</a>
 <h1>{{ p.name or 'Neuer Antrag' }}</h1>
 <span class="kp-tag">{% if mode == 'new' %}Neu{% elif mode == 'edit' %}Bearbeiten{% else %}Ansehen · Bearbeiten{% endif %}</span>
 {% endblock %}
@@ -20,7 +21,14 @@
 
     {% if mode == 'new' %}
     {% include "kompass/_dropin.html" %}
+    <div class="kp-manual"><a href="#" id="kp-manual-link" onclick="kpShowForm(event)">Ohne Dokument von Hand ausfüllen</a></div>
     {% endif %}
+
+    {# Beim Öffnen von /proposals/new steht nur das Drop-In da. Die Abschnitte
+       sind im DOM (das Drop-In schreibt hinein, Tests greifen darauf zu), aber
+       hidden — sie erscheinen, sobald das Dokument gelesen ist oder der Nutzer
+       "von Hand ausfüllen" wählt. #}
+    <div class="kp-sections" id="kp-form-wrap"{% if mode == 'new' %} hidden{% endif %}>
 
     <section class="kp-section" id="grundinfo">
       <div class="kp-section-title">Grundinfo</div>
@@ -152,9 +160,13 @@
     {% else %}
     <div class="kp-footer"><span class="kp-hint">Original bleibt · Ersteller und Zeit werden gespeichert</span><button class="kp-btn kp-btn-primary" type="submit">Einreichen</button></div>
     {% endif %}
+
+    </div>{# /kp-form-wrap #}
   </div>
 
-  <nav class="kp-toc" id="kp-toc">
+  {# Im Neu-Modus zeigt das Inhaltsverzeichnis auf Abschnitte, die noch nicht
+     da sind - es kommt zusammen mit dem Formular. #}
+  <nav class="kp-toc" id="kp-toc"{% if mode == 'new' %} hidden{% endif %}>
     <a href="#grundinfo">Grundinfo</a>
     {% if mode != 'new' %}<a href="#status">Status</a>{% endif %}
     <a href="#vollstaendigkeit">Vollständigkeit {% if p.completeness.missing %}<span class="kp-flag">·</span>{% endif %}</a>
@@ -168,6 +180,19 @@
 <script>
 function kpToggleRole(k){const d=document.getElementById('role-'+k),b=document.querySelector('[data-role="'+k+'"]');const open=d.hidden;document.querySelectorAll('.kp-role-detail').forEach(x=>x.hidden=true);document.querySelectorAll('.kp-role-card').forEach(x=>x.classList.remove('is-open'));if(open){d.hidden=false;b.classList.add('is-open');}}
 function kpExpandAll(e){e.preventDefault();document.querySelectorAll('.kp-role-detail').forEach(x=>x.hidden=false);document.querySelectorAll('.kp-role-card').forEach(x=>x.classList.add('is-open'));}
+{% if mode == 'new' %}
+// Schritt 3: Formular einblenden und sanft dorthin scrollen.
+function kpShowForm(ev, scroll){
+  if(ev)ev.preventDefault();
+  const w=document.getElementById('kp-form-wrap');
+  if(!w||!w.hidden){if(scroll&&w)w.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  w.hidden=false;w.classList.add('kp-reveal');
+  const t=document.getElementById('kp-toc');if(t)t.hidden=false;
+  const l=document.getElementById('kp-manual-link');if(l)l.parentElement.hidden=true;
+  if(scroll)setTimeout(()=>w.scrollIntoView({behavior:'smooth',block:'start'}),0);
+}
+document.addEventListener('kp:filled',()=>kpShowForm(null,true));
+{% endif %}
 const secs=[...document.querySelectorAll('.kp-section[id]')],toc=[...document.querySelectorAll('#kp-toc a')];
 const io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){toc.forEach(a=>a.classList.toggle('is-active',a.getAttribute('href')==='#'+en.target.id));}});},{rootMargin:'-20% 0px -70% 0px'});
 secs.forEach(s=>io.observe(s));

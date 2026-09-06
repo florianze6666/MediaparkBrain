@@ -262,6 +262,15 @@ def _free_slug(title: str) -> str:
     return slug
 
 
+def _title_from_text(text: str) -> str:
+    """Notnagel-Titel aus der ersten brauchbaren Zeile eines eingefuegten Textes."""
+    for zeile in (text or "").splitlines():
+        zeile = zeile.strip().lstrip("#").strip()
+        if len(zeile) > 3:
+            return zeile[:80]
+    return "Notiz"
+
+
 def _title_from_filename(filename: str) -> str:
     stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
     return " ".join(stem.split()) or "Hochgeladenes Dokument"
@@ -637,13 +646,14 @@ async def upload_submit(
     datum: str = Form(""),
     verfasser: str = Form(""),
     empfaenger: str = Form(""),
+    text: str = Form(""),
 ):
     user = require_author(request)
     if target:
-        # Kompass-Weg: mehrere Dateien, Metadaten kommen aus dem Drop-In.
+        # Kompass-Weg: mehrere Dateien oder ein eingefuegter Text/Link.
         return await _upload_kompass(
             request, user, files, titel, domaene, vertraulichkeit,
-            dokumenttyp, datum, verfasser, parse_recipients(empfaenger),
+            dokumenttyp, datum, verfasser, parse_recipients(empfaenger), text,
         )
     if file is None or not file.filename:
         return templates.TemplateResponse(
@@ -1240,6 +1250,7 @@ async def _upload_kompass(
     datum: str,
     verfasser: str,
     empfaenger: list[str] | None = None,
+    text: str = "",
 ):
     """Wissens-Upload aus der Kompass-Maske: je Datei eine Wiki-Seite.
 
@@ -1249,9 +1260,15 @@ async def _upload_kompass(
     das nicht mehr vor).
     """
     real_files = [f for f in files if f and f.filename]
-    if not real_files:
+    # Eingefuegter Text oder eine abgelegte Adresse sind gleichwertig zur Datei:
+    # der Prefill liest sie bereits aus, nur das Speichern verlangte bisher
+    # zwingend eine Datei und antwortete "Bitte zuerst eine Datei ablegen".
+    eingabe = (text or "").strip()
+    if not real_files and not eingabe:
         return _kompass_upload(
-            request, user, error="Bitte zuerst eine Datei ablegen.", status=400
+            request, user,
+            error="Bitte zuerst eine Datei ablegen oder einen Link bzw. Text einfügen.",
+            status=400,
         )
 
     domaene = (domaene or "").strip() or wiki.DEFAULT_DOMAIN
@@ -1272,6 +1289,45 @@ async def _upload_kompass(
         )
 
     saved_pages: list[dict] = []
+
+    if not real_files:
+        # Nur Text oder Adresse. Besteht die Eingabe ausschliesslich aus einer
+        # Adresse, wird die Seite dahinter geladen - dieselbe Regel und derselbe
+        # SSRF-Schutz wie im Prefill, damit Vorschau und Ergebnis uebereinstimmen.
+        quelltext, bezeichnung = eingabe, ""
+        url = urlfetch.find_url(eingabe)
+        if url:
+            try:
+                quelltext, bezeichnung = await run_in_threadpool(urlfetch.fetch_text, url)
+            except ValueError as exc:
+                return _kompass_upload(request, user, error=str(exc), status=400)
+        title = (titel or "").strip() or bezeichnung.strip() or _title_from_text(quelltext)
+        slug = _free_slug(title)
+        meta = PageMeta(
+            erstellt_von=user,
+            erstellt_am=now_iso(),
+            vertraulichkeit=vertraulichkeit,
+            domaene=domaene,
+            empfaenger=list(empfaenger),
+            dokumenttyp=dokumenttyp,
+            datum=datum,
+            verfasser=verfasser or user,
+            titel=title,
+            quelle="link" if url else "text",
+        )
+        try:
+            require_writable(user, meta)
+        except HTTPException as exc:
+            return _kompass_upload(request, user, error=str(exc.detail), status=exc.status_code)
+        inhalt = quelltext.strip()
+        if url:
+            # Die Adresse gehoert in die Seite: sonst ist spaeter nicht mehr
+            # nachvollziehbar, woher der Text stammt.
+            inhalt = f"Quelle: <{url}>\n\n{inhalt}"
+        wiki.save_page(slug, title, inhalt, meta)
+        saved_pages.append({"slug": slug, "title": title})
+        return _kompass_upload(request, user, saved=True, saved_pages=saved_pages)
+
     for f in real_files:
         content_bytes = await f.read()
         if not content_bytes:

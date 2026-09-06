@@ -1,0 +1,27 @@
+{% extends "kompass/layout.html" %}
+{# Wissensseite in der Kompass-Shell. Kontext: page (wiki.Page), content_html, herkunft [{label, value}] #}
+{% block title %}{{ page.title }} · Kompass{% endblock %}
+{% block head %}
+<a class="kp-crumb" href="/knowledge">Wissen ›</a>
+<h1>{{ page.title }}</h1>
+<span class="kp-tag">{{ page.meta.domaene }}</span>
+{% endblock %}
+{% block content %}
+<section class="kp-section" id="herkunft">
+  <div class="kp-section-title">Herkunft</div>
+  <div class="kp-facts">
+    {% for h in herkunft %}<div class="kp-fact"><small>{{ h.label }}</small><b>{{ h.value }}</b></div>{% endfor %}
+  </div>
+</section>
+<section class="kp-section" id="inhalt">
+  <div class="kp-section-title">Inhalt</div>
+  <div class="kp-text">{{ content_html | safe }}</div>
+</section>
+<div class="kp-footer">
+  <span class="kp-hint">Original bleibt · Ersteller und Zeit stehen im Kopf der Datei</span>
+  <div style="display:flex;gap:8px">
+    <a class="kp-btn" href="/wiki/{{ page.slug }}">Klassische Ansicht</a>
+    <a class="kp-btn kp-btn-primary" href="/wiki/{{ page.slug }}/edit">Bearbeiten</a>
+  </div>
+</div>
+{% endblock %}

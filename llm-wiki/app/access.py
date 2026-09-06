@@ -256,8 +256,37 @@ def is_admin(user_id: str | None) -> bool:
 # ---------------------------------------------------------------------------
 
 
+# Zaehler abgelehnter Sichtbarkeitsentscheidungen seit Prozessstart. Kein
+# Persistenzformat, kein Personenbezug - nur eine Zahl fuer die Grundsatzseite
+# ("Zugriffe heute abgelehnt"). Ein Neustart setzt sie zurueck; das ist ehrlich,
+# weil auch die Anzeige "seit Prozessstart" meint.
+_deny_count = 0
+
+
+def deny_count() -> int:
+    return _deny_count
+
+
+def reset_deny_count() -> None:
+    global _deny_count
+    _deny_count = 0
+
+
 def decide(user_id: str | None, meta: PageMeta) -> str:
-    """Genau die Regeln aus dem Konzeptdokument."""
+    """Genau die Regeln aus dem Konzeptdokument.
+
+    Einziger Zugriffsweg - deshalb wird hier auch mitgezaehlt, wie oft
+    abgelehnt wurde (siehe `_deny_count`). Die Regeln selbst stehen in
+    `_decide` und sind unveraendert.
+    """
+    global _deny_count
+    result = _decide(user_id, meta)
+    if result == DENY:
+        _deny_count += 1
+    return result
+
+
+def _decide(user_id: str | None, meta: PageMeta) -> str:
     # 1. oeffentlich -> ALLOW, auch fuer Gast
     if meta.vertraulichkeit == "oeffentlich":
         return ALLOW

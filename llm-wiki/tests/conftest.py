@@ -64,6 +64,8 @@ def pages_env(tmp_path, monkeypatch):
     uploads = tmp_path / "uploads"
     uploads.mkdir()
     monkeypatch.setenv("MPB_UPLOADS_DIR", str(uploads))
+    # Bewertungs-Cache (data/evaluations/) landet in tmp, nicht im Repo.
+    monkeypatch.setenv("MPB_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
 
     import app.access as access

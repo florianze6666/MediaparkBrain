@@ -1,0 +1,26 @@
+{% extends "kompass/layout.html" %}
+{# Kontext: stats {knowledge_total, departments, denied_today, open_fields, sourced_pct, stale, escalations_open, log_entries, auto_decisions} #}
+{% block title %}Grundsätze &amp; Sicherheit · Kompass{% endblock %}
+{% block head %}<h1>Grundsätze &amp; Sicherheit</h1>{% endblock %}
+{% block content %}
+<section class="kp-section">
+  <div class="kp-section-title">So arbeitet Kompass</div>
+  <div class="kp-flow">
+    <div class="kp-card"><h3><i class="kp-dot"></i>Unternehmenswissen</h3><p>Richtlinien, Budgets, Vereinbarungen, frühere Entscheidungen. {{ stats.knowledge_total }} Dokumente, {{ stats.departments }} Abteilungen.</p></div>
+    <div class="kp-arrow">→</div>
+    <div class="kp-card"><h3><i class="kp-dot is-ink"></i>4 Rollen</h3><p>Betriebsrat, CFO, IT, CEO — jede mit eigenen Kriterien und eigenen Leserechten. Simulieren die Stellungnahme, bevor Menschen zusammensitzen.</p></div>
+    <div class="kp-arrow">→</div>
+    <div class="kp-card"><h3><i class="kp-dot is-ok"></i>Projektantrag</h3><p>Wird gegen beides geprüft. Lücken, Konflikte und Score sichtbar — das Gremium entscheidet.</p></div>
+  </div>
+  <div class="kp-loop"><span style="color:var(--accent)">↺</span> Jede Entscheidung, Rückfrage und jedes neue Dokument fließt zurück ins Wissen — der nächste Antrag wird besser geprüft.</div>
+</section>
+<div class="kp-grid-3">
+  <div class="kp-card"><span class="kp-glyph">⚿</span><h3>Rechte vor Zugriff</h3><p>Jede Rolle und jeder Agent sieht nur seine Domänen. Gesperrt ≠ nicht vorhanden.</p><div class="kp-num">{{ stats.denied_today }} <small>Zugriffe heute abgelehnt</small></div></div>
+  <div class="kp-card"><span class="kp-glyph">–</span><h3>Kein Score ohne Beleg</h3><p>Fehlt Information, bleibt das Feld leer. Nie geschätzt.</p><div class="kp-num">{{ stats.open_fields }} <small>offene Felder in Prüfung</small></div></div>
+  <div class="kp-card"><span class="kp-glyph">◎</span><h3>Jede Aussage hat eine Quelle</h3><p>Mit Abteilung und Jahr. Ältere Fassungen werden markiert.</p><div class="kp-num">{{ stats.sourced_pct }} % <small>belegt · {{ stats.stale }} überholt</small></div></div>
+  <div class="kp-card"><span class="kp-glyph">↗</span><h3>Eskalation statt Umgehung</h3><p>Braucht ein Agent mehr, fragt er — ein Mensch gibt frei.</p><div class="kp-num">{{ stats.escalations_open }} <small>wartet auf Freigabe</small></div></div>
+  <div class="kp-card"><span class="kp-glyph">≡</span><h3>Alles protokolliert</h3><p>Modell, Version, Zeit, Ergebnis. Jeder Lauf wiederholbar.</p><div class="kp-num">{{ stats.log_entries }} <small>Einträge heute</small></div></div>
+  <div class="kp-card"><span class="kp-glyph">✓</span><h3>Mensch entscheidet</h3><p>Kompass zeigt Richtung. Das Gremium entscheidet, mit Name und Zeit.</p><div class="kp-num">{{ stats.auto_decisions }} <small>automatische Entscheidungen</small></div></div>
+</div>
+<div class="kp-footer" style="justify-content:flex-end"><a class="kp-btn" href="/admin/log">Protokoll öffnen</a></div>
+{% endblock %}

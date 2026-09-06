@@ -1,0 +1,41 @@
+{% extends "kompass/layout.html" %}
+{# Nur Rolle admin. Kontext: domains [str], groups [{name, perms:{domain:'rw'|'r'|''}}], roles [{initials, display_name, groups:[str]}], changelog [{time, text}], dirty int #}
+{% block title %}Berechtigungen · Kompass{% endblock %}
+{% block head %}<h1>Berechtigungen</h1><span class="kp-crumb">{{ groups|length }} Gruppen · {{ domains|length }} Domänen · {{ roles|length }} Rollen · Write ⊆ Read</span>{% endblock %}
+{% block content %}
+<form method="post" action="/admin/permissions" style="display:contents">
+<div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start">
+  <section class="kp-section">
+    <div class="kp-section-title"><span>Gruppe × Domäne</span><span style="text-transform:none;letter-spacing:0"><i class="kp-dot"></i> lesen &nbsp; <i class="kp-dot is-ink"></i> lesen + schreiben &nbsp; Klick = umschalten</span></div>
+    <div class="kp-matrix" style="display:grid;grid-template-columns:110px repeat({{ domains|length }},1fr);gap:5px;align-items:center;font-size:12px">
+      <span></span>{% for d in domains %}<span style="text-align:center;color:var(--muted-2);font-size:11px;text-transform:uppercase">{{ d }}</span>{% endfor %}
+      {% for g in groups %}<span style="font-weight:600">{{ g.name }}</span>
+        {% for d in domains %}{% set p = g.perms.get(d, '') %}
+        <button type="button" class="kp-perm is-{{ p or 'none' }}" data-group="{{ g.name }}" data-domain="{{ d }}" data-value="{{ p }}" onclick="kpCycle(this)">{{ 'R W' if p == 'rw' else ('R' if p == 'r' else '') }}</button>
+        {% endfor %}
+      {% endfor %}
+    </div>
+    <span class="kp-hint">Admin verwaltet Rechte, liest aber nicht mit. Änderungen wirken sofort auf Menschen und Agenten.</span>
+  </section>
+  <div style="display:flex;flex-direction:column;gap:22px">
+    <section class="kp-section">
+      <div class="kp-section-title"><span>Rollen → Gruppen</span><a href="/admin/roles/new" style="text-transform:none;letter-spacing:0">+ Rolle</a></div>
+      {% for r in roles %}<div class="kp-setting" style="max-width:none;padding:8px 0"><span class="kp-avatar">{{ r.initials }}</span><span style="font-weight:600;width:150px">{{ r.display_name }}</span><span class="kp-sub" style="flex:1">{{ r.groups|join(' · ') }}</span><a href="/admin/roles/{{ r.key }}" style="color:var(--muted-2)">✎</a></div>{% endfor %}
+    </section>
+    <section class="kp-section kp-versions">
+      <div class="kp-section-title">Letzte Änderungen</div>
+      {% for c in changelog %}<div><span style="width:90px">{{ c.time }}</span>{{ c.text|safe }}</div>{% endfor %}
+    </section>
+  </div>
+</div>
+<input type="hidden" name="changes" id="kp-changes" value="[]">
+<div class="kp-footer"><span class="kp-hint" id="kp-dirty">Keine ungespeicherten Änderungen</span><div style="display:flex;gap:8px"><a class="kp-btn" href="/admin/permissions">Verwerfen</a><button class="kp-btn kp-btn-primary" type="submit">Rechte speichern</button></div></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<style>.kp-perm{height:26px;border:0;border-radius:6px;background:var(--surface-2);font:inherit;font-size:10.5px;font-weight:600;cursor:pointer;color:#fff}.kp-perm.is-r{background:var(--accent)}.kp-perm.is-rw{background:var(--ink)}</style>
+<script>
+const kpChanges={};
+function kpCycle(b){const next={'':'r','r':'rw','rw':''}[b.dataset.value];b.dataset.value=next;b.className='kp-perm is-'+(next||'none');b.textContent=next==='rw'?'R W':(next==='r'?'R':'');kpChanges[b.dataset.group+'/'+b.dataset.domain]=next;document.getElementById('kp-changes').value=JSON.stringify(kpChanges);const n=Object.keys(kpChanges).length;document.getElementById('kp-dirty').textContent=n+' ungespeicherte Änderung'+(n===1?'':'en')+' · wird mit Name und Zeit protokolliert';}
+</script>
+{% endblock %}

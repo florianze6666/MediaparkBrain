@@ -14,11 +14,19 @@ def sidebar_slugs(html: str) -> set[str]:
     return set(re.findall(r'href="/wiki/([a-z0-9-]+)"', html))
 
 
+def knowledge_slugs(html: str) -> set[str]:
+    """Seitenliste der Kompass-Wissensseite (/knowledge) - dieselbe Aussage wie
+    frueher die Seitenliste der alten Startseite: sichtbar ist nur, was der
+    Nutzer laut Rechten sehen darf."""
+    # /knowledge/share und /knowledge/edit sind Aktionen, keine Seiten.
+    return set(re.findall(r'href="/knowledge/([a-z0-9-]+)"', html)) - {"share", "edit"}
+
+
 def test_mitarbeiter_sieht_finance_nicht(client):
     c = as_user("mitarbeiter")
-    r = client.get("/", cookies=c)
+    r = client.get("/knowledge", cookies=c)
     assert r.status_code == 200
-    assert "budget-finance" not in sidebar_slugs(r.text)
+    assert "budget-finance" not in knowledge_slugs(r.text)
     assert "Budget Finance" not in r.text
     assert client.get("/wiki/budget-finance", cookies=c).status_code == 404
     assert client.get("/wiki/budget-finance/edit", cookies=c).status_code == 404
@@ -39,8 +47,8 @@ def test_verbotene_und_fehlende_seite_nicht_unterscheidbar(client):
 
 def test_cfo_sieht_finance(client):
     c = as_user("cfo")
-    r = client.get("/", cookies=c)
-    assert "budget-finance" in sidebar_slugs(r.text)
+    r = client.get("/knowledge", cookies=c)
+    assert "budget-finance" in knowledge_slugs(r.text)
     r = client.get("/wiki/budget-finance", cookies=c)
     assert r.status_code == 200
     # US-10 (Stufe 2): Herkunftsbox ersetzt "Angelegt von" durch "Eingebracht von"
@@ -52,18 +60,18 @@ def test_cfo_sieht_finance(client):
 
 def test_ceo_liest_br_nicht(client):
     c = as_user("ceo")
-    r = client.get("/", cookies=c)
-    assert "br-protokoll" not in sidebar_slugs(r.text)
+    r = client.get("/knowledge", cookies=c)
+    assert "br-protokoll" not in knowledge_slugs(r.text)
     assert client.get("/wiki/br-protokoll", cookies=c).status_code == 404
     # Betriebsrat schon
     assert client.get("/wiki/br-protokoll", cookies=as_user("betriebsrat")).status_code == 200
 
 
 def test_gast_sieht_nur_oeffentlich_und_darf_nicht_anlegen(client):
-    r = client.get("/")  # kein Cookie -> Gast
+    r = client.get("/knowledge")  # kein Cookie -> Gast
     assert r.status_code == 200
     assert "Gast (nicht angemeldet)" in r.text
-    slugs = sidebar_slugs(r.text)
+    slugs = knowledge_slugs(r.text)
     assert slugs == {"oeffentlich"}
     assert client.get("/wiki/oeffentlich").status_code == 200
     assert client.get("/wiki/altbestand").status_code == 404
@@ -79,14 +87,14 @@ def test_gast_sieht_nur_oeffentlich_und_darf_nicht_anlegen(client):
 
 
 def test_unbekannter_cookie_ist_gast(client):
-    r = client.get("/", cookies=as_user("hacker"))
-    assert sidebar_slugs(r.text) == {"oeffentlich"}
+    r = client.get("/knowledge", cookies=as_user("hacker"))
+    assert knowledge_slugs(r.text) == {"oeffentlich"}
 
 
 def test_altbestand_sichtbar_mit_hinweis(client):
     c = as_user("mitarbeiter")
-    r = client.get("/", cookies=c)
-    assert "altbestand" in sidebar_slugs(r.text)
+    r = client.get("/knowledge", cookies=c)
+    assert "altbestand" in knowledge_slugs(r.text)
     r = client.get("/wiki/altbestand", cookies=c)
     assert r.status_code == 200
     assert "Altbestand" in r.text

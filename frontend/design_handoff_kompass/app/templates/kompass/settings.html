@@ -1,0 +1,19 @@
+{% extends "kompass/layout.html" %}
+{# Kontext: users [{key, display_name}] aus permissions.yaml, current_user, visible_domains, collapsed, mail_reminders #}
+{% block title %}Einstellungen · Kompass{% endblock %}
+{% block head %}<h1>Einstellungen</h1>{% endblock %}
+{% block content %}
+<section class="kp-section">
+  <div class="kp-section-title">Rolle (Demo, kein Login)</div>
+  <form method="post" action="/switch-user" class="kp-roles-pick">
+    {% for u in users %}<button name="user" value="{{ u.key }}" class="{% if u.key == current_user.key %}is-active{% endif %}">{{ u.display_name }}</button>{% endfor %}
+  </form>
+  <div class="kp-crumb">Sieht: {{ visible_domains | join(' · ') }}</div>
+</section>
+<section class="kp-section">
+  <div class="kp-section-title">Darstellung</div>
+  <div class="kp-setting"><span>Menü eingeklappt</span><button type="button" class="kp-toggle {% if collapsed %}is-on{% endif %}" onclick="this.classList.toggle('is-on');kpToggleSidebar()"></button></div>
+  <div class="kp-setting"><span>Erinnerungen per Mail</span><button type="button" class="kp-toggle {% if mail_reminders %}is-on{% endif %}" onclick="this.classList.toggle('is-on');fetch('/settings/mail',{method:'post'})"></button></div>
+  <div class="kp-setting"><span>Sprache</span><span class="kp-crumb">Deutsch ▾</span></div>
+</section>
+{% endblock %}

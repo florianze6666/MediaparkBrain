@@ -45,7 +45,17 @@ const KP_MSG = {name:'Projektname erkannt', projektname:'Projektname erkannt', t
 const drop=document.getElementById('kp-drop-files');
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('is-over');}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('is-over');}));
-drop.addEventListener('drop',ev=>kpIngest({files:ev.dataTransfer.files}));
+drop.addEventListener('drop',ev=>{
+  // Das versteckte <input name="files"> fuellt der Browser nur ueber den
+  // Dateidialog, nicht beim Ablegen. Ohne diese Zuweisung liest der Prefill die
+  // Datei zwar aus, das Formular schickt beim Speichern aber keine mit - der
+  // Upload sah dann aus, als sei er still verschluckt worden.
+  const inp=drop.querySelector('input[type=file]');
+  if(inp&&ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files.length){
+    try{inp.files=ev.dataTransfer.files;}catch(e){}
+  }
+  kpIngest({files:ev.dataTransfer.files});
+});
 
 // --- Link oder Text: immer sichtbar, Einfügen oder Enter startet ------------
 const kpPasteBox=document.getElementById('kp-paste-text'), kpPasteBtn=document.getElementById('kp-paste-go');

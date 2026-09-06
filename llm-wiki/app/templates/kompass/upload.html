@@ -13,6 +13,7 @@
 <div class="kp-upload-saved" role="status" style="margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#f0fff4;border:1px solid #c6f0d2;color:var(--ok);font-size:13.5px">
   Gespeichert:
   {% for p in saved_pages %}<a href="/knowledge/{{ p.slug }}" style="color:inherit;font-weight:600">{{ p.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+  {% if target == 'knowledge' %}<span style="color:var(--muted)">· weiter zur <a href="/knowledge">Wissensliste</a> …</span>{% endif %}
 </div>
 {% endif %}
 <form method="post" action="/upload" enctype="multipart/form-data" id="kp-upload" style="display:contents">
@@ -29,6 +30,11 @@
 document.addEventListener('kp:filled',e=>{document.getElementById('kp-save').disabled=false;if(e.detail.readers)document.getElementById('kp-readers').textContent=e.detail.readers;});
 // Nach erfolgreichem POST rendert der Server upload.html mit saved=True -> Feuerwerk + "Weiteres Wissen hochladen"
 {% if saved %}
+// Nach dem Feuerwerk weiter zur Wissensliste: dort steht die neue Datei drin.
+// Der Sprung kommt nach dem Burst (2,5 s), damit die Bestaetigung lesbar bleibt.
+{% if target == 'knowledge' %}
+setTimeout(function(){ location.href = '/knowledge'; }, 2400);
+{% endif %}
 (function(){const b=document.createElement('div');b.className='kp-burst';const cols=['#0071e3','#34c759','#ff9f0a','#1d1d1f'];[[30,25],[58,20],[78,45]].forEach((o,oi)=>{for(let i=0;i<12;i++){const a=i/12*Math.PI*2,d=50+(i%3)*18,s=document.createElement('i');s.style.cssText=`left:${o[0]}%;top:${o[1]}%;background:${cols[(oi+i)%4]};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d+24}px;animation-delay:${oi*.25}s`;b.appendChild(s);}});document.querySelector('.kp-main').style.position='relative';document.querySelector('.kp-main').appendChild(b);setTimeout(()=>b.remove(),2500);})();
 {% endif %}
 </script>

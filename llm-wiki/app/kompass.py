@@ -584,6 +584,10 @@ _GRAPH_DOC_Y0 = 34.0        # erste Dokumentzeile
 _GRAPH_DOC_DY = 9.0         # Zeilenabstand -> bei 420px Hoehe ~38px, kein Ueberlappen
 _GRAPH_LOCKED_X = 94.0      # Spalte der gesperrten Domaenen, rechts aussen
 _GRAPH_READABLE_SPAN = 86.0  # Platz fuer die lesbaren Domaenen, wenn rechts eine Spalte steht
+_GRAPH_COL_PX = 108         # Platzbedarf einer Domaenenspalte: Kreis (48px) plus
+                            # Luft fuer die Dokumentbeschriftung darunter
+_GRAPH_LOCKED_PX = 90       # zusaetzliche Breite fuer die Spalte gesperrter Domaenen
+_GRAPH_MIN_PX = 520         # darunter beruehren sich schon zwei Domaenen
 
 
 def _graph_label(title: str) -> str:
@@ -675,7 +679,13 @@ def _graph(user: str, pages: list[wiki.Page]) -> dict:
             "locked": True, "dept": dom, "href": f"/knowledge?dept={dom}",
         })
 
-    return {"nodes": nodes, "edges": edges}
+    # Mindestbreite in Pixeln: Die Positionen sind Prozentwerte, die Knoten
+    # haben aber feste Groessen. Wird der Container zu schmal, ueberlappen sich
+    # die Domaenenkreise und ihre Beschriftungen brechen ab. Auf schmalen
+    # Schirmen scrollt der Graph deshalb waagerecht statt zu schrumpfen.
+    min_px = max(_GRAPH_MIN_PX, count * _GRAPH_COL_PX + (_GRAPH_LOCKED_PX if locked else 0))
+
+    return {"nodes": nodes, "edges": edges, "min_px": min_px}
 
 
 def knowledge_vm(user: str, sort: str = "title", dir: str = "asc", dept: str = "") -> dict:

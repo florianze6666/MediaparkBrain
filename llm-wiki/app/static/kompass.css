@@ -161,6 +161,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kp-graph.is-focus .kp-node:not(.is-hot):not(:hover) { opacity: .3; }
 .kp-graph.is-focus .kp-node.is-locked:not(.is-hot):not(:hover) { opacity: .18; }
 .kp-legend { position: absolute; left: 14px; bottom: 10px; z-index: 3; display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); background: rgba(245,245,247,.92); border-radius: 6px; padding: 4px 8px; }
+.kp-graph-hint { display: none; }
 .kp-cloud { background: var(--surface-2); border-radius: var(--r-xl); padding: 18px 20px; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 6px 14px; line-height: 1; }
 .kp-cloud span { color: var(--muted); } .kp-cloud .w1 { font-size: 13px; color: var(--muted-2); } .kp-cloud .w2 { font-size: 15px; } .kp-cloud .w3 { font-size: 18px; color: var(--ink); } .kp-cloud .w4 { font-size: 22px; color: var(--accent); } .kp-cloud .w5 { font-size: 26px; color: var(--ink); } .kp-cloud .w6 { font-size: 30px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; }
 .kp-stale { font-size: 11px; color: var(--warn); font-weight: 600; margin-left: 6px; }
@@ -325,7 +326,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   /* Die Knoten sitzen auf Prozentkoordinaten: unter ~520px ueberlappen ihre
      Beschriftungen. Der Graph behaelt daher seine Mindestbreite und scrollt
      seitlich in seinem eigenen Kasten - die Seite selbst bleibt schmal. */
-  .kp-graph { min-width: 520px; height: 300px; }
+  /* Mindestbreite kommt aus dem Template (--kp-graph-min) und waechst mit der
+     Zahl der Domaenen: neun Domaenen brauchen mehr als 520px, sonst
+     beruehren sich die Kreise und die Beschriftungen brechen ab. */
+  .kp-graph { min-width: var(--kp-graph-min, 520px); height: 340px; }
+  .kp-graph-hint { display: block; margin: 6px 2px 0; font-size: 12px; color: var(--muted-2); }
   .kp-cloud { margin-top: 12px; padding: 14px 16px; gap: 5px 10px; }
   .kp-cloud .w4 { font-size: 19px; } .kp-cloud .w5 { font-size: 22px; } .kp-cloud .w6 { font-size: 25px; }
 
@@ -350,5 +355,5 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 @media (max-width: 520px) {
   .kp-main { padding: 14px 12px 20px; }
   h1 { font-size: 21px; }
-  .kp-graph { height: 260px; }
+  .kp-graph { height: 300px; }
 }

@@ -25,4 +25,7 @@ Thumbs.db
 llm-wiki/uploads/*
 !llm-wiki/uploads/.gitkeep
 
+# Bewertungs-Cache (Ergebnisse der Experten-Bewertung, jederzeit neu erzeugbar)
+llm-wiki/data/evaluations/
+
 

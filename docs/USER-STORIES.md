@@ -1,6 +1,6 @@
 # User Stories MediaparkBrain: Stand der Umsetzung
 
-Stand: 2026-09-05 abends · `main` nach PR #30 · 104 automatisierte Tests grün (`cd llm-wiki && uv run pytest -q`)
+Stand: 2026-09-06 · Branch `design/kompass` · 136 automatisierte Tests grün (`cd llm-wiki && uv run pytest -q`)
 
 Dieses Dokument listet **alle User Stories, die im laufenden System umgesetzt sind**. Die Stories
 aus Paket 1 und 9 stammen aus den Konzeptdokumenten (US-1 bis US-19). Für die Arbeit der anderen
@@ -70,6 +70,23 @@ automatisierter Test, Testfall steht beim Eintrag.
 | US-36 | Schreiben nur, wo man lesen darf (Editor, Vorschlag, Upload) | SYSTEM | P1 | Paket 9 Review, #24 | test_security_fixes::test_new_in_fremder_domaene_403_und_keine_datei, test_upload_routes::test_foreign_domain_write_forbidden |
 | US-37 | Identität ist ein signierter Cookie, Fälschung ergibt Gast | SYSTEM | P1 | Paket 9 Review | test_security_fixes::test_roher_cookie_ist_gast, test_manipulierte_signatur_ist_gast |
 | US-38 | Path-Traversal über URL und Dateinamen ist unmöglich | SYSTEM | P1 | Paket 9 Review, #24 | test_security_fixes::test_ungueltige_slugs_sind_404, test_upload_routes::test_upload_path_traversal_prevention |
+
+### Kompass-Oberfläche (Design-Handoff v8, siehe `docs/KOMPASS-UMBAU.md`)
+
+| ID | Story (Kurzfassung) | Kategorie | Prio | Herkunft | Test |
+|----|---------------------|-----------|------|----------|------|
+| US-39 | Startseite ist ein Dashboard: je Antrag Status, Vollständigkeit, vier Rollen-Scores, nächster Schritt | PROJEKT | P1 | Kompass 8a | test_kompass::test_dashboard_und_antragsliste_filtern_nach_rechten, test_dashboard_rows_zeigt_nur_lesbares_und_keine_erfundenen_werte |
+| US-40 | Ein Antrag, eine Seite: Grundinfo, Herkunft, Status, Vollständigkeit, Bewertung, Dialog, Dokumente, Versionen, Entscheidung | PROJEKT | P1 | Kompass 8b/8g | test_proposals::test_finance_vorschlag_nur_fuer_finance |
+| US-41 | Vollständigkeit misst die 15 Pflichtfelder aus PLAN.md §2 und zeigt, welche fehlen | PROJEKT | P1 | Kompass 8b | test_kompass::test_completeness_zaehlt_die_fuenfzehn_pflichtfelder |
+| US-42 | Bewertung wird auf Knopfdruck gestartet und gespeichert; ohne Ergebnis bleibt der Score leer | PROJEKT | P1 | Kompass 8g | test_kompass::test_evaluate_schreibt_cache |
+| US-43 | Entscheiden erst, wenn alle vier Rollen bewertet haben; Entscheidung steht mit Name und Zeit im Dialog | PROJEKT | P1 | Kompass 8b | test_kompass::test_decide_ohne_vier_scores_ist_409, test_decide_mit_vier_scores_setzt_status |
+| US-44 | Erinnerung und Statuslink hinterlassen einen sichtbaren Vermerk (kein Mailversand) | PROJEKT | P3 | Kompass 8a | test_kompass::test_remind_hinterlaesst_vermerk_statt_mail |
+| US-45 | Antragsdokumente sind nur herunterladbar, wer den Antrag sehen darf | SYSTEM | P1 | Kompass 8b | test_kompass::test_antragsdatei_nur_mit_recht_und_ohne_traversal |
+| US-46 | Wissensseite: Bestand, Graph, Wortwolke und Tabelle - alles nur aus lesbaren Seiten | WISSEN | P1 | Kompass 8c | test_kompass::test_knowledge_zeigt_finance_nur_dem_berechtigten, test_knowledge_detail_404_fuer_verbotene |
+| US-47 | Eine Suche, zwei Listen (Wissen / Projekte), beide nach Rechten gefiltert | KERN | P1 | Kompass 8c | test_kompass::test_suche_findet_finance_nur_fuer_finance |
+| US-48 | Hochladen füllt die Kopfdaten aus der Datei vor; jedes Feld bleibt korrigierbar | WISSEN | P2 | Kompass 8d | test_kompass::test_prefill_ist_fuer_gast_verboten |
+| US-49 | Grundsätze-Seite zeigt echte Zahlen (abgelehnte Zugriffe, offene Felder) und 0, wo nichts gemessen wird | SYSTEM | P2 | Kompass 8e | manuell |
+| US-50 | Berechtigungsmatrix: Gruppe × Domäne umschalten, jede Änderung wird protokolliert | SYSTEM | P1 | Kompass 8h | test_kompass::test_admin_permissions_nur_admin_und_roundtrip |
 
 ---
 
@@ -235,7 +252,8 @@ Tests: `test_security_fixes::test_ungueltige_slugs_sind_404`,
 | test_upload_routes.py | 8 | Upload, Extraktion, Kopfdaten, Traversal, Normalisierung |
 | test_extractors.py | 4 | DOCX, XLSX, TXT, PDF roh |
 | test_pdf_ingest.py | 13 | PDF strukturiert (Modul, nicht angebunden) |
-| **Summe** | **104** | 45 davon mit Marker `security` |
+| test_kompass.py | 14 | Kompass-Seiten: Rechte, Vollständigkeit, Bewertung, Entscheidung |
+| **Summe** | **136** | 54 davon mit Marker `security` |
 
 **Ohne automatisierten Test:** US-22, US-23, US-24 (Oberfläche), US-33 (Hash-Dublette), US-34
 (Bewertung), US-35 (Projektanträge-Dashboard).

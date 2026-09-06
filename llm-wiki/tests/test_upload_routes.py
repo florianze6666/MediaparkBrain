@@ -7,7 +7,8 @@ TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "test project da
 
 
 def test_upload_form_get(client):
-    res = client.get("/upload", cookies=as_user("projektmanager"))
+    # /upload zeigt jetzt die Kompass-Maske; die alte Maske liegt unter ?classic=1
+    res = client.get("/upload?classic=1", cookies=as_user("projektmanager"))
     assert res.status_code == 200
     assert "Datei hochladen" in res.text
     assert "Unterstützte Formate" in res.text

@@ -33,6 +33,9 @@ os.environ.setdefault("MPB_SECRET", TEST_SECRET)
 os.environ.setdefault("MPB_BASIC_AUTH_USER", "")
 os.environ.setdefault("MPB_BASIC_AUTH_PASS", "")
 os.environ.setdefault("MPB_COOKIE_SECURE", "")
+# Standardnutzer (Demo-Modus) ist in Tests aus: ohne Cookie gilt der Gast.
+# Tests, die ihn brauchen, setzen MPB_DEFAULT_USER selbst per monkeypatch.
+os.environ.setdefault("MPB_DEFAULT_USER", "")
 
 
 def as_user(uid: str) -> dict[str, str]:
@@ -76,6 +79,7 @@ def pages_env(tmp_path, monkeypatch):
     monkeypatch.setenv("MPB_BASIC_AUTH_USER", "")
     monkeypatch.setenv("MPB_BASIC_AUTH_PASS", "")
     monkeypatch.setenv("MPB_COOKIE_SECURE", "")
+    monkeypatch.setenv("MPB_DEFAULT_USER", "")
 
     import app.access as access
     import app.wiki as wiki

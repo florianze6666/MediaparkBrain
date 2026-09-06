@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -13,7 +14,38 @@ from .llm import chat as llm_chat
 from .llm import is_configured
 
 
+log = logging.getLogger(__name__)
+
+HEADER_MAX_TOKENS = 4000
+
 _YAML_ZEILE = re.compile(r"^([A-Za-z_]\w*):\s*(.*)$")
+_CODE_FENCE = re.compile(r"^[ \t]*```[A-Za-z0-9_-]*[ \t]*$", re.MULTILINE)
+
+
+def strip_code_fences(text: str) -> str:
+    """Entfernt Markdown-Code-Zaeune (``` mit optionalem Sprachkuerzel).
+
+    Modelle legen den Kopf gern in ```yaml ... ``` - auch mit Text davor oder
+    danach. Die Zaunzeilen selbst fliegen raus, der Rest bleibt in Reihenfolge.
+    """
+    return _CODE_FENCE.sub("", text).strip()
+
+
+def extract_frontmatter(text: str) -> tuple[str, str] | None:
+    """Schneidet den Block zwischen den ersten beiden `---`-Zeilen heraus.
+
+    Rueckgabe: (frontmatter_text, rest_nach_dem_block) oder None, wenn kein
+    vollstaendiger Block vorhanden ist. Nur Zeilen, die genau aus `---`
+    bestehen, zaehlen als Begrenzer - ein `---` mitten im Text nicht.
+    """
+    lines = text.splitlines()
+    delims = [i for i, line in enumerate(lines) if line.strip() == "---"]
+    if len(delims) < 2:
+        return None
+    start, end = delims[0], delims[1]
+    frontmatter = "\n".join(lines[start + 1:end])
+    rest = "\n".join(lines[end + 1:])
+    return frontmatter, rest
 
 
 def _yaml_reparieren(block: str) -> str:
@@ -185,44 +217,56 @@ WICHTIGE REGELN:
         llm_response = llm_chat(
             system_prompt,
             f"Dateiname: {filename}\n\nDokument-Auszug:\n{preview}",
-            max_tokens=1000,
+            # Denkende Modelle (Sonnet 5 ueber hybridai.one) verbrauchen das Budget
+            # zuerst im Thinking-Block: bei 1000 kam fuer DOCX/PDF `finish=length`
+            # mit leerem content zurueck, der Kopf fiel still auf den Dateinamen.
+            max_tokens=HEADER_MAX_TOKENS,
         ).strip()
-
-        # Manche Modelle legen einen Markdown-Codeblock um das Frontmatter.
-        # Der Fence gehoert nicht in den Dokumentkopf.
-        if llm_response.startswith("```"):
-            llm_response = llm_response.split("\n", 1)[-1]
-            llm_response = llm_response.removesuffix("```").strip()
-
-        # Extrahiere YAML Frontmatter
-        if "---" in llm_response:
-            parts = llm_response.split("---", 2)
-            if len(parts) >= 3:
-                frontmatter_text = parts[1]
-                try:
-                    parsed_dict = yaml.safe_load(frontmatter_text) or {}
-                except yaml.YAMLError:
-                    parsed_dict = yaml.safe_load(_yaml_reparieren(frontmatter_text)) or {}
-                # Ueberschreibe System-Felder sicherheitshalber
-                parsed_dict["erstellt_von"] = user_id
-                parsed_dict["erstellt_am"] = now_iso
-                parsed_dict["quelle"] = "upload"
-                parsed_dict["original_datei"] = filename
-                if custom_confidentiality:
-                    parsed_dict["vertraulichkeit"] = custom_confidentiality
-                if custom_domain:
-                    parsed_dict["domaene"] = custom_domain
-
-                meta = PageMeta.from_dict(parsed_dict)
-                title = parsed_dict.get("titel") or Path(filename).stem
-                return llm_response, meta, title
-
-        # Fallback falls LLM kein valides Frontmatter lieferte
-        return build_fallback_header(
-            preview, filename, user_id, custom_domain, custom_confidentiality
-        )
     except Exception as e:
-        print(f"LLM-Header-Generierung fehlgeschlagen: {e} -> Fallback")
+        log.warning("LLM-Header-Generierung fehlgeschlagen (%s: %s) -> Fallback",
+                    type(e).__name__, e)
         return build_fallback_header(
             preview, filename, user_id, custom_domain, custom_confidentiality
         )
+
+    # Manche Modelle legen einen Markdown-Codeblock um das Frontmatter (auch
+    # mit Text davor/danach). Der Zaun gehoert nicht in den Dokumentkopf.
+    llm_response = strip_code_fences(llm_response)
+
+    extracted = extract_frontmatter(llm_response)
+    if extracted is None:
+        log.warning("LLM-Header ohne Frontmatter-Block -> Fallback. Antwort: %.200r",
+                    llm_response)
+        return build_fallback_header(
+            preview, filename, user_id, custom_domain, custom_confidentiality
+        )
+    frontmatter_text, rest = extracted
+    # Der Kopf beginnt beim Frontmatter - Plauderei des Modells davor faellt weg.
+    llm_response = f"---\n{frontmatter_text.strip()}\n---\n{rest.strip()}".rstrip()
+    try:
+        try:
+            parsed_dict = yaml.safe_load(frontmatter_text) or {}
+        except yaml.YAMLError:
+            parsed_dict = yaml.safe_load(_yaml_reparieren(frontmatter_text)) or {}
+        if not isinstance(parsed_dict, dict):
+            raise ValueError(f"Frontmatter ist kein Mapping ({type(parsed_dict).__name__})")
+    except Exception as e:
+        log.warning("LLM-Header nicht lesbar (%s: %s) -> Fallback. Antwort: %.200r",
+                    type(e).__name__, e, llm_response)
+        return build_fallback_header(
+            preview, filename, user_id, custom_domain, custom_confidentiality
+        )
+
+    # Ueberschreibe System-Felder sicherheitshalber
+    parsed_dict["erstellt_von"] = user_id
+    parsed_dict["erstellt_am"] = now_iso
+    parsed_dict["quelle"] = "upload"
+    parsed_dict["original_datei"] = filename
+    if custom_confidentiality:
+        parsed_dict["vertraulichkeit"] = custom_confidentiality
+    if custom_domain:
+        parsed_dict["domaene"] = custom_domain
+
+    meta = PageMeta.from_dict(parsed_dict)
+    title = str(parsed_dict.get("titel") or "").strip() or Path(filename).stem
+    return llm_response, meta, title

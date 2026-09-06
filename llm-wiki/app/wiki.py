@@ -78,6 +78,26 @@ def save_uploaded_file(filename: str, content_bytes: bytes, domaene: str = "") -
 
 
 
+def uploaded_file_path(filename: str, domaene: str = "") -> Path | None:
+    """Pfad einer abgelegten Originaldatei unter uploads/<domaene>/ - oder None.
+
+    Nur der reine Dateiname zaehlt (kein Traversal ueber `..`/Pfade), und die
+    Datei muss tatsaechlich innerhalb von uploads_dir() liegen.
+    """
+    if not filename:
+        return None
+    safe_name = Path(filename).name
+    if safe_name != filename or safe_name in (".", ".."):
+        return None
+    d = uploads_dir()
+    if domaene and is_valid_slug(domaene):
+        d = d / domaene
+    target = (d / safe_name).resolve()
+    if not target.is_relative_to(uploads_dir().resolve()) or not target.is_file():
+        return None
+    return target
+
+
 def slugify(title: str) -> str:
     slug = title.strip().lower().replace(" ", "-")
     slug = SLUG_RE.sub("", slug)

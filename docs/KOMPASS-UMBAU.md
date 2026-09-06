@@ -209,6 +209,50 @@ zurück, ohne Einreicher, Zeitpunkt oder Rolle anzufassen (US-11).
 
 ---
 
+## Demo-Modus (Branch `feat/demo-default-user`)
+
+Für Demos per QR-Code-Link: jeder Besucher soll ohne Rollenwahl sofort hochladen können.
+
+**Standardnutzer.** `MPB_DEFAULT_USER` (`.env`) nennt einen Nutzer aus `permissions.yaml`, der für
+jeden Request **ohne gültigen (signierten) Cookie** gilt. Leer oder unbekannt = Gast wie bisher.
+Ein gültiger Cookie gewinnt immer über den Standardnutzer (`access.current_user`). Der Wert wird
+pro Request aus der Env gelesen, keine Modulkonstante. Für Demos gibt es den Nutzer `demo`
+(„Demo (alle Rechte)", alle Gruppen inklusive `admin`). Die Kompass-Shell zeigt unten links
+„Standardnutzer (Demo)", solange kein Cookie gesetzt ist; Einstellungen und alte Seitenleiste zeigen
+ihn wie einen angemeldeten Nutzer. Tests: `tests/test_default_user.py` (4, davon 1 `security`);
+`conftest` setzt `MPB_DEFAULT_USER` explizit leer.
+
+**Bilder hochladen** (JPG, JPEG, PNG, GIF, WEBP, HEIC soweit Pillow kann). `extractors.extract_image`
+holt den Text über `llm.describe_image` (Vision-Nachricht mit `image_url` als data-URL, deutscher
+Prompt: Inhalt sachlich beschreiben, lesbaren Text wörtlich, Tabellen als Markdown, `max_tokens`
+1500, Timeout 60 s). Ohne Key, bei Fehler oder Timeout: Fallback „Bilddatei {name}, {B}×{H} px. Kein
+Text extrahiert (Sprachmodell nicht erreichbar)." mit Pillow-Maßen, nie eine Exception. Die
+Beschreibung ist je Datei-Hash gecacht, damit Drop-In (Prefill) und Upload das Modell nur einmal
+rufen. Antwortet das Modell nur „kann das Bild nicht sehen / keine Bilddatei übermittelt"
+(`extractors.looks_like_no_image`), zählt das als Fehlschlag → Fallback. **Beobachtung 2026-09-06:**
+der Proxy `hybridai.one` (mit `chatbot_id`) reicht `image_url` nicht an `claude-sonnet-5` durch —
+Bilder landen dort immer im Fallback; für echte Bildbeschreibung braucht es einen Endpoint mit
+Vision-Durchleitung. `.doc`/`.xls` liefern eine klare Meldung („Bitte als DOCX/XLSX speichern")
+statt Traceback.
+
+**Original-Link.** Das Original liegt wie bisher unter `uploads/<domäne>/`; die Wissensseite trägt
+`original_datei` (der abgelegte, bereinigte Name) im Kopf und als erste Inhaltszeile „Original: {name}"
+mit Link auf `GET /knowledge/{slug}/original`. Die Route liefert die Datei nur mit `require_page`
+(fehlend und verboten sind 404), der Dateiname kommt ausschließlich aus den Metadaten
+(`wiki.uploaded_file_path`, traversal-sicher). Bilder werden zusätzlich eingebettet.
+
+**Upload-Weg.** `POST /upload` (Kompass, `target=knowledge`) rendert jeden Fehler (keine oder leere
+Datei, Extraktion, Schreibrecht) als roten Hinweis in `kompass/upload.html`, das Formular bleibt.
+Leerer Titel → Titel aus dem Dateinamen; Slug-Kollision → `-2`, `-3` (`_free_slug`). Nach dem
+Speichern zeigt die Maske Links auf die neuen Seiten. Nur der Gast bekommt weiterhin die 403-Seite
+(`require_author`) — mit Standardnutzer kommt das nicht mehr vor.
+
+**Sicherheitshinweis.** Der Standardnutzer hebt die Rollenwahl auf: jeder, der die App erreicht, hat
+dessen Rechte. `MPB_DEFAULT_USER` deshalb nur lokal oder für Demos setzen und **nie ohne Basic-Auth
+(`MPB_BASIC_AUTH_USER/PASS`) im Netz** betreiben. Nach der Demo den Wert wieder leeren.
+
+---
+
 ## Was als Nächstes ansteht
 
 - Bewertung mit Wissensbasis: erst dann sind `sources` und „aus N Dokumenten“ mehr als 0.

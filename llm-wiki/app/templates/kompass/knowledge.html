@@ -7,6 +7,7 @@
 {% block head %}<h1>Wissen</h1><span class="kp-crumb">{{ stats.total }} Dokumente · {{ stats.departments }} Abteilungen · Sie sehen {{ stats.visible }}</span>{% endblock %}
 {% block content %}
 <div class="kp-graph-wrap">
+  <div class="kp-graph-scroll">
   <div class="kp-graph" id="kp-graph">
     {# Prozentkoordinaten statt ViewBox: die Linie endet damit exakt im
        Kreismittelpunkt, weil der Knoten mit denselben Prozenten positioniert
@@ -16,6 +17,7 @@
     </svg>
     {% for n in graph.nodes %}<a href="{{ n.href }}" title="{{ n.title }}" data-dept="{{ n.dept }}" class="kp-node is-{{ n.kind }}{% if n.more %} is-more{% endif %}{% if n.locked %} is-locked{% endif %}" style="left:{{ n.x }}%;top:{{ n.y }}%{% if n.w %};max-width:calc({{ n.w }}% - 4px){% endif %}">{{ n.label }}</a>{% endfor %}
     <div class="kp-legend"><span><i class="kp-dot"></i> Domäne</span><span>○ Dokument</span><span>◌ 🔒 für Sie gesperrt</span></div>
+  </div>
   </div>
   <div class="kp-cloud">{% for w in cloud %}<span class="w{{ w.weight }}">{{ w.word }}</span>{% endfor %}</div>
 </div>
@@ -28,7 +30,7 @@
   {% for d in docs %}
   <div class="kp-tr kp-cols-knowledge">
     <span><a class="kp-name" href="/knowledge/{{ d.slug }}">{{ d.title }}</a>{% if d.stale_year %}<span class="kp-stale">überholt {{ d.stale_year }}</span>{% endif %}</span>
-    <span>{{ d.department }}</span><span>{{ d.hits }}</span><span class="kp-sub" style="font-size:14px">{{ d.last_access }}</span><span>{{ d.edits }}</span><span class="kp-sub" style="font-size:14px">{{ d.readers }}</span>
+    <span data-label="Abteilung">{{ d.department }}</span><span data-label="Zugriffe">{{ d.hits }}</span><span class="kp-sub" data-label="Letzter Zugriff" style="font-size:14px">{{ d.last_access }}</span><span data-label="Änderungen">{{ d.edits }}</span><span class="kp-sub" data-label="Sichtbar für" style="font-size:14px">{{ d.readers }}</span>
   </div>
   {% endfor %}
 </div>

@@ -47,9 +47,9 @@ Zeitmarke. Gesamtsprechzeit 2:50, damit 10 Sekunden Luft bleiben.
 
 Großes Wort in der Mitte: **MediaparkBrain**. Darunter in Grau, 56 pt: „Wissen, das weiß, wer fragt."
 Unten in einer Zeile, 32 pt, Grau: die Namen des Teams: Anselm Zebner · Antje Baumann ·
-Marc Rössler · Eckhard Siegmann · Florian [Nachname] · Frank Jost · Oxana [Nachname] · [weitere].
-Darunter kleiner: „Danke an Stephan Noller und Max Noller." Ganz unten: AI Coding Hackathon,
-Startplatz Köln, Enterprise-Track, September 2026.
+Marc Rössler · Eckhard Siegmann · Florian Zenke · Frank Jost · Oxana [Nachname nachtragen].
+Darunter eine eigene Zeile, 28 pt, Grau: „Betreuung und Mentoring: Stephan Noller, Max Noller."
+Ganz unten: AI Coding Hackathon, Startplatz Köln, Enterprise-Track, September 2026.
 Bild: keins. Diese Folie ist Typografie.
 Notiz: „Ihr habt heute Dinge gesehen, die Spaß machen. Wir zeigen euch etwas, das ein Konzern morgen
 einsetzen darf. Und warum das schwerer ist, als es aussieht. Das ist Antje." (Zeigt auf Antje im Raum.)
@@ -61,8 +61,10 @@ Darunter, groß in Magenta: **6 Wochen**.
 Bildbriefing (Vollbild, Text darüber): eine einzige, überlange Tabellenkalkulation, von schräg oben
 fotografiert, auf einem weißen Schreibtisch, Bildschirm hell, Zellen bis zum Horizont, keine Person
 im Bild. Alternativ ein Foto einer Konzernzentrale von außen bei Tag, nüchtern, kein Logo.
-Notiz: „Antje hat drei Jahre das IT-Projektportfolio bei METRONOM gesteuert, der IT der Metro.
-Ein Projektantrag kommt rein. Controlling, IT, Datenschutz, Betriebsrat, Strategie müssen Stellung
+Notiz: Anselm: „Antje hat drei Jahre das IT-Projektportfolio bei METRONOM gesteuert, der IT der
+Metro." Dann **Antje selbst, ein Satz**, aus dem Publikum oder neben Anselm, zum Beispiel: „Ein
+Projektantrag, fünf Stellungnahmen, sechs Wochen. Und den Vorstandsbericht habe ich von Hand
+gebaut." (Der genaue Satz kommt aus dem Interview, Frage 15.) Anselm weiter: „Ein Projektantrag kommt rein. Controlling, IT, Datenschutz, Betriebsrat, Strategie müssen Stellung
 nehmen. Jeder in seinem Tempo, jeder in seinem Format. Nach sechs Wochen liegt alles vor, und Antje
 baut daraus von Hand den Bericht für den Vorstand. Jedes Quartal."
 

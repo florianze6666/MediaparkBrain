@@ -108,7 +108,7 @@ Status, Dokumenten und Einreicher. Das ist der Vorstandsbericht, den sie bisher 
 | Zeit | Folie | Gesprochen (Kern) |
 |------|-------|-------------------|
 | 0:00 | Titel | „Das ist Antje." |
-| 0:10 | Antjes Excel | „Ein Antrag. Fünf Fachbereiche. Sechs Wochen. Und am Ende ein Bericht von Hand." |
+| 0:10 | Antjes Excel | Anselm stellt Antje vor, **Antje sagt einen Satz** über ihren Prozess, Anselm übernimmt wieder. |
 | 0:35 | Mission | „Enterprise AI. Wir wollten Wissensmanagement, das ein Konzern einsetzen darf." |
 | 0:50 | Anselm-Satz | „Ich hatte ein Firmenbrain. Es scheiterte an einer Frage: Wer darf das sehen?" |
 | 1:00 | Wow 1 | Upload, Herkunft, Ordner. |

@@ -56,3 +56,9 @@ vertraulichkeitsstufen:   # Alias-Tabelle fuer Korpus-Werte, wird beim Upload ue
     empfaenger: []
     standard_fuer_rollen: []
 
+graph:                    # Sonderrecht fuer die Wissensuebersicht (nicht Lesen!)
+  # Wer hier eine Gruppe hat, sieht im Graphen zusaetzlich graue Platzhalter fuer
+  # Dokumente, die er NICHT lesen darf: nur Domaene, Vertraulichkeit und Anzahl.
+  # Kein Titel, kein Slug, kein Ersteller, kein Inhalt. Fehlt der Abschnitt,
+  # darf niemand (sicherer Standard, siehe access.can_see_anonymized).
+  anonymisiert_sehen: [leitung, admin]

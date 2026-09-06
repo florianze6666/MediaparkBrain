@@ -148,6 +148,10 @@ er nicht lesen darf.
 | Admin ohne Leserecht | `permissions.yaml`, `decide` unverändert | Rechteverwaltung heißt nicht Zugriff auf Inhalte (Gewaltenteilung) |
 | Änderungsprotokoll | `permissions-changelog.md` | Rechteänderungen ohne Spur |
 | Kein Selbst-Aussperren | `/admin/users/save` | Verlust des letzten Admins |
+| Anonymisierter Graph nur mit Recht | `permissions.yaml` → `graph.anonymisiert_sehen`, `access.can_see_anonymized`, serverseitig in `/api/graph` | Platzhalter verborgener Dokumente (nur Domäne und Vertraulichkeit, gesalzener Hash, keine Inhalts- oder Ähnlichkeitskanten) sieht nur, wer darf; alle anderen bekommen den Standardgraph |
+| Zugriffsprotokoll zählt nur erlaubte Aufrufe | `usage.record_view` nach `require_page` | Verbotene Aufrufe hinterlassen keine Spur in der Statistik |
+| Teilen nur durch den Ersteller | `POST /wiki/{slug}/share`, `require_writable` auf das Ergebnis | Niemand kann fremde Seiten freigeben oder per Teilen die Domäne wechseln |
+| Rechte-Datei vollständig zurückschreiben | `access.render_permissions` | Admin-Speichern löscht keine Abschnitte mehr (betraf `vertraulichkeitsstufen` und `graph`) |
 
 ### Bekannte Restrisiken (bewusst, für den Demonstrator)
 
@@ -164,7 +168,13 @@ er nicht lesen darf.
 5. **CSRF** wird nur durch `SameSite=lax` abgefangen, es gibt keine CSRF-Tokens.
 6. **Kein `MPB_SECRET` gesetzt** heißt: Zufallsschlüssel pro Start, alle Sessions verfallen beim
    Neustart. Für den Betrieb den Wert in `.env` setzen.
-7. **Sprachmodell-Antworten** werden nicht nachträglich geprüft. Der Schutz liegt komplett im
+7. **Zugriffsprotokoll** (`data/access-log.jsonl`) speichert Leser namentlich und hat keine Löschfrist.
+   Das Betriebsratsprotokoll im Demo-Korpus fordert 30 Tage und keine personenbezogene Auswertung. Für
+   den Betrieb: Frist, Pseudonymisierung oder nur Zähler ohne Namen. Für den Demonstrator dokumentiert.
+8. **Anonymisierter Graph ist ein bewusstes Existenz-Leck:** Wer das Recht hat, erfährt, wie viele
+   Dokumente in einer Domäne liegen, die er nicht lesen darf. Titel, Inhalt, Ersteller, Ähnlichkeit
+   bleiben verborgen. Das Recht ist auf `leitung` und `admin` beschränkt und in der Rechte-Datei sichtbar.
+9. **Sprachmodell-Antworten** werden nicht nachträglich geprüft. Der Schutz liegt komplett im
    Vorfilter; was das Modell nie gesehen hat, kann es nicht verraten.
 
 ## Nicht in diesem Paket

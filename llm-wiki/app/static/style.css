@@ -560,3 +560,269 @@ details.sources > summary {
   padding: 0.4rem 0;
 }
 details.sources > summary:hover { color: var(--accent); }
+
+/* --- Wissensgraph (/graph) ------------------------------------------------
+   Der Graph bekommt die volle Flaeche: kein max-width, kein Innenabstand,
+   Hoehe = Viewport. Farben bleiben in der App-Palette (dunkel). */
+.btn-graph {
+  background: transparent;
+  border: 2px solid var(--accent-purple);
+  color: var(--text);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-graph:hover { background: var(--accent-purple); color: #fff; }
+
+.content-graph { max-width: none; padding: 0; height: 100vh; overflow: hidden; }
+
+.graph-page { display: flex; flex-direction: column; height: 100vh; }
+
+.graph-bar {
+  flex: 0 0 auto;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.graph-bar-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.graph-bar-meta { margin-top: 8px; gap: 18px; }
+.graph-title { font-size: 18px; margin: 0; }
+
+.graph-search {
+  flex: 0 1 260px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.graph-search:focus { outline: none; border-color: var(--accent); }
+
+.graph-toggles { display: flex; gap: 14px; font-size: 13px; color: var(--muted); }
+.graph-toggles label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.graph-toggles input { accent-color: var(--accent-strong); }
+
+.graph-stats { margin: 0; font-size: 13px; color: var(--text); }
+.graph-hint-user { margin: 0; font-size: 12px; color: var(--muted); margin-left: auto; }
+.graph-hint-user strong { color: var(--text); }
+
+.graph-legend {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  list-style: none; margin: 0; padding: 0;
+  font-size: 12px; color: var(--muted);
+}
+.graph-legend li { display: flex; align-items: center; gap: 5px; }
+.lg { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.lg-page { background: var(--accent-strong); }
+.lg-proposal { background: var(--accent); border-radius: 2px; transform: rotate(45deg); width: 10px; height: 10px; }
+.lg-domain { background: transparent; border: 2px solid var(--text); }
+.lg-role { background: transparent; border: 2px solid var(--muted); }
+.lg-link { height: 2px; width: 16px; border-radius: 0; background: var(--accent-strong); }
+.lg-similar { height: 0; width: 16px; border-radius: 0; border-top: 2px dotted #4a8fe7; }
+
+.graph-canvas-wrap { position: relative; flex: 1 1 auto; min-height: 0; background: var(--bg); }
+#graph-canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+#graph-canvas:active { cursor: grabbing; }
+
+.glabel { fill: var(--text); font-size: 11px; font-family: inherit; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.glabel-domain { font-size: 13px; font-weight: 700; fill: #fff; }
+.glabel-role { font-size: 11px; fill: var(--muted); }
+
+.graph-message {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  max-width: 460px; text-align: center; color: var(--muted); font-size: 14px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px;
+}
+
+.graph-tooltip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; color: var(--text); max-width: 220px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Wissensuebersicht (/dashboard) ---------------------------------------
+   Eine lange Seite mit sechs Abschnitten. Breiter als der Lesetext, weil die
+   Artikeltabelle zehn Spalten hat, aber in derselben dunklen Palette. */
+/* min-width: 0 ist noetig, weil .content ein Flex-Element ist: ohne das
+   waechst es auf die min-content-Breite der zehnspaltigen Artikeltabelle,
+   und die ganze Seite laesst sich seitwaerts schieben. */
+.content-uebersicht { max-width: 1280px; min-width: 0; }
+
+.uebersicht-block {
+  min-width: 0;
+  margin: 28px 0;
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.uebersicht-block > .dashboard-table-wrap { margin-top: 4px; }
+
+.block-kopf {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.block-kopf h2 { font-size: 17px; margin: 0; }
+.block-link { font-size: 13px; color: var(--accent); text-decoration: none; }
+.block-link:hover { text-decoration: underline; }
+.block-meta { margin: 0; font-size: 12px; color: var(--muted); }
+.block-fuss { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.uebersicht-block .empty { color: var(--muted); font-size: 13px; }
+
+/* 0. Drei Hauptaktionen */
+.uebersicht-aktionen {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 6px;
+}
+.action-card {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.action-card:hover { border-color: var(--accent); }
+.action-titel { font-size: 15px; font-weight: 600; }
+.action-text { font-size: 12px; color: var(--muted); }
+.action-upload { border-color: var(--accent-strong); }
+.action-card.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.action-card.is-disabled:hover { border-color: var(--border); }
+.action-hint { flex-basis: 100%; margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+
+/* 1. Eingebetteter Graph */
+.uebersicht-graph {
+  height: 55vh;
+  min-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.graph-canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+.graph-canvas:active { cursor: grabbing; }
+.graph-modus { border-left: 1px solid var(--border); padding-left: 14px; }
+.graph-hidden-note { margin: 0; font-size: 12px; color: #b9b2b9; }
+.lg-hidden { background: #6b656b; border: 1px solid #8b848b; border-radius: 2px; }
+
+/* 2. Abteilungen und Wortwolke */
+.uebersicht-statistik { display: flex; gap: 24px; flex-wrap: wrap; }
+.statistik-spalte { flex: 1 1 320px; min-width: 280px; }
+
+.balken-liste { list-style: none; margin: 0; padding: 0; }
+.balken-zeile {
+  display: grid;
+  grid-template-columns: 90px 1fr 56px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+.balken-label { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.03em; }
+.balken-spur { display: flex; height: 14px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.balken { height: 100%; }
+.balken-sichtbar { background: var(--accent-strong); }
+.balken-verborgen { background: #6b656b; }
+.balken-zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.zahl-verborgen { color: var(--muted); }
+
+.wortwolke {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  line-height: 1.35;
+}
+.wolkenwort { color: var(--text); text-decoration: none; }
+.wolkenwort:hover { color: var(--accent); text-decoration: underline; }
+
+/* 3. Artikeltabelle */
+.artikel-tabelle { font-size: 13px; }
+.artikel-tabelle th.sortierbar { cursor: pointer; user-select: none; white-space: nowrap; }
+.artikel-tabelle th.sortierbar:hover { color: var(--text); }
+.artikel-tabelle th.sortiert-auf::after { content: " ▲"; color: var(--accent); }
+.artikel-tabelle th.sortiert-ab::after { content: " ▼"; color: var(--accent); }
+.artikel-tabelle .doc-title-link { color: var(--text); text-decoration: none; }
+.artikel-tabelle .doc-title-link:hover { color: var(--accent); text-decoration: underline; }
+.zell-nebentext { color: var(--muted); font-size: 11px; }
+.empfaenger-liste { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.artikel-aktionen { white-space: nowrap; }
+.zeilen-link {
+  background: none;
+  border: none;
+  padding: 0 6px 0 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+.zeilen-link:hover { text-decoration: underline; }
+.anlagen summary { cursor: pointer; color: var(--accent); }
+.anlagen-inhalt { text-align: left; font-size: 12px; padding: 6px 0 2px; min-width: 180px; }
+.anlagen-titel { margin: 6px 0 2px; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.anlagen-inhalt ul { margin: 0; padding-left: 16px; }
+
+/* 6. Scans */
+.scans-tabelle { font-size: 13px; }
+.badge-demo { border-color: var(--accent-purple); color: #d3aed0; font-size: 10px; }
+
+/* 4. Dialoge */
+.mpb-dialog {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  max-width: 520px;
+  width: 92%;
+}
+.mpb-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.dialog-form { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; }
+.dialog-form h2 { margin: 0; font-size: 18px; }
+.dialog-seite { margin: 0; color: var(--muted); font-size: 13px; }
+.dialog-hinweis { margin: 0; color: var(--muted); font-size: 12px; }
+.dialog-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.dialog-form input[type="text"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  width: 100%;
+}
+.kopier-zeile { display: flex; gap: 8px; }
+.checkbox-zeile { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.checkbox-zeile input { accent-color: var(--accent-strong); }
+.dialog-liste { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+.dialog-liste li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.dialog-aktionen { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.btn-sekundaer { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-sekundaer:hover { border-color: var(--accent); }
+.hint-erfolg { border-color: #2f9e6e; color: #7fd4a8; }

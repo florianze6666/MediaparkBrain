@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=8">
   <script>
     // Wird gerufen, sobald dem Nutzer neue Informationen bereitgestellt werden
     // (frische LLM-Antwort) - spricht "Yeah, Yeah!" laut aus.
@@ -94,25 +94,21 @@
           Wissen hochladen
         </a>
         <a href="/proposals/new" class="btn btn-proposal">+ Projektvorschlag einreichen</a>
-        <a href="/dashboard/projektantraege" class="btn btn-dashboard">
-          <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="9"></rect>
-            <rect x="14" y="3" width="7" height="5"></rect>
-            <rect x="14" y="12" width="7" height="9"></rect>
-            <rect x="3" y="16" width="7" height="5"></rect>
-          </svg>
-          Projektanträge eingereicht
-        </a>
         <a href="/proposals/evaluate" class="btn btn-evaluate">Projektbewertung</a>
         <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
+        {# Ein Einstieg statt drei: Wissensgraph, Dateien-Dashboard und
+           Projektantraege-Dashboard sind Abschnitte der Wissensuebersicht.
+           /graph bleibt erreichbar (Vollbild-Link dort). #}
         <a href="/dashboard" class="btn btn-dashboard">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="9"></rect>
-            <rect x="14" y="3" width="7" height="5"></rect>
-            <rect x="14" y="12" width="7" height="9"></rect>
-            <rect x="3" y="16" width="7" height="5"></rect>
+            <circle cx="5" cy="18" r="2.5"></circle>
+            <circle cx="19" cy="16" r="2.5"></circle>
+            <circle cx="12" cy="5" r="2.5"></circle>
+            <line x1="6.9" y1="16.4" x2="10.6" y2="7.1"></line>
+            <line x1="13.6" y1="7" x2="17.7" y2="13.8"></line>
+            <line x1="7.5" y1="17.7" x2="16.5" y2="16.4"></line>
           </svg>
-          Dashboards
+          Wissensübersicht
         </a>
         {% if is_admin %}
         <a href="/admin" class="btn btn-admin">Admin</a>
@@ -134,7 +130,7 @@
         <ul class="page-list"><li class="empty">Noch keine Seiten</li></ul>
       {% endif %}
     </aside>
-    <main class="content">
+    <main class="content{% block main_class %}{% endblock %}">
       {% block content %}{% endblock %}
     </main>
   </div>

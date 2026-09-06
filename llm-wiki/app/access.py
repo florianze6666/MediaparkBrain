@@ -392,9 +392,22 @@ def verify_user(value: str | None) -> str | None:
     return uid
 
 
+def default_user() -> str:
+    """Nutzer, mit dem ein Besucher ohne Cookie startet.
+
+    Ohne `MPB_DEFAULT_USER` bleibt es beim Gast - der Vorgabewert oeffnet also
+    nichts, solange ihn niemand bewusst setzt. Fuer die Demo wird dort `ceo`
+    eingetragen: die Rolle mit den meisten Leserechten (8 von 9 Domaenen; `br`
+    bleibt auch fuer sie zu). Eine unbekannte ID faellt auf den Gast zurueck,
+    ein Tippfehler in der .env kann also keine Rechte verschieben.
+    """
+    return get_user(os.environ.get("MPB_DEFAULT_USER", "").strip() or None)["id"]
+
+
 def current_user(request: Request) -> str:
-    """Nutzer aus dem signierten Cookie; ungueltig oder unsigniert -> Gast."""
-    return get_user(verify_user(request.cookies.get(COOKIE_NAME)))["id"]
+    """Nutzer aus dem signierten Cookie; ungueltig oder unsigniert -> Standard."""
+    uid = verify_user(request.cookies.get(COOKIE_NAME))
+    return get_user(uid)["id"] if uid else default_user()
 
 
 # ---------------------------------------------------------------------------

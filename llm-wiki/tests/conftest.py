@@ -33,6 +33,9 @@ os.environ.setdefault("MPB_SECRET", TEST_SECRET)
 os.environ.setdefault("MPB_BASIC_AUTH_USER", "")
 os.environ.setdefault("MPB_BASIC_AUTH_PASS", "")
 os.environ.setdefault("MPB_COOKIE_SECURE", "")
+# Ebenso der Standardnutzer: in der .env steht fuer die Demo z.B. "ceo".
+# Leer = Gast, damit die Rechtetests ihre Ausgangslage behalten.
+os.environ.setdefault("MPB_DEFAULT_USER", "")
 
 
 def as_user(uid: str) -> dict[str, str]:

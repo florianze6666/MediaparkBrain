@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .wiki import Snippet
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_MODEL = "claude-sonnet-5"
 
 # Belegstelle, die pdf_ingest (Paket 8) in den Absatz schreibt: *(Seite 7)*
 SEITE_RE = re.compile(r"\*\(Seite (\d+)\)\*")

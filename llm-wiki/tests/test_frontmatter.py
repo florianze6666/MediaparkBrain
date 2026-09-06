@@ -1,6 +1,8 @@
 """Frontmatter: schreiben, lesen, Defaults, Bearbeiten erhaelt Ersteller."""
 from __future__ import annotations
 
+import pytest
+
 from tests.conftest import as_user
 
 
@@ -107,3 +109,32 @@ def test_list_pages_ungefiltert_vs_gefiltert(pages_env):
     assert wiki.get_page_for("budget-finance", "mitarbeiter") is None
     assert wiki.get_page_for("budget-finance", "cfo") is not None
     assert wiki.get_page_for("gibt-es-nicht", "cfo") is None
+
+
+def test_yaml_reparatur_rettet_unquotiertes_modell_frontmatter():
+    """Modelle liefern je nach Lauf `titel: Sitzung: Thema` oder `rolle: -`.
+
+    Beides ist ungueltiges YAML. Frueher verfiel dadurch der komplette
+    generierte Dokumentkopf still zum Fallback, obwohl der Inhalt brauchbar
+    war - der Nutzer bekam Titel aus dem Dateinamen statt aus dem Dokument.
+    """
+    import yaml
+
+    from app.llm_metadata import _yaml_reparieren
+
+    kaputt = (
+        "titel: Betriebsratssitzung: Einfuehrung KI\n"
+        "rolle: -\n"
+        "empfaenger: [br, it]\n"
+        "informationsdomaene: []\n"
+    )
+    with pytest.raises(yaml.YAMLError):
+        yaml.safe_load(kaputt)
+
+    daten = yaml.safe_load(_yaml_reparieren(kaputt))
+    # Der Doppelpunkt im Titel bleibt erhalten, statt die Zeile zu sprengen.
+    assert daten["titel"] == "Betriebsratssitzung: Einfuehrung KI"
+    assert daten["rolle"] == "-"
+    # Listen bleiben Listen und werden nicht zu Strings quotiert.
+    assert daten["empfaenger"] == ["br", "it"]
+    assert daten["informationsdomaene"] == []

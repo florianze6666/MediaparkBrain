@@ -1540,10 +1540,15 @@ async def api_prefill(request: Request, target: str = "knowledge"):
 
 @app.get("/search")
 def search(request: Request, q: str = ""):
-    """Eine Suche, zwei Listen. Der Rechte-Filter steckt in search_snippets
-    bzw. list_proposals(user) - hier wird nichts zusaetzlich gefiltert."""
+    """Die Suchleiste ist zugleich "Frag das Wiki": aus den Treffern wird eine
+    belegte Antwort (Paket 10), darunter stehen die Fundstellen und die
+    Projekte. Der Rechte-Filter steckt in search_snippets bzw.
+    list_proposals(user) - hier wird nichts zusaetzlich gefiltert, und weil
+    `ask_llm` ausschliesslich gegen diese Snippets belegt, kann auch kein
+    Zitat aus einer gesperrten Seite stammen."""
     user = access.current_user(request)
     snippets = wiki.search_snippets(q, user) if q.strip() else []
+    antwort = llm.ask_llm(q, snippets) if q.strip() else None
     needle = q.strip().lower()
     hits = []
     if needle:
@@ -1558,7 +1563,8 @@ def search(request: Request, q: str = ""):
                 })
     return templates.TemplateResponse(
         request, "kompass/search.html",
-        kctx(request, "", q=q, snippets=snippets, hits=hits),
+        kctx(request, "", q=q, antwort=antwort, snippets=snippets, hits=hits,
+             llm_configured=llm.is_configured()),
     )
 
 

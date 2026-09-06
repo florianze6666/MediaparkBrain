@@ -237,3 +237,48 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kp-markdown p, .kp-markdown li { font-size: 14px; line-height: 1.55; }
 .kp-markdown table { border-collapse: collapse; font-size: 13px; }
 .kp-markdown th, .kp-markdown td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; }
+
+/* --- Antwort mit Quellenzitat (Paket 10 in der Kompass-Suche) -------------
+   Der Beleg steht ueber der Aussage und ist typografisch abgesetzt: was im
+   Dokument steht, soll nicht wie das aussehen, was das Modell daraus macht.
+   Alles bleibt in einer Zeile, der Kasten waechst nur so weit wie noetig. */
+.kp-fakt { display: flex; flex-direction: column; gap: 6px; padding: 0 0 14px; }
+.kp-fakt + .kp-fakt { border-top: 1px solid var(--line-soft); padding-top: 14px; }
+
+.kp-zitat {
+  width: fit-content; max-width: 100%;
+  margin: 0; padding: 7px 12px;
+  border-left: 3px solid var(--warn);
+  background: #fff8e6;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-size: 14px; line-height: 1.5; color: var(--ink);
+}
+.kp-zitat-label {
+  font-family: var(--font); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: #a6690a; margin-right: 8px;
+}
+/* Anfuehrungszeichen haengen am Text, nicht am Block - sonst landet das
+   schliessende Zeichen auf einer eigenen Zeile. */
+.kp-zitat-text::before { content: "„"; }
+.kp-zitat-text::after  { content: "“"; }
+
+.kp-zitat-quelle {
+  font-family: var(--font); font-size: 12px; font-style: normal;
+  color: var(--muted); margin-left: 8px; white-space: nowrap;
+}
+.kp-zitat-quelle::before { content: "— "; }
+
+.kp-fakt-aussage { margin: 0; font-size: 14px; line-height: 1.55; }
+
+/* Ohne Beleg: sichtbar machen, nicht verstecken. */
+.kp-zitat-fehlt {
+  width: fit-content; max-width: 100%;
+  margin: 0; padding: 7px 12px;
+  border-left: 3px solid var(--bad);
+  background: #ffefee;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 12.5px; color: var(--muted);
+}
+.kp-fakt.is-unbelegt .kp-fakt-aussage { color: var(--muted); }

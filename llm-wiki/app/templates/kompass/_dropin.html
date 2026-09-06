@@ -121,6 +121,10 @@ async function kpIngest(src){
   try{
     const r=await fetch(KP_FILL_ENDPOINT,{method:'POST',body,headers});
     res=await r.json().catch(()=>null);
+    // 403 heisst hier immer: als Gast angemeldet. Die Antwort ist in dem Fall
+    // HTML, res bleibt also null und die generische Meldung unten wuerde nur
+    // die Fehlernummer zeigen - ohne zu sagen, was zu tun ist.
+    if(r.status===403)throw new Error('Als Gast kannst du nichts anlegen \u2014 Rolle unter Einstellungen w\u00e4hlen.');
     if(!r.ok||!res||!res.fields)throw new Error((res&&(res.message||res.detail))||('Konnte nicht gelesen werden (Fehler '+r.status+')'));
   }catch(err){
     kpStep(1);kpStatus(String(err.message||err),'error');return;

@@ -1,0 +1,14 @@
+{% extends "kompass/layout.html" %}
+{# Protokoll der Rechteaenderungen (nur admin). Kontext: changelog [{time, text}] #}
+{% block title %}Protokoll · Kompass{% endblock %}
+{% block head %}<h1>Protokoll</h1><span class="kp-crumb">Rechteänderungen aus permissions-changelog.md · {{ changelog | length }} Einträge</span>{% endblock %}
+{% block content %}
+<section class="kp-section kp-versions">
+  <div class="kp-section-title">Letzte Änderungen</div>
+  {% for c in changelog %}<div><span style="width:130px">{{ c.time }}</span>{{ c.text }}</div>{% else %}<div class="kp-hint">Noch keine Rechteänderung protokolliert.</div>{% endfor %}
+</section>
+<div class="kp-footer">
+  <span class="kp-hint">Nur Rechteänderungen. Modell-, Lauf- und Zugriffsprotokolle sind noch nicht angebunden.</span>
+  <a class="kp-btn kp-btn-primary" href="/admin/permissions">Berechtigungen</a>
+</div>
+{% endblock %}

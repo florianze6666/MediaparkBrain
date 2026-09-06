@@ -1,0 +1,48 @@
+{% extends "kompass/layout.html" %}
+{# Kontext: proposals (list), kpi {mine, others, running, days_to_board, board_date}, knowledge_count.
+   proposal: {slug, name, owner, status_sentence, completeness_pct, completeness_state ok|warn|bad,
+              roles: [{key BR|CFO|IT|CEO, score int|None, state ok|warn|bad|none|running}],
+              total float|None, total_state, next_step, next_owner, submitted_date, deadline, deadline_urgent bool, running bool} #}
+{% block title %}Dashboard · Kompass{% endblock %}
+{% block head %}<h1>Dashboard</h1>{% endblock %}
+{% block content %}
+{% if show_kpis %}
+<div class="kp-kpis">
+  <div class="kp-kpi"><b>{{ kpi.mine }}</b><span>bei mir</span></div>
+  <div class="kp-kpi is-muted"><b>{{ kpi.others }}</b><span>bei anderen</span></div>
+  <div class="kp-kpi is-muted"><b>{{ kpi.running }}</b><span>in Prüfung</span></div>
+  <div class="kp-kpi is-right"><b>{{ kpi.days_to_board }} Tage</b><span>bis Gremium {{ kpi.board_date }}</span></div>
+</div>
+{% endif %}
+<div class="kp-chips">
+  <span class="kp-chip"><i class="kp-dot"></i>Jeder Antrag gegen {{ knowledge_count }} Dokumente Unternehmenswissen geprüft</span>
+  <span class="kp-chip"><i class="kp-dot is-ink"></i>4 Rollen simuliert, bevor ein Mensch entscheidet</span>
+</div>
+<div class="kp-table">
+  <div class="kp-tr kp-th kp-cols-dashboard">
+    <span>Projekt <a class="kp-sort" href="?sort=name">↕</a></span><span>Status</span><span>Vollständig <a class="kp-sort" href="?sort=completeness">↕</a></span><span>Simulierte Rollen</span><span>Score <a class="kp-sort" href="?sort=score">↕</a></span><span>Nächster Schritt</span><span>Eingereicht <a class="kp-sort is-active" href="?sort=submitted">↕</a></span><span>Deadline <a class="kp-sort" href="?sort=deadline">↕</a></span><span></span>
+  </div>
+  {% for p in proposals %}
+  <div class="kp-tr kp-cols-dashboard{% if p.running %} is-dim{% endif %}">
+    <div><a class="kp-name" href="/proposals/{{ p.slug }}">{{ p.name }}</a><div class="kp-sub">{{ p.owner }}</div></div>
+    <div style="font-size:13.5px">{{ p.status_sentence }}</div>
+    <div class="kp-bar is-{{ p.completeness_state }}"><i style="width:{{ p.completeness_pct }}%"></i></div>
+    <div class="kp-roles">
+      {% for r in p.roles %}<span class="kp-role"><small>{{ r.key }}</small><span class="kp-score is-{{ r.state }}">{% if r.state == 'running' %}…{% elif r.score is none %}–{% else %}{{ r.score }}{% endif %}</span></span>{% endfor %}
+    </div>
+    <div class="kp-total is-{{ p.total_state }}">{{ p.total if p.total is not none else '—' }}</div>
+    <div style="font-size:13.5px"><a href="/proposals/{{ p.slug }}#{{ p.next_anchor or 'entscheidung' }}"><b>{{ p.next_step }}</b></a> <span class="kp-sub">· {{ p.next_owner }}</span></div>
+    <div class="kp-sub" style="font-size:13px">{{ p.submitted_date }}</div>
+    <div style="font-size:13px;color:{{ '#ff3b30' if p.deadline_urgent else '#6e6e73' }}">{{ p.deadline }}</div>
+    <div class="kp-actions">
+      <form method="post" action="/proposals/{{ p.slug }}/remind"><button class="kp-icon-btn" title="Erinnerung senden">🔔</button></form>
+      <form method="post" action="/proposals/{{ p.slug }}/share"><button class="kp-icon-btn" title="Status teilen">↗</button></form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="kp-footer">
+  <span class="kp-hint">Name → Detail · Schritt → Aktion · 🔔 Erinnerung · ↗ Status teilen</span>
+  <a class="kp-btn kp-btn-primary" href="/proposals/new">Neuer Antrag</a>
+</div>
+{% endblock %}

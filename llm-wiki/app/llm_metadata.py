@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -9,12 +9,34 @@ from typing import Any
 import yaml
 
 from .access import PageMeta, default_confidentiality_for_user
+from .llm import chat as llm_chat
+from .llm import is_configured
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+_YAML_ZEILE = re.compile(r"^([A-Za-z_]\w*):\s*(.*)$")
 
 
-def is_configured() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+def _yaml_reparieren(block: str) -> str:
+    """Quotiert Skalarwerte, damit unquotiertes Modell-YAML noch lesbar wird.
+
+    Modelle schreiben je nach Lauf `titel: Sitzung: Einfuehrung` oder
+    `rolle: -` - beides ist ungueltiges YAML und liess bisher den kompletten
+    generierten Kopf verfallen, obwohl der Inhalt brauchbar war. Listen und
+    bereits quotierte Werte bleiben unangetastet; json.dumps liefert einen
+    korrekt escapten Double-Quoted-Skalar, den YAML genauso liest.
+    """
+    zeilen = []
+    for zeile in block.splitlines():
+        treffer = _YAML_ZEILE.match(zeile)
+        if not treffer:
+            zeilen.append(zeile)
+            continue
+        schluessel, wert = treffer.group(1), treffer.group(2).strip()
+        if not wert or wert[0] in "[{\"'":
+            zeilen.append(zeile)
+            continue
+        zeilen.append(f"{schluessel}: {json.dumps(wert, ensure_ascii=False)}")
+    return "\n".join(zeilen)
 
 
 def build_fallback_header(
@@ -154,34 +176,33 @@ Einstufung: <NUR angeben wenn vertraulichkeit != 'intern', bei 'intern' weglasse
 WICHTIGE REGELN:
 - Felder, die keinen Sinn ergeben oder nicht im Text auffindbar sind, mit "-" oder [] belegen.
 - Gib NUR den Header-Block (Frontmatter + Fliesskopf) zurueck, KEINEN weiteren Dokumentinhalt!
+- Jeden Textwert im Frontmatter in doppelte Anfuehrungszeichen setzen, sonst ist das YAML
+  ungueltig (etwa bei einem Doppelpunkt im Titel oder einem alleinstehenden "-"). Listen
+  bleiben unquotiert: [] oder [projekt].
 """
 
     try:
-        from anthropic import Anthropic
-
-        client = Anthropic()
-        model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
-        response = client.messages.create(
-            model=model,
+        llm_response = llm_chat(
+            system_prompt,
+            f"Dateiname: {filename}\n\nDokument-Auszug:\n{preview}",
             max_tokens=1000,
-            system=system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Dateiname: {filename}\n\nDokument-Auszug:\n{preview}",
-                }
-            ],
-        )
-        llm_response = "".join(
-            block.text for block in response.content if block.type == "text"
         ).strip()
+
+        # Manche Modelle legen einen Markdown-Codeblock um das Frontmatter.
+        # Der Fence gehoert nicht in den Dokumentkopf.
+        if llm_response.startswith("```"):
+            llm_response = llm_response.split("\n", 1)[-1]
+            llm_response = llm_response.removesuffix("```").strip()
 
         # Extrahiere YAML Frontmatter
         if "---" in llm_response:
             parts = llm_response.split("---", 2)
             if len(parts) >= 3:
                 frontmatter_text = parts[1]
-                parsed_dict = yaml.safe_load(frontmatter_text) or {}
+                try:
+                    parsed_dict = yaml.safe_load(frontmatter_text) or {}
+                except yaml.YAMLError:
+                    parsed_dict = yaml.safe_load(_yaml_reparieren(frontmatter_text)) or {}
                 # Ueberschreibe System-Felder sicherheitshalber
                 parsed_dict["erstellt_von"] = user_id
                 parsed_dict["erstellt_am"] = now_iso

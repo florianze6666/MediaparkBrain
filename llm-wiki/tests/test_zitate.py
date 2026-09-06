@@ -35,7 +35,7 @@ def snippets() -> list[wiki.Snippet]:
 
 @pytest.fixture
 def mit_key(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
 
 
 def _antwort_des_modells(monkeypatch, fakten: list[dict], roh: str | None = None) -> None:
@@ -221,14 +221,14 @@ def test_ohne_treffer_gibt_es_einen_hinweis_statt_fakten(mit_key):
 
 
 def test_ohne_api_key_gibt_es_belege_ohne_aussagen(monkeypatch, snippets):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
 
     antwort = llm.ask_llm("Was kostet CONI?", snippets)
 
     assert len(antwort.fakten) == 2
     assert all(f.belegt for f in antwort.fakten)
     assert all(f.aussage == "" for f in antwort.fakten)
-    assert "ANTHROPIC_API_KEY" in antwort.hinweis
+    assert "LLM_API_KEY" in antwort.hinweis
 
 
 def test_json_im_codeblock_wird_gelesen(mit_key, monkeypatch, snippets):
@@ -263,3 +263,16 @@ def test_fakten_ohne_aussage_werden_verworfen(mit_key, monkeypatch, snippets):
     ])
 
     assert len(llm.ask_llm("?", snippets).fakten) == 1
+
+
+def test_chatbot_id_nur_wenn_gesetzt(monkeypatch):
+    """Das anbieterspezifische Feld darf nur mitgehen, wenn es konfiguriert ist -
+    sonst wuerde ein reiner OpenAI-Endpoint ein unbekanntes Feld sehen."""
+    monkeypatch.delenv("LLM_CHATBOT_ID", raising=False)
+    assert llm._extra_body() == {}
+
+    monkeypatch.setenv("LLM_CHATBOT_ID", "  cb-42  ")
+    assert llm._extra_body() == {"chatbot_id": "cb-42"}
+
+    monkeypatch.setenv("LLM_CHATBOT_ID", "   ")
+    assert llm._extra_body() == {}

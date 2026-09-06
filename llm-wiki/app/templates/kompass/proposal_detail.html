@@ -1,0 +1,200 @@
+{% extends "kompass/layout.html" %}
+{# Eine Seite für Neu / Bearbeiten / Ansehen. mode: 'new' | 'edit' | 'view'.
+   p: {slug, name, owner, cost, benefit, duration, description, step (1..5), board_date,
+       completeness {done, total, pct, state, missing: [{key,label}]},
+       total, total_state, rated_count, source_count,
+       roles: [{key, name, score, state, subline, criteria, sources:[{title,url}], improve, missing, conflict}],
+       dialog: [{author_initials, kind message|escalation|internal, text, meta, action_label, action_url}],
+       docs: [{name, size, url}], versions: [{label, time, note}],
+       decision_enabled bool, primary_action {label, url}} #}
+{% block title %}{{ p.name or 'Neuer Antrag' }} · Kompass{% endblock %}
+{% block head %}
+{# "Anträge" ist kein Menüpunkt mehr; die Liste steht auf dem Dashboard. #}
+<a class="kp-crumb" href="/">Anträge ›</a>
+<h1>{{ p.name or 'Neuer Antrag' }}</h1>
+<span class="kp-tag">{% if mode == 'new' %}Neu{% elif mode == 'edit' %}Bearbeiten{% else %}Ansehen · Bearbeiten{% endif %}</span>
+{% endblock %}
+{% block content %}
+<form method="post" action="{% if mode == 'new' %}/proposals{% else %}/proposals/{{ p.slug }}{% endif %}" enctype="multipart/form-data" id="kp-form">
+<div class="kp-layout-detail">
+  <div class="kp-sections">
+
+    {% if mode == 'new' %}
+    {% include "kompass/_dropin.html" %}
+    <div class="kp-manual"><a href="#" id="kp-manual-link" onclick="kpShowForm(event)">Ohne Dokument von Hand ausfüllen</a></div>
+    {% endif %}
+
+    {# Beim Öffnen von /proposals/new steht nur das Drop-In da. Die Abschnitte
+       sind im DOM (das Drop-In schreibt hinein, Tests greifen darauf zu), aber
+       hidden — sie erscheinen, sobald das Dokument gelesen ist oder der Nutzer
+       "von Hand ausfüllen" wählt. #}
+    <div class="kp-sections" id="kp-form-wrap"{% if mode == 'new' %} hidden{% endif %}>
+
+    <section class="kp-section" id="grundinfo">
+      <div class="kp-section-title">Grundinfo</div>
+      {% if mode == 'view' %}
+      <div class="kp-facts" style="grid-template-columns:1fr">
+        <div class="kp-fact"><small>Herkunft</small><b>{% if p.herkunft.unknown %}Herkunft unbekannt (Altbestand){% else %}Eingebracht von <strong>{{ p.herkunft.name }}</strong> ({{ p.herkunft.id }}), Rolle <strong>{{ p.herkunft.rolle }}</strong>{% endif %}</b><small>{{ p.herkunft.zeit }} · Domäne {{ p.herkunft.domaene }} · {{ p.herkunft.vertraulichkeit }}{% if p.herkunft.quelle %} · {{ p.herkunft.quelle }}{% endif %}</small></div>
+      </div>
+      <div class="kp-facts">
+        <div class="kp-fact"><small>Owner</small><b>{{ p.owner }}</b></div>
+        <div class="kp-fact"><small>Kosten</small><b>{{ p.cost }}</b></div>
+        <div class="kp-fact"><small>Nutzen</small><b>{{ p.benefit }}</b></div>
+        <div class="kp-fact"><small>Laufzeit</small><b>{{ p.duration }}</b></div>
+      </div>
+      <div class="kp-text kp-markdown">{{ p.description_html | safe }}</div>
+      {% else %}
+      <input name="name" placeholder="Projektname" value="{{ p.name or '' }}" required>
+      <textarea name="description" rows="3" placeholder="Vorhaben">{{ p.description or '' }}</textarea>
+      <div class="kp-facts" style="grid-template-columns:repeat(3,1fr)">
+        <input name="cost" placeholder="Kosten" value="{{ p.cost or '' }}">
+        <input name="benefit" placeholder="Nutzen" value="{{ p.benefit or '' }}">
+        <input name="duration" placeholder="Laufzeit" value="{{ p.duration or '' }}">
+      </div>
+      {% if mode == 'new' %}
+      {# Ablage und Einstufung wie in der alten Maske: angeboten wird nur, was
+         der Nutzer lesen darf; der POST prueft trotzdem noch einmal. #}
+      <div class="kp-facts" style="grid-template-columns:repeat(2,1fr)">
+        <label class="kp-field"><small>Domäne</small>
+          <select name="domaene">
+            {% for d in domains %}<option value="{{ d }}" {% if d == default_domain %}selected{% endif %}>{{ d }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="kp-field"><small>Vertraulichkeit</small>
+          <select name="vertraulichkeit">
+            {% for c in confidentiality_levels %}<option value="{{ c.id }}" {% if c.id == default_confidentiality %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      {% endif %}
+      {% endif %}
+    </section>
+
+    {% if mode != 'new' %}
+    <section class="kp-section" id="status">
+      <div class="kp-section-title">Status</div>
+      <div class="kp-steps">
+        {% for i in range(1, 6) %}
+        <span class="kp-step {% if i < p.step %}is-done{% elif i == p.step %}is-current{% endif %}">{% if i < p.step %}✓{% else %}{{ i }}{% endif %}</span>
+        {% if i < 5 %}<span class="kp-step-line {% if i < p.step %}is-done{% endif %}"></span>{% endif %}
+        {% endfor %}
+      </div>
+      <div class="kp-step-labels">
+        {% set labels = ['Eingereicht', 'Vollständig', 'In Prüfung', 'Bewertet', 'Entschieden ' ~ (p.board_date or '')] %}
+        {% for l in labels %}{% if loop.index == p.step %}<b>{{ l }}</b>{% else %}<span>{{ l }}</span>{% endif %}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="kp-section" id="vollstaendigkeit">
+      <div class="kp-section-title">Vollständigkeit <span class="kp-total is-{{ p.completeness.state }}">{{ p.completeness.done }} / {{ p.completeness.total }}</span></div>
+      <div class="kp-bar is-{{ p.completeness.state }}"><i style="width:{{ p.completeness.pct }}%"></i></div>
+      {% if p.completeness.missing %}
+      <div class="kp-missing">
+        {% for m in p.completeness.missing %}<input name="{{ m.key }}" placeholder="{{ m.label }}">{% endfor %}
+      </div>
+      {% if mode != 'new' and can_edit %}<div><button class="kp-btn" type="submit">Felder speichern</button></div>{% endif %}
+      {% endif %}
+    </section>
+
+    {% if p.roles %}
+    <section class="kp-section" id="bewertung">
+      <div class="kp-section-title">
+        <span>Bewertung <em>· 4 Rollen simuliert aus {{ p.source_count }} Dokumenten Unternehmenswissen</em></span>
+        <span style="font-size:14px"><b class="kp-total is-{{ p.total_state }}">{{ p.total if p.total is not none else '—' }}</b> <span class="kp-sub">· {{ p.rated_count }} von 4</span> · <a href="#" onclick="kpExpandAll(event)">alle ausklappen</a>{% if mode != 'new' %} · <button class="kp-btn" type="submit" formaction="/proposals/{{ p.slug }}/evaluate">{% if p.evaluated %}Neu bewerten{% else %}Bewertung starten{% endif %}</button>{% endif %}</span>
+      </div>
+      <div class="kp-role-cards">
+        {% for r in p.roles %}
+        <button type="button" class="kp-role-card" data-role="{{ r.key }}" onclick="kpToggleRole('{{ r.key }}')"><b>{{ r.name }}<i>▾</i></b><span class="kp-score is-lg is-{{ r.state }}">{% if r.state == 'running' %}…{% elif r.score is none %}–{% else %}{{ r.score }}{% endif %}</span></button>
+        {% endfor %}
+      </div>
+      {% for r in p.roles %}
+      <div class="kp-role-detail" id="role-{{ r.key }}" hidden>
+        <div class="kp-kv"><small>Wichtigste Kriterien</small><div>{{ r.criteria }}</div></div>
+        <div class="kp-kv"><small>So kam die Rolle dazu · Quellen</small><div>{% for s in r.sources %}<a href="{{ s.url }}">{{ s.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</div></div>
+        <div class="kp-kv"><small>Begründung</small><div>{{ r.reason }}</div></div>
+        <div class="kp-kv"><small>Mehr Punkte durch</small><div>{{ r.improve }}</div></div>
+        <div class="kp-kv"><small>Fehlt</small><div>{{ r.missing | safe }}</div></div>
+        <div class="kp-kv is-wide"><small>Konflikt mit anderen Rollen</small><div>{{ r.conflict | safe }}</div></div>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if mode != 'new' %}
+    <section class="kp-section" id="dialog">
+      <div class="kp-section-title">Dialog</div>
+      <div class="kp-dialog">
+        {% for m in p.dialog %}
+        <div class="kp-msg"><span class="kp-avatar">{{ m.author_initials }}</span>
+          <div class="kp-bubble is-{{ m.kind }}">{{ m.text }}<div class="kp-meta"><span>{{ m.meta }}</span>{% if m.action_label %}<a href="{{ m.action_url }}"><b>{{ m.action_label }} →</b></a>{% endif %}</div></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="kp-compose"><input name="message" placeholder="Rückfrage, Erinnerung oder Vermerk …"><button class="kp-btn" type="submit" formaction="/proposals/{{ p.slug }}/message">Senden</button></div>
+    </section>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+      <section class="kp-section kp-docs" id="dokumente">
+        <div class="kp-section-title">Dokumente</div>
+        {% for d in p.docs %}<a href="{{ d.url }}"><span>{{ d.name }}</span><span class="kp-sub">{{ d.size }}</span></a>{% endfor %}
+      </section>
+      <section class="kp-section kp-versions" id="versionen">
+        <div class="kp-section-title">Versionen</div>
+        {% for v in p.versions %}<div><span>{{ v.label }} · {{ v.time }}</span>{{ v.note }}</div>{% endfor %}
+      </section>
+    </div>
+
+    <section class="kp-section" id="entscheidung" style="padding-top:8px;border-top:1px solid var(--line)">
+      <div class="kp-section-title">Entscheidung</div>
+      <div class="kp-decision">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="kp-btn" name="decision" value="approve" {% if not p.decision_enabled %}disabled{% endif %} formaction="/proposals/{{ p.slug }}/decide">Freigeben</button>
+          <button class="kp-btn" name="decision" value="defer" {% if not p.decision_enabled %}disabled{% endif %} formaction="/proposals/{{ p.slug }}/decide">Zurückstellen</button>
+          <button class="kp-btn" name="decision" value="reject" {% if not p.decision_enabled %}disabled{% endif %} formaction="/proposals/{{ p.slug }}/decide">Ablehnen</button>
+          {% if not p.decision_enabled %}<span class="kp-hint">ab 4 von 4</span>{% endif %}
+        </div>
+        {% if p.primary_action %}<a class="kp-btn kp-btn-primary" href="{{ p.primary_action.url }}">{{ p.primary_action.label }}</a>{% endif %}
+      </div>
+    </section>
+    {% else %}
+    <div class="kp-footer"><span class="kp-hint">Original bleibt · Ersteller und Zeit werden gespeichert</span><button class="kp-btn kp-btn-primary" type="submit">Einreichen</button></div>
+    {% endif %}
+
+    </div>{# /kp-form-wrap #}
+  </div>
+
+  {# Im Neu-Modus zeigt das Inhaltsverzeichnis auf Abschnitte, die noch nicht
+     da sind - es kommt zusammen mit dem Formular. #}
+  <nav class="kp-toc" id="kp-toc"{% if mode == 'new' %} hidden{% endif %}>
+    <a href="#grundinfo">Grundinfo</a>
+    {% if mode != 'new' %}<a href="#status">Status</a>{% endif %}
+    <a href="#vollstaendigkeit">Vollständigkeit {% if p.completeness.missing %}<span class="kp-flag">·</span>{% endif %}</a>
+    {% if p.roles %}<a href="#bewertung">Bewertung</a>{% endif %}
+    {% if mode != 'new' %}<a href="#dialog">Dialog</a><a href="#dokumente">Dokumente</a><a href="#versionen">Versionen</a><a href="#entscheidung">Entscheidung</a>{% endif %}
+  </nav>
+</div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+function kpToggleRole(k){const d=document.getElementById('role-'+k),b=document.querySelector('[data-role="'+k+'"]');const open=d.hidden;document.querySelectorAll('.kp-role-detail').forEach(x=>x.hidden=true);document.querySelectorAll('.kp-role-card').forEach(x=>x.classList.remove('is-open'));if(open){d.hidden=false;b.classList.add('is-open');}}
+function kpExpandAll(e){e.preventDefault();document.querySelectorAll('.kp-role-detail').forEach(x=>x.hidden=false);document.querySelectorAll('.kp-role-card').forEach(x=>x.classList.add('is-open'));}
+{% if mode == 'new' %}
+// Schritt 3: Formular einblenden und sanft dorthin scrollen.
+function kpShowForm(ev, scroll){
+  if(ev)ev.preventDefault();
+  const w=document.getElementById('kp-form-wrap');
+  if(!w||!w.hidden){if(scroll&&w)w.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  w.hidden=false;w.classList.add('kp-reveal');
+  const t=document.getElementById('kp-toc');if(t)t.hidden=false;
+  const l=document.getElementById('kp-manual-link');if(l)l.parentElement.hidden=true;
+  if(scroll)setTimeout(()=>w.scrollIntoView({behavior:'smooth',block:'start'}),0);
+}
+document.addEventListener('kp:filled',()=>kpShowForm(null,true));
+{% endif %}
+const secs=[...document.querySelectorAll('.kp-section[id]')],toc=[...document.querySelectorAll('#kp-toc a')];
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){toc.forEach(a=>a.classList.toggle('is-active',a.getAttribute('href')==='#'+en.target.id));}});},{rootMargin:'-20% 0px -70% 0px'});
+secs.forEach(s=>io.observe(s));
+</script>
+{% endblock %}

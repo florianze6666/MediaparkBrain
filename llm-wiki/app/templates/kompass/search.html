@@ -1,0 +1,40 @@
+{% extends "kompass/layout.html" %}
+{# Eine Suche, zwei Listen. Kontext: q, snippets (wiki.Snippet), hits (Vorschlaege) #}
+{% block title %}Suche · Kompass{% endblock %}
+{% block head %}<h1>Suche</h1><span class="kp-crumb">{% if q %}„{{ q }}“ · {{ snippets | length }} Wissen · {{ hits | length }} Projekte{% else %}Suchbegriff oben eingeben{% endif %}</span>{% endblock %}
+{% block content %}
+<section class="kp-section" id="wissen">
+  <div class="kp-section-title">Wissen</div>
+  {% if snippets %}
+  <div class="kp-table">
+    {% for s in snippets %}
+    <div class="kp-tr" style="grid-template-columns:1fr">
+      <div><a class="kp-name" href="/knowledge/{{ s.page.slug }}">{{ s.page.title }}</a>
+        <span class="kp-sub"> · {{ s.page.meta.domaene }}</span>
+        <div class="kp-sub" style="font-size:13px;line-height:1.5;margin-top:4px">{{ s.paragraph }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="kp-hint">Keine Treffer im Wissen, das Sie sehen dürfen.</div>{% endif %}
+</section>
+<section class="kp-section" id="projekte">
+  <div class="kp-section-title">Projekte</div>
+  {% if hits %}
+  <div class="kp-table">
+    {% for h in hits %}
+    <div class="kp-tr" style="grid-template-columns:1fr">
+      <div><a class="kp-name" href="/proposals/{{ h.slug }}">{{ h.name }}</a>
+        <span class="kp-sub"> · {{ h.owner }}</span>
+        <div class="kp-sub" style="font-size:13px;line-height:1.5;margin-top:4px">{{ h.excerpt }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="kp-hint">Keine Treffer in den Projekten, die Sie sehen dürfen.</div>{% endif %}
+</section>
+<div class="kp-footer">
+  <span class="kp-hint">Gesperrtes taucht hier nicht auf — gesperrt ≠ nicht vorhanden</span>
+  <a class="kp-btn kp-btn-primary" href="/ask">Frage ans Wiki stellen</a>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "kompass/layout.html" %}
+{# Kontext: stats {total, departments, visible},
+   graph {nodes:[{id,label,title,kind dept|dept-outline|doc,more,x,y,w,locked,dept,href}],
+          edges:[{x1,y1,x2,y2,dept}]}  - alle Koordinaten in Prozent des Containers,
+   cloud [{word, weight 1..6}], docs [{slug,title,department,hits,last_access,edits,readers,stale_year}], sort, dir #}
+{% block title %}Wissen · Kompass{% endblock %}
+{% block head %}<h1>Wissen</h1><span class="kp-crumb">{{ stats.total }} Dokumente · {{ stats.departments }} Abteilungen · Sie sehen {{ stats.visible }}</span>{% endblock %}
+{% block content %}
+<div class="kp-graph-wrap">
+  <div class="kp-graph" id="kp-graph">
+    {# Prozentkoordinaten statt ViewBox: die Linie endet damit exakt im
+       Kreismittelpunkt, weil der Knoten mit denselben Prozenten positioniert
+       und per translate(-50%,-50%) zentriert wird. #}
+    <svg width="100%" height="100%" preserveAspectRatio="none" fill="none" stroke="#c7c7cc" stroke-width="1.2">
+      {% for e in graph.edges %}<line data-dept="{{ e.dept }}" x1="{{ e.x1 }}%" y1="{{ e.y1 }}%" x2="{{ e.x2 }}%" y2="{{ e.y2 }}%"></line>{% endfor %}
+    </svg>
+    {% for n in graph.nodes %}<a href="{{ n.href }}" title="{{ n.title }}" data-dept="{{ n.dept }}" class="kp-node is-{{ n.kind }}{% if n.more %} is-more{% endif %}{% if n.locked %} is-locked{% endif %}" style="left:{{ n.x }}%;top:{{ n.y }}%{% if n.w %};max-width:calc({{ n.w }}% - 4px){% endif %}">{{ n.label }}</a>{% endfor %}
+    <div class="kp-legend"><span><i class="kp-dot"></i> Domäne</span><span>○ Dokument</span><span>◌ 🔒 für Sie gesperrt</span></div>
+  </div>
+  <div class="kp-cloud">{% for w in cloud %}<span class="w{{ w.weight }}">{{ w.word }}</span>{% endfor %}</div>
+</div>
+<div class="kp-table">
+  <div class="kp-tr kp-th kp-cols-knowledge">
+    {% for col, label in [('title','Titel'),('department','Abteilung'),('hits','Zugriffe'),('last_access','Letzter Zugriff'),('edits','Änderungen'),('readers','Sichtbar für')] %}
+    <span>{{ label }} <a class="kp-sort {% if sort == col %}is-active{% endif %}" href="?sort={{ col }}&dir={{ 'asc' if sort == col and dir == 'desc' else 'desc' }}">{% if sort == col %}{{ '↓' if dir == 'desc' else '↑' }}{% else %}↕{% endif %}</a> <a class="kp-filter" href="?filter={{ col }}" title="Filtern">⌸</a></span>
+    {% endfor %}
+  </div>
+  {% for d in docs %}
+  <div class="kp-tr kp-cols-knowledge">
+    <span><a class="kp-name" href="/knowledge/{{ d.slug }}">{{ d.title }}</a>{% if d.stale_year %}<span class="kp-stale">überholt {{ d.stale_year }}</span>{% endif %}</span>
+    <span>{{ d.department }}</span><span>{{ d.hits }}</span><span class="kp-sub" style="font-size:14px">{{ d.last_access }}</span><span>{{ d.edits }}</span><span class="kp-sub" style="font-size:14px">{{ d.readers }}</span>
+  </div>
+  {% endfor %}
+</div>
+<div class="kp-footer">
+  <div style="display:flex;gap:8px"><a class="kp-btn" href="/knowledge/share">Teilen</a><a class="kp-btn" href="/knowledge/edit">Bearbeiten</a></div>
+  <a class="kp-btn kp-btn-primary" href="/upload?target=knowledge">Wissen hochladen</a>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Hover: Knoten und die Linien seiner Domaene hervorheben, der Rest tritt zurueck.
+(function(){
+  const g=document.getElementById('kp-graph');if(!g)return;
+  const clear=()=>{g.classList.remove('is-focus');g.querySelectorAll('.is-hot').forEach(x=>x.classList.remove('is-hot'));};
+  g.querySelectorAll('.kp-node').forEach(n=>{
+    n.addEventListener('mouseenter',()=>{
+      clear();const d=n.dataset.dept;if(!d)return;
+      g.classList.add('is-focus');
+      g.querySelectorAll('line[data-dept="'+CSS.escape(d)+'"],.kp-node[data-dept="'+CSS.escape(d)+'"]').forEach(x=>x.classList.add('is-hot'));
+    });
+    n.addEventListener('mouseleave',clear);
+  });
+})();
+</script>
+{% endblock %}

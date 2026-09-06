@@ -1,0 +1,173 @@
+{# Drop-In (3 Modalitäten) + animiertes Befüllen. Wird in upload.html und proposal_detail.html (mode=new) eingebunden.
+   Erwartet: fill_fields [{key,label}] und fill_endpoint (POST, multipart oder JSON {text}) -> JSON {status, fields:{key:value}}
+
+   Zwei Dinge, die früher anders waren:
+   1. "Link oder Text" ist ein offenes Feld statt eines prompt()-Dialogs.
+   2. Das Drop-In legt KEINE eigenen Inputs mehr an, wenn es im Formular ein
+      echtes Feld mit demselben name gibt — es schreibt direkt hinein. Nur für
+      Felder ohne Gegenstück im Formular (Wissens-Upload) bleibt der alte Weg. #}
+<div class="kp-flow-steps" id="kp-flow-steps">
+  <b class="is-current" data-step="1"><i>1</i>Dokument ablegen</b><span class="kp-flow-sep">·</span>
+  <b data-step="2"><i>2</i>Kompass liest die Felder aus</b><span class="kp-flow-sep">·</span>
+  <b data-step="3"><i>3</i>Prüfen und speichern</b>
+</div>
+<div class="kp-drop-row">
+  <label class="kp-drop is-files" id="kp-drop-files"><span style="font-size:18px;color:var(--muted)">↑</span>Dateien ablegen<small>PDF · Word · Excel · MD</small><input type="file" name="files" multiple hidden onchange="kpIngest({files:this.files})"></label>
+  <div class="kp-paste">
+    <span>Link oder Text</span>
+    <div class="kp-paste-row">
+      <textarea id="kp-paste-text" rows="1" placeholder="Link oder Text hier einfügen" aria-label="Link oder Text"></textarea>
+      <button type="button" id="kp-paste-go" title="Übernehmen" aria-label="Übernehmen" onclick="kpPasteGo()" disabled>→</button>
+    </div>
+  </div>
+  <div class="kp-drop" onclick="kpDictate()"><span class="kp-mic"></span>Diktieren</div>
+</div>
+<div class="kp-fill" id="kp-fill" hidden>
+  <div class="kp-fill-status" id="kp-fill-status"><i class="kp-dot is-pulse"></i><span>Wird gelesen …</span></div>
+  <div class="kp-fill-grid">
+    {% for f in fill_fields %}
+    <label class="kp-field"><small>{{ f.label }}</small><div class="kp-value is-empty" data-key="{{ f.key }}"><input name="{{ f.key }}" hidden></div></label>
+    {% endfor %}
+  </div>
+  <div class="kp-bar"><i id="kp-fill-bar" style="width:0%;background:var(--accent);transition:width .4s"></i></div>
+</div>
+<script>
+const KP_FILL_ENDPOINT = "{{ fill_endpoint }}";
+const KP_FIELDS = {{ fill_fields | tojson }};
+// Was in der Statuszeile steht, wenn ein Feld wirklich gefüllt wurde.
+const KP_MSG = {name:'Projektname erkannt', projektname:'Projektname erkannt', titel:'Titel erkannt',
+  description:'Vorhaben gelesen', beschreibung:'Vorhaben gelesen', cost:'Kosten gefunden', kosten:'Kosten gefunden',
+  benefit:'Nutzen gefunden', nutzen:'Nutzen gefunden', duration:'Laufzeit gefunden', laufzeit:'Laufzeit gefunden',
+  datum:'Datum gefunden', verfasser:'Verfasser erkannt', domaene:'Domäne zugeordnet',
+  vertraulichkeit:'Vertraulichkeit gesetzt', dokumenttyp:'Dokumenttyp erkannt', zielsetzung:'Zielsetzung gefunden',
+  risikoanalyse:'Risiken gefunden', business_case:'Business Case gefunden'};
+
+const drop=document.getElementById('kp-drop-files');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('is-over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('is-over');}));
+drop.addEventListener('drop',ev=>kpIngest({files:ev.dataTransfer.files}));
+
+// --- Link oder Text: immer sichtbar, Einfügen oder Enter startet ------------
+const kpPasteBox=document.getElementById('kp-paste-text'), kpPasteBtn=document.getElementById('kp-paste-go');
+function kpPasteGrow(){kpPasteBox.style.height='38px';kpPasteBox.style.height=Math.min(kpPasteBox.scrollHeight,76)+'px';kpPasteBtn.disabled=!kpPasteBox.value.trim();}
+kpPasteBox.addEventListener('input',kpPasteGrow);
+kpPasteBox.addEventListener('paste',ev=>{
+  const t=((ev.clipboardData||window.clipboardData).getData('text')||'').trim();
+  if(!t)return;
+  ev.preventDefault();kpPasteBox.value=t;kpPasteGrow();kpIngest({text:t});
+});
+kpPasteBox.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();kpPasteGo();}});
+function kpPasteGo(){const t=kpPasteBox.value.trim();if(t)kpIngest({text:t});}
+function kpDictate(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Diktat im Browser nicht verfügbar');const r=new R();r.lang='de-DE';r.onresult=e=>kpIngest({text:e.results[0][0].transcript});r.start();}
+
+// --- Statuszeile und Schritte ----------------------------------------------
+function kpStatus(text,state){
+  const st=document.getElementById('kp-fill-status');
+  st.className='kp-fill-status'+(state?' is-'+state:'');
+  const dot=state==='done'?'is-ok':(state==='error'?'is-bad':'is-pulse');
+  st.innerHTML='<i class="kp-dot '+dot+'"></i><span></span>';
+  st.lastChild.textContent=text;
+}
+function kpStep(n){
+  document.querySelectorAll('#kp-flow-steps b').forEach(b=>{
+    const s=Number(b.dataset.step);
+    b.classList.toggle('is-current',s===n);
+    b.classList.toggle('is-done',s<n);
+  });
+}
+
+// --- Zielfeld im echten Formular (falls es eines gibt) ----------------------
+function kpTarget(key){
+  const scope=document.querySelector('#kp-form, #kp-upload')||document;
+  return [...scope.querySelectorAll('[name="'+CSS.escape(key)+'"]')].find(el=>!el.closest('.kp-fill'))||null;
+}
+// Die server-gerenderten Platzhalter-Inputs im Drop-In sind nur fuer Felder da,
+// die es im Formular nicht gibt. Wo es ein echtes Feld gibt, fliegen sie raus —
+// sonst stuende derselbe name zweimal im POST. (Erst nach DOMContentLoaded: die
+// Formularabschnitte stehen im HTML hinter diesem Skript.)
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.kp-value > input[name]').forEach(inp=>{if(kpTarget(inp.name))inp.remove();});
+});
+const kpWait=ms=>new Promise(r=>setTimeout(r,ms));
+// Zeichenweise tippen. Der Fortschritt haengt an der Uhr, nicht an der Anzahl
+// der Schritte - ein ausgebremster Tab holt beim naechsten Schritt auf.
+// (setTimeout statt requestAnimationFrame: rAF steht still, sobald der Tab
+// nicht sichtbar ist, und die Animation bliebe mitten im Wort haengen.)
+function kpType(el,text,per){
+  per=Math.max(per,0.5);
+  return new Promise(res=>{
+    const t0=Date.now();
+    (function step(){
+      const n=Math.min(text.length,Math.floor((Date.now()-t0)/per));
+      el.textContent=text.slice(0,n);
+      if(n>=text.length){el.textContent=text;res();}else setTimeout(step,16);
+    })();
+  });
+}
+function kpSpeed(key,len){
+  let per=len>120?4:12;                                                                 // lange Texte laufen schneller durch
+  if(key==='description'||key==='beschreibung')per=Math.min(per,2000/Math.max(len,1));  // Beschreibung höchstens 2 s
+  return per;
+}
+
+async function kpIngest(src){
+  const box=document.getElementById('kp-fill'),bar=document.getElementById('kp-fill-bar');
+  box.hidden=false;bar.style.background='var(--accent)';bar.style.width='0%';
+  kpStep(2);kpStatus(src.files?'Datei wird gelesen …':'Eingabe wird gelesen …');
+  let body,headers={};
+  if(src.files){body=new FormData();[...src.files].forEach(f=>body.append('files',f));}
+  else{body=JSON.stringify({text:src.text});headers['Content-Type']='application/json';}
+  let res;
+  try{
+    const r=await fetch(KP_FILL_ENDPOINT,{method:'POST',body,headers});
+    res=await r.json().catch(()=>null);
+    if(!r.ok||!res||!res.fields)throw new Error((res&&(res.message||res.detail))||('Konnte nicht gelesen werden (Fehler '+r.status+')'));
+  }catch(err){
+    kpStep(1);kpStatus(String(err.message||err),'error');return;
+  }
+
+  const cells=[...document.querySelectorAll('.kp-value')];
+  for(let i=0;i<cells.length;i++){
+    const c=cells[i],k=c.dataset.key;
+    const label=(KP_FIELDS.find(f=>f.key===k)||{}).label||k;
+    const raw=res.fields[k];
+    const value=(raw===null||raw===undefined)?'':String(raw);
+    const target=kpTarget(k);
+    c.classList.remove('is-empty','is-none','is-filled');
+    // Schimmer: nur da laenger, wo hinterher auch etwas steht.
+    c.classList.add('is-active');
+    await kpWait(value.trim()?320:90);
+    c.classList.remove('is-active');
+    c.innerHTML='';
+    if(value.trim()!==''){
+      kpStatus(KP_MSG[k]||(label+' gefunden'));
+      c.classList.add('is-filled');
+      const span=document.createElement('span'),caret=document.createElement('i');
+      caret.className='kp-caret';c.appendChild(span);c.appendChild(caret);
+      await kpType(span,value,kpSpeed(k,value.length));
+      caret.remove();
+      if(target){
+        target.value=value;
+        c.onclick=()=>{target.scrollIntoView({behavior:'smooth',block:'center'});target.focus({preventScroll:true});};
+      }
+    }else{
+      c.classList.add('is-none');
+      const span=document.createElement('span');
+      span.textContent='nicht im Dokument gefunden';
+      c.appendChild(span);
+    }
+    // Nur wenn es im Formular kein Feld dieses Namens gibt, trägt das Drop-In
+    // selbst eines nach — sonst stünde der Wert zweimal im POST.
+    if(!target){
+      const inp=document.createElement('input');
+      inp.name=k;inp.value=value;inp.hidden=true;c.appendChild(inp);
+      c.onclick=()=>{c.innerHTML='';c.classList.remove('is-filled','is-none');const e=document.createElement('input');e.name=k;e.value=value;c.appendChild(e);e.focus();};
+    }
+    bar.style.width=Math.round(((i+1)/cells.length)*100)+'%';
+  }
+  bar.style.background='var(--ok)';
+  kpStep(3);
+  kpStatus('Fertig, bitte prüfen','done');
+  document.dispatchEvent(new CustomEvent('kp:filled',{detail:res}));
+}
+</script>

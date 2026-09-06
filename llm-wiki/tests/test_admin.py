@@ -33,7 +33,7 @@ def test_nicht_admin_bekommt_404_ueberall(client):
         for path, data in POSTS:
             assert client.post(path, cookies=c, data=data).status_code == 404, (user, path)
         # Link nur fuer Admins sichtbar
-        assert 'href="/admin"' not in client.get("/", cookies=c).text
+        assert 'href="/admin"' not in client.get("/wiki/oeffentlich", cookies=c).text
     # nichts wurde geschrieben
     assert access.user_groups("mitarbeiter") == ["alle"]
     assert _changelog() == []
@@ -47,7 +47,7 @@ def test_admin_sieht_dashboard(client):
         assert f"<code>{uid}</code>" in r.text
     for dom in ("allgemein", "finance", "br"):
         assert f"<code>{dom}</code>" in r.text
-    assert 'href="/admin"' in client.get("/", cookies=as_user("admin")).text
+    assert 'href="/admin"' in client.get("/wiki/oeffentlich", cookies=as_user("admin")).text
 
 
 @pytest.mark.security
@@ -114,7 +114,7 @@ def test_nutzer_anlegen_und_entfernen(client):
     assert access.get_user("einkauf-leitung")["gruppen"] == ["alle", "einkauf"]
     assert access.user_name("einkauf-leitung") == "Einkaufsleitung"
     # neuer Nutzer taucht in der Nutzerauswahl auf
-    assert 'value="einkauf-leitung"' in client.get("/", cookies=as_user("admin")).text
+    assert 'value="einkauf-leitung"' in client.get("/wiki/oeffentlich", cookies=as_user("admin")).text
 
     # ungueltige ID / Duplikat / unbekannte Gruppe
     r = client.post("/admin/users/new", cookies=as_user("admin"), data={"user_id": "Böse Id!", "name": "x"})

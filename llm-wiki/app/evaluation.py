@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 
+from .llm import chat as llm_chat
 from .llm import is_configured as llm_is_configured
 from .proposals import Proposal
-
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 # Kurzfassung der vier Experten-Dimensionen aus PLAN.md §6.
 ROLE_CRITERIA = {
@@ -113,27 +111,19 @@ def evaluate_proposal(proposal: Proposal) -> dict:
     Bewertungslogik_Experten-Agent_MVP.md. Gibt bei fehlendem API-Key oder
     Parsing-Fehlern ein dict mit "error" zurueck."""
     if not llm_is_configured():
-        return {"error": "Kein ANTHROPIC_API_KEY gesetzt - Bewertung nicht moeglich."}
+        return {"error": "Kein LLM_API_KEY gesetzt - Bewertung nicht moeglich."}
 
-    from anthropic import Anthropic
-
-    client = Anthropic()
-    model = os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL)
-    response = client.messages.create(
-        model=model,
-        max_tokens=2048,
-        system=_build_system_prompt(),
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Projekt: {proposal.project_name}\n\n"
-                    f"Projektunterlagen:\n\n{_project_text(proposal)}"
-                ),
-            }
-        ],
-    )
-    raw = "".join(block.text for block in response.content if block.type == "text").strip()
+    raw = llm_chat(
+        _build_system_prompt(),
+        (
+            f"Projekt: {proposal.project_name}\n\n"
+            f"Projektunterlagen:\n\n{_project_text(proposal)}"
+        ),
+        # Vier Rollen mit je 2-5 Saetzen Begruendung brauchen mehr als die
+        # urspruenglichen 2048: darunter bricht die Antwort mitten im JSON ab
+        # (finish_reason "length") und ist nicht mehr lesbar.
+        max_tokens=4096,
+    ).strip()
     raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
     try:

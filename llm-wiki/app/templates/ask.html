@@ -3,7 +3,7 @@
 {% block content %}
   <h1>Frag das Wiki</h1>
   {% if not llm_configured %}
-    <p class="hint">Kein <code>ANTHROPIC_API_KEY</code> gesetzt — es werden nur passende Wiki-Ausschnitte
+    <p class="hint">Kein <code>LLM_API_KEY</code> gesetzt — es werden nur passende Wiki-Ausschnitte
       angezeigt (reine Volltextsuche, keine LLM-Antwort). Key in <code>llm-wiki/.env</code> eintragen,
       um echte, kontextbasierte Antworten zu erhalten.</p>
   {% endif %}

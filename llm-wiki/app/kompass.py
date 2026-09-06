@@ -576,44 +576,104 @@ def _cloud(pages: list[wiki.Page]) -> list[dict]:
     ]
 
 
+GRAPH_MAX_DOCS = 6          # mehr wird zu "+N weitere" zusammengefasst
+GRAPH_LABEL_LEN = 22        # Zeichen, danach "…" (voller Titel im title-Attribut)
+_GRAPH_DEPT_Y = 14.0        # Reihe der Domaenen
+_GRAPH_DOC_Y0 = 34.0        # erste Dokumentzeile
+_GRAPH_DOC_DY = 9.0         # Zeilenabstand -> bei 420px Hoehe ~38px, kein Ueberlappen
+_GRAPH_LOCKED_X = 94.0      # Spalte der gesperrten Domaenen, rechts aussen
+_GRAPH_READABLE_SPAN = 86.0  # Platz fuer die lesbaren Domaenen, wenn rechts eine Spalte steht
+
+
+def _graph_label(title: str) -> str:
+    return (title[:GRAPH_LABEL_LEN] + "…") if len(title) > GRAPH_LABEL_LEN else title
+
+
 def _graph(user: str, pages: list[wiki.Page]) -> dict:
     """Domaenen in einer Reihe, darunter die Dokumente der lesbaren Domaenen.
 
-    Positionen in Prozent, deterministisch aus der Reihenfolge in
-    permissions.yaml berechnet - kein Zufall, kein Layout-Algorithmus.
-    Nicht lesbare Domaenen bleiben als blasser Knoten sichtbar (gesperrt ist
-    nicht dasselbe wie nicht vorhanden), aber ohne ihre Dokumente.
+    Alle Positionen in Prozent des Containers - dieselbe Einheit, die die
+    Knoten (left/top) und die SVG-Linien benutzen. Deterministisch aus der
+    Reihenfolge in permissions.yaml berechnet: kein Zufall, kein
+    Layout-Algorithmus, bei gleichem Stand immer dasselbe Bild.
+
+    Nicht lesbare Domaenen bleiben als kleiner Umriss rechts aussen sichtbar
+    (gesperrt ist nicht dasselbe wie nicht vorhanden), aber ohne ihre
+    Dokumente. Pro Domaene stehen hoechstens sechs Dokumente (die zuletzt
+    geaenderten) plus ein Knoten "+N weitere", der auf die gefilterte Liste
+    zeigt.
+
+    Jeder Dokumentknoten bekommt eine Maximalbreite `w` in Prozent: so breit
+    wie seine Spalte. Damit koennen zwei Beschriftungen nie uebereinander
+    laufen, egal wie breit der Container gerade ist.
     """
     domains = access.list_domains()
-    readable = set(access.readable_domains(user))
+    readable_set = set(access.readable_domains(user))
+    readable = [d for d in domains if d in readable_set]
+    locked = [d for d in domains if d not in readable_set]
+
     by_domain: dict[str, list[wiki.Page]] = {}
     for page in pages:
         by_domain.setdefault(page.meta.domaene, []).append(page)
 
-    nodes, edges = [], []
-    count = max(len(domains), 1)
-    for i, dom in enumerate(domains):
-        x = round((i + 0.5) / count * 100, 1)
-        nodes.append({"id": dom, "label": dom, "kind": "dept", "x": x, "y": 22.0,
-                      "locked": dom not in readable})
-        if dom not in readable:
-            continue
-        docs = by_domain.get(dom, [])[:3]  # drei je Domaene, sonst wird der Graph Brei
-        for j, page in enumerate(docs):
-            # Zeilen versetzt (gerade/ungerade Domaene), damit die Beschriftungen
-            # benachbarter Domaenen nicht uebereinanderliegen.
-            row = j * 2 + (i % 2)
-            nodes.append({
-                "id": page.slug,
-                "label": (page.title[:16] + "…") if len(page.title) > 16 else page.title,
-                "kind": "doc",
-                # Dokumentknoten sind breiter als der Abteilungspunkt: am Rand
-                # einruecken, sonst wird die Beschriftung abgeschnitten.
-                "x": min(max(x, 10.0), 90.0),
-                "y": round(44 + row * 11, 1),
-                "locked": False,
+    nodes: list[dict] = []
+    edges: list[dict] = []
+
+    span = _GRAPH_READABLE_SPAN if locked else 100.0
+    count = max(len(readable), 1)
+    col = span / count
+
+    for i, dom in enumerate(readable):
+        x = round((i + 0.5) / count * span, 2)
+        nodes.append({
+            "id": dom, "label": dom, "title": f"Domäne {dom}",
+            "kind": "dept", "x": x, "y": _GRAPH_DEPT_Y, "w": None,
+            "locked": False, "dept": dom, "href": f"/knowledge?dept={dom}",
+        })
+
+        docs = sorted(
+            by_domain.get(dom, []),
+            key=lambda p: (p.meta.geaendert_am or p.meta.erstellt_am or "", p.title),
+            reverse=True,
+        )
+        rest = len(docs) - GRAPH_MAX_DOCS
+        entries: list[dict] = [
+            {"id": p.slug, "label": _graph_label(p.title), "title": p.title,
+             "kind": "doc", "more": False, "href": f"/knowledge/{p.slug}"}
+            for p in docs[:GRAPH_MAX_DOCS]
+        ]
+        if rest > 0:
+            entries.append({
+                "id": f"{dom}--more", "label": f"+{rest} weitere",
+                "title": f"{rest} weitere Dokumente in {dom}",
+                "kind": "doc", "more": True, "href": f"/knowledge?dept={dom}",
             })
-            edges.append([dom, page.slug])
+
+        # Breite Spalten vertragen zwei Knoten nebeneinander, schmale nicht.
+        per_row = 2 if col >= 30 and len(entries) > 2 else 1
+        slot = col / per_row
+        for j, entry in enumerate(entries):
+            row, pos = divmod(j, per_row)
+            offset = (pos + 0.5) * slot - col / 2 if per_row > 1 else 0.0
+            entry.update({
+                "x": round(x + offset, 2),
+                "y": round(_GRAPH_DOC_Y0 + row * _GRAPH_DOC_DY, 2),
+                "w": round(slot - 1.5, 2),
+                "locked": False,
+                "dept": dom,
+            })
+            nodes.append(entry)
+            edges.append({"x1": x, "y1": _GRAPH_DEPT_Y,
+                          "x2": entry["x"], "y2": entry["y"], "dept": dom})
+
+    for k, dom in enumerate(locked):
+        y = 20.0 if len(locked) == 1 else round(16.0 + k * (68.0 / (len(locked) - 1)), 2)
+        nodes.append({
+            "id": dom, "label": dom, "title": f"🔒 {dom} · für Sie gesperrt",
+            "kind": "dept-outline", "x": _GRAPH_LOCKED_X, "y": y, "w": None,
+            "locked": True, "dept": dom, "href": f"/knowledge?dept={dom}",
+        })
+
     return {"nodes": nodes, "edges": edges}
 
 

@@ -119,7 +119,10 @@ def evaluate_proposal(proposal: Proposal) -> dict:
             f"Projekt: {proposal.project_name}\n\n"
             f"Projektunterlagen:\n\n{_project_text(proposal)}"
         ),
-        max_tokens=2048,
+        # Vier Rollen mit je 2-5 Saetzen Begruendung brauchen mehr als die
+        # urspruenglichen 2048: darunter bricht die Antwort mitten im JSON ab
+        # (finish_reason "length") und ist nicht mehr lesbar.
+        max_tokens=4096,
     ).strip()
     raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 

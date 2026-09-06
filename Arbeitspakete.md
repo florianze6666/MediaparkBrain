@@ -29,6 +29,7 @@ braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange geg
 | 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
 | 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | 🟡 In Arbeit |
 | 19 | Belegzitate zu jeder Bewertung in der Projektbewertung | Florian | ⬜ Offen |
+| 20 | Corpus-Import: das Unternehmenswissen in die Wissensbasis holen | Florian | ⬜ Offen |
 
 **Backlog (noch ohne Verantwortlichen, zum Abholen):**
 
@@ -462,6 +463,76 @@ zu wenig — `PLAN.md` §10 verlangt ausdrücklich „die wesentlichen Informati
 ist das der letzte Baustein: Damit ist das `assessment` jedes Experten-Agenten belegt.
 
 ---
+
+## 20. Corpus-Import: das Unternehmenswissen in die Wissensbasis holen — Florian
+
+**Zustand:** ⬜ Offen
+
+**Ziel:** „Frag das Wiki" kann Fragen zum Unternehmenswissen beantworten — Richtlinien,
+IT-Architektur, Betriebsvereinbarungen, Vorstandsmemos —, nicht nur zu den sieben Wiki-Seiten,
+die von Hand angelegt wurden.
+
+**Ausgangslage:** Der Demo-Korpus unter `corpus/` enthält **216 Dokumente** der fiktiven Lahnberg
+Thermotechnik GmbH aus den Jahren 2011 bis 2025, verteilt auf neun Ablageorte. Im
+Anwendungscode gibt es **keinen einzigen Verweis darauf**: `_scan()` durchläuft ausschließlich
+`llm-wiki/pages/<domaene>/`, dort liegen heute 7 Seiten. Das Unternehmenswissen liegt also im
+Repo, aber das System sieht es nicht. `PLAN.md` §3 verlangt genau diese gemeinsame
+Informationsbasis; ohne sie kann keine Frage wie „Verstößt das Projekt gegen unsere
+IT-Architekturprinzipien?" beantwortet werden. Siehe auch Lücke L-2.
+
+**Weg: einmaliger Import statt zweiter Quelle.** Die Dokumente werden nach
+`pages/<domaene>/` überführt, statt `_scan()` um eine zweite Quelle zu erweitern. Damit gilt
+für sie unverändert die Ordner-Schranke aus Paket 9 („der Ordner ist die einzige Wahrheit"),
+und Rechte, Statistik und Suche funktionieren ohne Sonderfall.
+
+**Umfang**
+- Importskript (einmalig ausführbar, idempotent), das je Dokument eine Wiki-Seite anlegt.
+- **Ablageort → Domäne** nach der Zuordnung, die in `permissions.yaml` bereits als Kommentar
+  steht: `qm_lenkung`→`allgemein`, `projektlaufwerk`→`projekt`,
+  `sharepoint_finance`→`finance`, `einkauf_scm`→`einkauf`, `sharepoint_hr`→`hr`,
+  `it_doku`→`it`, `br_ablage`→`br`, `sharepoint_gf`→`gf`, `mailarchiv`→`mail`. Alle neun
+  Ablageorte sind abgedeckt, keine Restmenge.
+- **Frontmatter übersetzen:** der Korpus hat 13 eigene Felder, `PageMeta` hat neun.
+  `verfasser`→`erstellt_von`, `datum`→`erstellt_am`, `ablageort`→`ablageort`,
+  `doc_id` bleibt im Text erhalten, `quelle: corpus`.
+- **Vertraulichkeit korrekt abbilden — der kritische Punkt, siehe unten.**
+- Bericht am Ende: wie viele Dokumente je Domäne, wie viele übersprungen und warum.
+
+**Der kritische Punkt: die Vertraulichkeit darf nicht stillschweigend aufgeweicht werden**
+
+Der Korpus kennt drei Stufen, `PageMeta` kennt andere drei:
+
+| Korpus | Anzahl | Muss werden |
+|---|---:|---|
+| `intern` | 180 | `intern` |
+| `C-Level` | 23 | `vertraulich`, Empfänger `gf` |
+| `Betriebsrat-intern` | 13 | `vertraulich`, Empfänger `br` |
+
+`PageMeta.from_dict` setzt **jeden unbekannten Wert stillschweigend auf `intern`**. Ein naiver
+Import würde damit 36 vertrauliche Dokumente — Vorstandsmemos und Betriebsratsunterlagen — für
+jeden sichtbar machen, der die Domäne lesen darf. Die Übersetzung muss deshalb **vor** dem
+Speichern passieren und durch einen Test abgesichert sein, der genau diesen Fall prüft.
+
+**Fertig wenn**
+- Alle 216 Dokumente liegen in ihrem Domänenordner und tauchen unter „Frag das Wiki" als Quelle auf.
+- Eine Frage nach einer Architekturrichtlinie liefert ein Zitat aus `it_doku`.
+- Ein Test weist nach: kein Dokument, das im Korpus `C-Level` oder `Betriebsrat-intern` war,
+  ist nach dem Import für einen Mitarbeiter ohne die passende Gruppe sichtbar.
+- Ein zweiter Lauf des Skripts ändert nichts (idempotent).
+
+**Bekannte Nebenwirkungen**
+- Die Wissensbasis wächst von 7 auf 223 Seiten. Die Suche läuft linear über alle Absätze — das
+  bleibt für den Demonstrator tragbar, macht die Schwäche der Stichwortsuche aber deutlicher
+  sichtbar (Backlog-Paket 15).
+- Die Seitenliste in der Leiste wird unbrauchbar lang; eine Gruppierung oder Suche dort ist
+  Folgearbeit, nicht Teil dieses Pakets.
+- Der Korpus ist widersprüchlich und teilweise veraltet — **das ist Absicht** (`PLAN.md` §3).
+  Die Agenten sollen Aktualität und Herkunft berücksichtigen; dafür ist `erstellt_am` aus dem
+  Dokumentdatum wichtiger als der Importzeitpunkt.
+
+**Schnittstellen:** Nutzt `wiki.save_page` und das Schema aus Paket 1/9 unverändert. Paket 6
+zählt die neuen Seiten automatisch mit. Für Backlog-Paket 13 (Projektprüfung gegen das
+Unternehmenswissen) ist das die Voraussetzung.
 
 ## Reihenfolge und Abhängigkeiten
 

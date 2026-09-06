@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Kompass{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='kompass.css') }}?v=2">
+  <link rel="stylesheet" href="{{ url_for('static', path='kompass.css') }}?v=6">
 </head>
 <body>
 <div class="kp-app{% if collapsed %} is-collapsed{% endif %}" id="kp-app">
@@ -15,8 +15,10 @@
       <button class="kp-collapse" type="button" onclick="kpToggleSidebar()" aria-label="Menü einklappen">‹</button>
     </div>
     <nav class="kp-nav">
-      <a href="/" class="{% if active == 'dashboard' %}is-active{% endif %}"><span class="kp-label">Dashboard</span></a>
-      <a href="/proposals" class="{% if active == 'proposals' %}is-active{% endif %}"><span class="kp-label">Anträge</span></a>
+      {# "Anträge" ist kein eigener Menüpunkt mehr: /proposals zeigt dieselbe
+         Tabelle wie das Dashboard. Die Route bleibt (Links von außen), sie
+         markiert hier nur "Dashboard" als aktiv. #}
+      <a href="/" class="{% if active in ('dashboard', 'proposals') %}is-active{% endif %}"><span class="kp-label">Dashboard</span></a>
       <a href="/knowledge" class="{% if active == 'knowledge' %}is-active{% endif %}"><span class="kp-label">Wissen</span></a>
       <a href="/upload" class="{% if active == 'upload' %}is-active{% endif %}"><span class="kp-label">Hochladen</span></a>
     </nav>

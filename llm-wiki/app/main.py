@@ -13,6 +13,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -21,14 +22,16 @@ log = logging.getLogger(__name__)
 # access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
 # load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
 from . import (  # noqa: E402
-    access, evaluation, evaluation_cache, extractors, kompass, llm, llm_metadata,
-    proposals, stats, wiki,
+    access, basic_auth, evaluation, evaluation_cache, extractors, kompass, llm,
+    llm_metadata, proposals, stats, urlfetch, wiki,
 )
 from .access import PageMeta  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(title="MediaparkBrain LLM-Wiki")
+# Passwortschutz vor allem anderen, sobald MPB_BASIC_AUTH_USER/-PASS gesetzt sind.
+app.add_middleware(basic_auth.BasicAuthMiddleware)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -318,10 +321,10 @@ def _safe_next(next_url: str | None) -> str:
 def login(user: str = Form(...), next: str = Form("/")):
     uid = access.get_user(user)["id"]
     resp = RedirectResponse(_safe_next(next), status_code=303)
-    # secure=False bleibt bewusst (localhost/http); httponly + lax wie bisher.
+    # secure kommt aus MPB_COOKIE_SECURE: hinter TLS an, lokal ueber http aus.
     resp.set_cookie(
         access.COOKIE_NAME, access.sign_user(uid),
-        httponly=True, samesite="lax", secure=False,
+        httponly=True, samesite="lax", secure=access.cookie_secure(),
     )
     return resp
 
@@ -1467,12 +1470,23 @@ async def api_prefill(request: Request, target: str = "knowledge"):
     Antwort: {"status": "ok", "fields": {...}, "readers": "..."}. Der Nutzer
     sieht die Vorschlaege und kann jedes Feld korrigieren, bevor gespeichert
     wird - vorbefuellen ist kein Speichern.
+
+    Besteht die Eingabe nur aus einer Adresse, wird die Seite dahinter geladen
+    und ihr Text wie eine Datei behandelt (Grenzen: siehe urlfetch). Geht das
+    schief, kommt {"status": "error", "message": "..."} zurueck - der Satz
+    landet unveraendert in der Statuszeile des Drop-Ins.
     """
     user = require_author(request)
     text, filename = "", ""
     if request.headers.get("content-type", "").startswith("application/json"):
         payload = await request.json()
         text = str(payload.get("text") or "")
+        url = urlfetch.find_url(text)
+        if url:
+            try:
+                text, filename = await run_in_threadpool(urlfetch.fetch_text, url)
+            except ValueError as exc:
+                return {"status": "error", "fields": None, "message": str(exc)}
     else:
         form = await request.form()
         uploads = [f for f in form.getlist("files") if isinstance(f, UploadFile) and f.filename]
@@ -1591,7 +1605,7 @@ def switch_user(user: str = Form(...)):
     resp = RedirectResponse("/settings", status_code=303)
     resp.set_cookie(
         access.COOKIE_NAME, access.sign_user(uid),
-        httponly=True, samesite="lax", secure=False,
+        httponly=True, samesite="lax", secure=access.cookie_secure(),
     )
     return resp
 
@@ -1602,7 +1616,9 @@ def settings_mail(request: Request):
     Mailversand angebunden); der Zustand steht im Cookie."""
     on = request.cookies.get("kp_mail") == "1"
     resp = Response(status_code=204)
-    resp.set_cookie("kp_mail", "0" if on else "1", samesite="lax", secure=False)
+    resp.set_cookie(
+        "kp_mail", "0" if on else "1", samesite="lax", secure=access.cookie_secure()
+    )
     return resp
 
 

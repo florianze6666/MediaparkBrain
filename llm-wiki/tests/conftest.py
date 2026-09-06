@@ -27,6 +27,12 @@ if str(ROOT) not in sys.path:
 
 # Vor dem ersten Import von app.access setzen, damit Signaturen deterministisch sind.
 os.environ.setdefault("MPB_SECRET", TEST_SECRET)
+# app.main ruft beim Import load_dotenv() auf und wuerde sonst die echten Werte aus
+# llm-wiki/.env erben - ein dort gesetzter Passwortschutz haette jeden Test auf 401
+# laufen lassen. load_dotenv ueberschreibt vorhandene Variablen nicht, leer = aus.
+os.environ.setdefault("MPB_BASIC_AUTH_USER", "")
+os.environ.setdefault("MPB_BASIC_AUTH_PASS", "")
+os.environ.setdefault("MPB_COOKIE_SECURE", "")
 
 
 def as_user(uid: str) -> dict[str, str]:
@@ -67,6 +73,9 @@ def pages_env(tmp_path, monkeypatch):
     # Bewertungs-Cache (data/evaluations/) landet in tmp, nicht im Repo.
     monkeypatch.setenv("MPB_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
+    monkeypatch.setenv("MPB_BASIC_AUTH_USER", "")
+    monkeypatch.setenv("MPB_BASIC_AUTH_PASS", "")
+    monkeypatch.setenv("MPB_COOKIE_SECURE", "")
 
     import app.access as access
     import app.wiki as wiki

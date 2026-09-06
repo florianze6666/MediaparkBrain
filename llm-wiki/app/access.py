@@ -360,6 +360,16 @@ def _load_secret() -> bytes:
 _SECRET = _load_secret()
 
 
+def cookie_secure() -> bool:
+    """Ob der Identitaets-Cookie nur ueber HTTPS gesendet wird (MPB_COOKIE_SECURE).
+
+    Hinter einem TLS-Terminator (Caddy/nginx) auf 1 setzen. Lokal ueber
+    http://127.0.0.1 muss es aus bleiben, sonst schickt der Browser den
+    Cookie nie zurueck und man ist dauerhaft Gast.
+    """
+    return os.environ.get("MPB_COOKIE_SECURE", "").strip().lower() in {"1", "true", "yes"}
+
+
 def _signature(uid: str) -> str:
     return hmac.new(_SECRET, uid.encode("utf-8"), hashlib.sha256).hexdigest()
 

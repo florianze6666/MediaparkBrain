@@ -263,3 +263,16 @@ def test_fakten_ohne_aussage_werden_verworfen(mit_key, monkeypatch, snippets):
     ])
 
     assert len(llm.ask_llm("?", snippets).fakten) == 1
+
+
+def test_chatbot_id_nur_wenn_gesetzt(monkeypatch):
+    """Das anbieterspezifische Feld darf nur mitgehen, wenn es konfiguriert ist -
+    sonst wuerde ein reiner OpenAI-Endpoint ein unbekanntes Feld sehen."""
+    monkeypatch.delenv("LLM_CHATBOT_ID", raising=False)
+    assert llm._extra_body() == {}
+
+    monkeypatch.setenv("LLM_CHATBOT_ID", "  cb-42  ")
+    assert llm._extra_body() == {"chatbot_id": "cb-42"}
+
+    monkeypatch.setenv("LLM_CHATBOT_ID", "   ")
+    assert llm._extra_body() == {}

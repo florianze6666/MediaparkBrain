@@ -276,3 +276,18 @@ def test_chatbot_id_nur_wenn_gesetzt(monkeypatch):
 
     monkeypatch.setenv("LLM_CHATBOT_ID", "   ")
     assert llm._extra_body() == {}
+
+
+def test_timeout_faellt_auf_standard_zurueck(monkeypatch):
+    """Ohne Timeout wartet das SDK zehn Minuten - ein klemmender Endpoint sah
+    dadurch wie ein haengender Upload aus. Unsinnige Werte duerfen die Grenze
+    nicht aushebeln."""
+    monkeypatch.delenv("LLM_TIMEOUT", raising=False)
+    assert llm._timeout() == llm.DEFAULT_TIMEOUT
+
+    monkeypatch.setenv("LLM_TIMEOUT", "30")
+    assert llm._timeout() == 30.0
+
+    for unsinn in ("", "   ", "abc", "0", "-5"):
+        monkeypatch.setenv("LLM_TIMEOUT", unsinn)
+        assert llm._timeout() == llm.DEFAULT_TIMEOUT, unsinn

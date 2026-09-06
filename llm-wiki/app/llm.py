@@ -25,6 +25,14 @@ from .wiki import Snippet
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
+# Ohne eigenes Timeout wartet das OpenAI-SDK bis zu 10 Minuten und wiederholt
+# danach noch zweimal. Ein klemmender Endpoint liesse den Upload damit
+# scheinbar ewig haengen - der Nutzer sieht nur einen Spinner. Lieber nach
+# anderthalb Minuten mit einem Fehler abbrechen, den die Oberflaeche zeigen
+# kann. Ein Versuch Wiederholung bleibt fuer kurze Netzaussetzer.
+DEFAULT_TIMEOUT = 90.0
+MAX_RETRIES = 1
+
 # Belegstelle, die pdf_ingest (Paket 8) in den Absatz schreibt: *(Seite 7)*
 SEITE_RE = re.compile(r"\*\(Seite (\d+)\)\*")
 WS_RE = re.compile(r"\s+")
@@ -89,6 +97,20 @@ def is_configured() -> bool:
     return bool(os.environ.get("LLM_API_KEY"))
 
 
+def _timeout() -> float:
+    """Sekunden bis zum Abbruch, ueberschreibbar mit LLM_TIMEOUT."""
+    roh = os.environ.get("LLM_TIMEOUT", "").strip()
+    if not roh:
+        return DEFAULT_TIMEOUT
+    try:
+        wert = float(roh)
+    except ValueError:
+        return DEFAULT_TIMEOUT
+    # Ein Timeout von 0 oder weniger wuerde jeden Aufruf sofort scheitern
+    # lassen; das ist nie gewollt, also gilt dann der Standard.
+    return wert if wert > 0 else DEFAULT_TIMEOUT
+
+
 def _client():
     """Client fuer den konfigurierten OpenAI-kompatiblen Endpoint.
 
@@ -102,6 +124,8 @@ def _client():
     return OpenAI(
         base_url=os.environ.get("LLM_BASE_URL") or None,
         api_key=os.environ.get("LLM_API_KEY"),
+        timeout=_timeout(),
+        max_retries=MAX_RETRIES,
     )
 
 

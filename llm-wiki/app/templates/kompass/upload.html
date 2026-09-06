@@ -6,6 +6,15 @@
 <div class="kp-segment"><a href="/upload?target=knowledge" class="{% if target == 'knowledge' %}is-active{% endif %}">Wissen</a><a href="/proposals/new" class="{% if target == 'proposal' %}is-active{% endif %}">Projektantrag</a></div>
 {% endblock %}
 {% block content %}
+{% if error %}
+<div class="kp-upload-error" role="alert" style="margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#fff1f0;border:1px solid #ffd4d0;color:var(--bad);font-size:13.5px">{{ error }}</div>
+{% endif %}
+{% if saved and saved_pages %}
+<div class="kp-upload-saved" role="status" style="margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#f0fff4;border:1px solid #c6f0d2;color:var(--ok);font-size:13.5px">
+  Gespeichert:
+  {% for p in saved_pages %}<a href="/knowledge/{{ p.slug }}" style="color:inherit;font-weight:600">{{ p.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+</div>
+{% endif %}
 <form method="post" action="/upload" enctype="multipart/form-data" id="kp-upload" style="display:contents">
   <input type="hidden" name="target" value="{{ target }}">
   {% include "kompass/_dropin.html" %}

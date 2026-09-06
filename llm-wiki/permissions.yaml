@@ -17,6 +17,7 @@ nutzer:
   ceo:             {name: "CEO / Strategie", gruppen: [alle, gf, finance, leitung]}
   hr-leitung:      {name: "HR-Leitung", gruppen: [alle, hr, leitung]}
   orchestrator:    {name: "Orchestrator (kein Gutachter)", gruppen: [alle]}
+  demo:            {name: "Demo (alle Rechte)", gruppen: [alle, projekt, finance, hr, it, br, gf, einkauf, leitung, admin]} # nur fuer Demos: Standardnutzer ueber MPB_DEFAULT_USER=demo
   admin:           {name: "Administrator", gruppen: [alle, admin]}
 
 domaenen:            # Ablageort im Korpus -> Domaene

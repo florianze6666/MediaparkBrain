@@ -79,6 +79,7 @@ KNOWLEDGE_FIELDS: tuple[tuple[str, str], ...] = (
     ("verfasser", "Verfasser"),
     ("domaene", "Domäne"),
     ("vertraulichkeit", "Vertraulichkeit"),
+    ("empfaenger", "Empfänger"),  # nur bei vertraulich relevant (Gruppen/IDs, kommagetrennt)
 )
 
 MISSING = "–"  # Gedankenstrich: es gibt den Wert nicht (nicht: er ist null)

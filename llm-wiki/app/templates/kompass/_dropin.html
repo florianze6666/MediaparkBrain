@@ -12,7 +12,7 @@
   <b data-step="3"><i>3</i>Prüfen und speichern</b>
 </div>
 <div class="kp-drop-row">
-  <label class="kp-drop is-files" id="kp-drop-files"><span style="font-size:18px;color:var(--muted)">↑</span>Dateien ablegen<small>PDF · Word · Excel · MD</small><input type="file" name="files" multiple hidden onchange="kpIngest({files:this.files})"></label>
+  <label class="kp-drop is-files" id="kp-drop-files"><span style="font-size:18px;color:var(--muted)">↑</span>Dateien ablegen<small>PDF · Word · Excel · MD · Bilder</small><input type="file" name="files" multiple hidden accept=".pdf,.docx,.doc,.xlsx,.xls,.md,.txt,.jpg,.jpeg,.png,.gif,.webp,.heic" onchange="kpIngest({files:this.files})"></label>
   <div class="kp-paste">
     <span>Link oder Text</span>
     <div class="kp-paste-row">
@@ -39,7 +39,7 @@ const KP_MSG = {name:'Projektname erkannt', projektname:'Projektname erkannt', t
   description:'Vorhaben gelesen', beschreibung:'Vorhaben gelesen', cost:'Kosten gefunden', kosten:'Kosten gefunden',
   benefit:'Nutzen gefunden', nutzen:'Nutzen gefunden', duration:'Laufzeit gefunden', laufzeit:'Laufzeit gefunden',
   datum:'Datum gefunden', verfasser:'Verfasser erkannt', domaene:'Domäne zugeordnet',
-  vertraulichkeit:'Vertraulichkeit gesetzt', dokumenttyp:'Dokumenttyp erkannt', zielsetzung:'Zielsetzung gefunden',
+  vertraulichkeit:'Vertraulichkeit gesetzt', empfaenger:'Empfänger gesetzt', dokumenttyp:'Dokumenttyp erkannt', zielsetzung:'Zielsetzung gefunden',
   risikoanalyse:'Risiken gefunden', business_case:'Business Case gefunden'};
 
 const drop=document.getElementById('kp-drop-files');

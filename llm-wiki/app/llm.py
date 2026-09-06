@@ -16,12 +16,16 @@ Fragende nicht sehen darf.
 """
 from __future__ import annotations
 
+import base64
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, field
 
 from .wiki import Snippet
+
+log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
@@ -136,6 +140,48 @@ def chat(system_prompt: str, user_prompt: str, max_tokens: int) -> str:
     )
     # Ein leerer Abschluss (content=None) darf die Aufrufer nicht mit einem
     # AttributeError treffen - sie erwarten durchgaengig einen String.
+    choice = response.choices[0]
+    content = choice.message.content or ""
+    if not content:
+        # Typisch: finish_reason=length, das Budget ging im Thinking-Block drauf.
+        log.warning("LLM-Antwort leer (finish_reason=%s, max_tokens=%s)",
+                    getattr(choice, "finish_reason", None), max_tokens)
+    return content
+
+
+IMAGE_TIMEOUT_S = 60
+IMAGE_MAX_TOKENS = 1500
+IMAGE_PROMPT = (
+    "Beschreibe den Inhalt dieses Bildes sachlich auf Deutsch. Uebertrage lesbaren "
+    "Text woertlich (Zeichen fuer Zeichen), gib Tabellen als Markdown-Tabellen "
+    "wieder. Keine Einleitung, keine Bewertung, keine Vermutungen ueber Dinge, "
+    "die nicht zu sehen sind."
+)
+
+
+def describe_image(data: bytes, mime: str, filename: str) -> str:
+    """Bild -> Text ueber denselben OpenAI-kompatiblen Client (Vision-Nachricht
+    mit `image_url` als data-URL). Ohne Key: leerer String. Fehler und Timeout
+    (60 s) gehen als Exception an den Aufrufer - `extractors.extract_image`
+    faengt sie und schreibt stattdessen den Fallback-Text mit den Bildmassen.
+    """
+    if not is_configured():
+        return ""
+    b64 = base64.b64encode(data).decode("ascii")
+    response = _client().with_options(timeout=IMAGE_TIMEOUT_S).chat.completions.create(
+        model=os.environ.get("LLM_MODEL", DEFAULT_MODEL),
+        max_tokens=IMAGE_MAX_TOKENS,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"Dateiname: {filename}\n\n{IMAGE_PROMPT}"},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                ],
+            }
+        ],
+        extra_body=_extra_body(),
+    )
     return response.choices[0].message.content or ""
 
 

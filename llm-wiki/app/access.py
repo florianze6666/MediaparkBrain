@@ -392,9 +392,41 @@ def verify_user(value: str | None) -> str | None:
     return uid
 
 
+DEFAULT_USER_ENV = "MPB_DEFAULT_USER"
+
+
+def default_user() -> str:
+    """Wer ohne gueltigen Cookie gilt: MPB_DEFAULT_USER, falls gesetzt und in
+    permissions.yaml bekannt, sonst der Gast.
+
+    Bewusst bei jedem Aufruf aus der Env gelesen (keine Modulkonstante), damit
+    Tests den Wert per monkeypatch steuern koennen. Nur fuer Demos gedacht:
+    ein Standardnutzer mit Rechten macht den Rollen-Login ueberfluessig, deshalb
+    nie ohne Basic-Auth im Netz betreiben (docs/KOMPASS-UMBAU.md, Demo-Modus).
+    """
+    uid = (os.environ.get(DEFAULT_USER_ENV) or "").strip()
+    if uid and uid in load_permissions()["nutzer"]:
+        return uid
+    return GUEST
+
+
 def current_user(request: Request) -> str:
-    """Nutzer aus dem signierten Cookie; ungueltig oder unsigniert -> Gast."""
-    return get_user(verify_user(request.cookies.get(COOKIE_NAME)))["id"]
+    """Nutzer aus dem signierten Cookie. Fehlt der Cookie oder ist er ungueltig,
+    gilt der Standardnutzer (default_user) - ohne den ist das der Gast.
+    Ein gueltiger Cookie gewinnt immer ueber den Standardnutzer."""
+    uid = verify_user(request.cookies.get(COOKIE_NAME))
+    if uid is None:
+        return default_user()
+    return get_user(uid)["id"]
+
+
+def is_default_user(request: Request) -> bool:
+    """True, wenn kein gueltiger Cookie vorliegt und ein Standardnutzer (nicht
+    der Gast) greift - fuer den Hinweis "Standardnutzer (Demo)" in der Shell."""
+    return (
+        verify_user(request.cookies.get(COOKIE_NAME)) is None
+        and default_user() != GUEST
+    )
 
 
 # ---------------------------------------------------------------------------

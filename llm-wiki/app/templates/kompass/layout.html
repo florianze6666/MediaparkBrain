@@ -24,6 +24,7 @@
     </nav>
     <div class="kp-side-bottom">
       <a href="/principles" class="kp-secondary kp-label">Grundsätze</a>
+      {% if default_user_hint %}<span class="kp-hint kp-label" style="padding:2px 10px" title="Kein Nutzer gewählt, MPB_DEFAULT_USER greift">Standardnutzer (Demo)</span>{% endif %}
       <a href="/settings" class="kp-user {% if active == 'settings' %}is-active{% endif %}">
         <span class="kp-avatar">{{ current_user.initials }}</span>
         <span class="kp-label">{{ current_user.display_name }}</span>

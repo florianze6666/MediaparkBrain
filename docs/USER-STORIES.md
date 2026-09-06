@@ -87,6 +87,8 @@ automatisierter Test, Testfall steht beim Eintrag.
 | US-48 | Hochladen füllt die Kopfdaten aus der Datei vor; jedes Feld bleibt korrigierbar | WISSEN | P2 | Kompass 8d | test_kompass::test_prefill_ist_fuer_gast_verboten |
 | US-49 | Grundsätze-Seite zeigt echte Zahlen (abgelehnte Zugriffe, offene Felder) und 0, wo nichts gemessen wird | SYSTEM | P2 | Kompass 8e | manuell |
 | US-50 | Berechtigungsmatrix: Gruppe × Domäne umschalten, jede Änderung wird protokolliert | SYSTEM | P1 | Kompass 8h | test_kompass::test_admin_permissions_nur_admin_und_roundtrip |
+| US-51 | Demo-Modus: ohne Cookie gilt der Standardnutzer aus `MPB_DEFAULT_USER` (leer = Gast), ein gültiger Cookie gewinnt | SYSTEM | P2 | Demo-Modus | test_default_user (4) |
+| US-52 | Bilder hochladen (JPG/PNG/GIF/WEBP/HEIC): Text per Sprachmodell, Fallback mit Maßen; Original per `/knowledge/{slug}/original` nur für Berechtigte | WISSEN | P2 | Demo-Modus | test_extractors::test_extract_image_ohne_modell_fallback_mit_massen, test_upload_routes::test_kompass_upload_jpg_seite_und_original |
 
 ---
 

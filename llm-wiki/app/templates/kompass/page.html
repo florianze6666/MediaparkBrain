@@ -20,6 +20,7 @@
 <div class="kp-footer">
   <span class="kp-hint">Original bleibt · Ersteller und Zeit stehen im Kopf der Datei</span>
   <div style="display:flex;gap:8px">
+    {% if page.meta.original_datei %}<a class="kp-btn" href="/knowledge/{{ page.slug }}/original" target="_blank" rel="noopener">Original öffnen</a>{% endif %}
     <a class="kp-btn" href="/wiki/{{ page.slug }}">Klassische Ansicht</a>
     <a class="kp-btn kp-btn-primary" href="/wiki/{{ page.slug }}/edit">Bearbeiten</a>
   </div>

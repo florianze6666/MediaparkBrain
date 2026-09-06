@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -205,6 +206,8 @@ def kctx(request: Request, active: str, **extra) -> dict:
         # Sidebar-Zustand kommt aus dem Cookie, das kpToggleSidebar() setzt.
         "collapsed": request.cookies.get("kp_collapsed") == "1",
         "q": request.query_params.get("q", ""),
+        # Demo-Modus: kein Cookie, aber MPB_DEFAULT_USER greift -> kleiner Hinweis unten links.
+        "default_user_hint": access.is_default_user(request),
     }
     base.update(extra)
     return base
@@ -220,6 +223,48 @@ def _form_value(form, key: str) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return ""
+
+
+def _form_uploads(form, key: str) -> list[StarletteUploadFile]:
+    """Alle Datei-Teile eines Feldes mit Dateinamen.
+
+    request.form() liefert starlette.datastructures.UploadFile, NICHT
+    fastapi.UploadFile - ein isinstance gegen die FastAPI-Klasse ist immer
+    False und laesst die Datei unbemerkt unter den Tisch fallen.
+    """
+    return [
+        f for f in form.getlist(key)
+        if isinstance(f, StarletteUploadFile) and f.filename
+    ]
+
+
+def _upload_page_content(text: str, filename: str, title: str, slug: str, original_name: str) -> str:
+    """Seiteninhalt einer hochgeladenen Datei: oben die Zeile "Original: <name>"
+    (Link auf /knowledge/<slug>/original), bei Bildern zusaetzlich das Bild
+    selbst, dann der extrahierte Text (bei Bildern die Modellbeschreibung oder
+    der Fallback mit den Bildmassen)."""
+    parts = [f"Original: [{original_name}](/knowledge/{slug}/original)"]
+    if extractors.is_image(filename):
+        parts.append(f"![{title}](/knowledge/{slug}/original)")
+    if text.strip():
+        parts.append(text.strip())
+    return "\n\n".join(parts)
+
+
+def _free_slug(title: str) -> str:
+    """Slug aus dem Titel; ist er belegt, wird -2, -3, ... angehaengt statt
+    die vorhandene Seite zu ueberschreiben oder zu verschieben."""
+    base = wiki.slugify(title)
+    slug, n = base, 2
+    while wiki.slug_exists(slug):
+        slug = f"{base}-{n}"
+        n += 1
+    return slug
+
+
+def _title_from_filename(filename: str) -> str:
+    stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+    return " ".join(stem.split()) or "Hochgeladenes Dokument"
 
 
 def _felder_from_form(form) -> dict[str, str]:
@@ -528,7 +573,16 @@ KNOWLEDGE_FILL_FIELDS = [
 ]
 
 
-def _kompass_upload(request: Request, user: str, saved: bool = False):
+def _kompass_upload(
+    request: Request,
+    user: str,
+    saved: bool = False,
+    error: str | None = None,
+    saved_pages: list[dict] | None = None,
+    status: int = 200,
+):
+    """Kompass-Upload-Maske. `error` wird als roter Hinweis ueber dem Formular
+    gerendert (Formular bleibt), `saved_pages` als Links auf die neuen Seiten."""
     default_domain = (access.readable_domains(user) or [wiki.DEFAULT_DOMAIN])[0]
     return templates.TemplateResponse(
         request,
@@ -541,7 +595,10 @@ def _kompass_upload(request: Request, user: str, saved: bool = False):
             fill_endpoint="/api/prefill?target=knowledge",
             readers=kompass._readers_text(default_domain),
             saved=saved,
+            saved_pages=saved_pages or [],
+            error=error,
         ),
+        status_code=status,
     )
 
 
@@ -579,13 +636,14 @@ async def upload_submit(
     dokumenttyp: str = Form(""),
     datum: str = Form(""),
     verfasser: str = Form(""),
+    empfaenger: str = Form(""),
 ):
     user = require_author(request)
     if target:
         # Kompass-Weg: mehrere Dateien, Metadaten kommen aus dem Drop-In.
         return await _upload_kompass(
             request, user, files, titel, domaene, vertraulichkeit,
-            dokumenttyp, datum, verfasser,
+            dokumenttyp, datum, verfasser, parse_recipients(empfaenger),
         )
     if file is None or not file.filename:
         return templates.TemplateResponse(
@@ -610,7 +668,13 @@ async def upload_submit(
 
     # 0. Vorab-Pruefung (Write <= Read), damit die Originaldatei gar nicht erst in einem
     #    fremden Domaenenordner landet. Die endgueltige Pruefung folgt auf das fertige meta.
-    require_writable(user, PageMeta(domaene=domaene, vertraulichkeit=vertraulichkeit))
+    #    Mit Ersteller und Empfaengern, sonst scheitert `vertraulich` (Regel 4) am
+    #    eigenen Nutzer.
+    empfaenger_liste = parse_recipients(empfaenger)
+    require_writable(user, PageMeta(
+        erstellt_von=user, domaene=domaene, vertraulichkeit=vertraulichkeit,
+        empfaenger=empfaenger_liste,
+    ))
 
     # 1. Originaldatei im Uploads-Ordner sichern (nach Domaene)
     saved_path = wiki.save_uploaded_file(file.filename, content_bytes, domaene=domaene)
@@ -636,13 +700,20 @@ async def upload_submit(
         custom_domain=domaene,
         custom_confidentiality=vertraulichkeit,
     )
+    # Original bleibt: der abgelegte (bereinigte) Dateiname, den /knowledge/<slug>/original findet.
+    meta.original_datei = saved_path.name
+    for e in empfaenger_liste:
+        if e not in meta.empfaenger:
+            meta.empfaenger.append(e)
 
     # 4. Pruefen ob der Nutzer in dieser Domaene mit dieser Einstufung schreiben darf (Write ⊆ Read)
     require_writable(user, meta)
 
     # 5. Slug & Inhalt zusammensetzen
-    slug = wiki.slugify(extracted_title)
-    full_content = f"{extracted_text.strip()}\n"
+    slug = _free_slug(extracted_title)  # Kollision: -2, -3, ... statt Ueberschreiben
+    full_content = _upload_page_content(
+        extracted_text, file.filename, extracted_title, slug, saved_path.name
+    ) + "\n"
 
     # Speichern unter pages/
     wiki.save_page(slug, extracted_title, full_content, meta=meta)
@@ -1168,45 +1239,90 @@ async def _upload_kompass(
     dokumenttyp: str,
     datum: str,
     verfasser: str,
+    empfaenger: list[str] | None = None,
 ):
-    """Wissens-Upload aus der Kompass-Maske: je Datei eine Wiki-Seite."""
+    """Wissens-Upload aus der Kompass-Maske: je Datei eine Wiki-Seite.
+
+    Jeder Fehler (keine Datei, leere Datei, Extraktion, Schreibrecht) landet als
+    lesbare Meldung in der Maske - nie als nackte 403/500-Seite. Nur der Gast
+    bekommt vorher in `require_author` die 403-Seite (mit Standardnutzer kommt
+    das nicht mehr vor).
+    """
     real_files = [f for f in files if f and f.filename]
     if not real_files:
-        return _kompass_upload(request, user)
+        return _kompass_upload(
+            request, user, error="Bitte zuerst eine Datei ablegen.", status=400
+        )
 
-    domaene = domaene or wiki.DEFAULT_DOMAIN
+    domaene = (domaene or "").strip() or wiki.DEFAULT_DOMAIN
     vertraulichkeit = vertraulichkeit or access.default_confidentiality_for_user(user)
-    # Write ⊆ Read schon vor dem Schreiben der Originaldatei pruefen.
-    require_writable(user, PageMeta(domaene=domaene, vertraulichkeit=vertraulichkeit))
+    empfaenger = list(empfaenger or [])
+    # Write ⊆ Read schon vor dem Schreiben der Originaldatei pruefen - mit Ersteller
+    # und Empfaengern, sonst scheitert `vertraulich` (Regel 4) am eigenen Nutzer.
+    try:
+        require_writable(user, PageMeta(
+            erstellt_von=user, domaene=domaene, vertraulichkeit=vertraulichkeit,
+            empfaenger=empfaenger,
+        ))
+    except HTTPException as exc:
+        return _kompass_upload(
+            request, user,
+            error=f"{exc.detail} (Domäne „{domaene}“). Bitte eine Domäne wählen, die du lesen darfst.",
+            status=exc.status_code,
+        )
 
+    saved_pages: list[dict] = []
     for f in real_files:
         content_bytes = await f.read()
         if not content_bytes:
-            continue
+            return _kompass_upload(
+                request, user, error=f"Die Datei „{f.filename}“ ist leer.",
+                status=400, saved_pages=saved_pages,
+            )
+        # Original bleibt: unter uploads/<domaene>/, der abgelegte Name steht in meta.
         saved_path = wiki.save_uploaded_file(f.filename, content_bytes, domaene=domaene)
         try:
             text = extractors.extract_text_from_file(saved_path, f.filename)
-        except Exception as exc:  # unlesbare Datei bricht nicht den ganzen Upload ab
-            raise HTTPException(status_code=400, detail=f"Extraktion fehlgeschlagen: {exc}")
-        title = titel.strip() or Path(f.filename).stem
+        except Exception as exc:  # unlesbare Datei: Meldung statt Traceback
+            log.warning("Extraktion fehlgeschlagen fuer %s: %s", f.filename, exc)
+            return _kompass_upload(
+                request, user,
+                error=f"„{f.filename}“ konnte nicht gelesen werden: {exc}",
+                status=400, saved_pages=saved_pages,
+            )
+        # Titel leer (Prefill fehlgeschlagen oder uebersprungen): aus dem Dateinamen.
+        title = (titel or "").strip() or _title_from_filename(f.filename)
+        slug = _free_slug(title)  # Kollision: -2, -3, ... statt Abbruch
         meta = PageMeta(
             erstellt_von=user,
             erstellt_am=now_iso(),
             vertraulichkeit=vertraulichkeit,
             domaene=domaene,
+            empfaenger=list(empfaenger),
             dokumenttyp=dokumenttyp,
             datum=datum,
             verfasser=verfasser or user,
             titel=title,
             quelle="upload",
-            original_datei=f.filename,
+            original_datei=saved_path.name,
         )
-        require_writable(user, meta)  # nach Normalisierung erneut pruefen
-        wiki.save_page(wiki.slugify(title), title, text.strip(), meta)
+        try:
+            require_writable(user, meta)  # nach Normalisierung erneut pruefen
+        except HTTPException as exc:
+            return _kompass_upload(
+                request, user, error=str(exc.detail), status=exc.status_code,
+                saved_pages=saved_pages,
+            )
+        wiki.save_page(
+            slug, title,
+            _upload_page_content(text, f.filename, title, slug, saved_path.name),
+            meta,
+        )
+        saved_pages.append({"slug": slug, "title": title})
         # Nur die erste Datei liefert den Titel; weitere behalten ihren Dateinamen.
         titel = ""
 
-    return _kompass_upload(request, user, saved=True)
+    return _kompass_upload(request, user, saved=True, saved_pages=saved_pages)
 
 
 # --- Antraege ---------------------------------------------------------------
@@ -1250,9 +1366,8 @@ async def proposal_create(request: Request):
         )
 
     uploaded: list[tuple[str, bytes]] = []
-    for f in form.getlist("files"):
-        if isinstance(f, UploadFile) and f.filename:
-            uploaded.append((f.filename, await f.read()))
+    for f in _form_uploads(form, "files"):
+        uploaded.append((f.filename, await f.read()))
     duplicate = proposals.find_duplicate_file(uploaded)
     if duplicate is not None:
         raise HTTPException(
@@ -1439,6 +1554,19 @@ def knowledge_page(request: Request, slug: str):
     )
 
 
+@app.get("/knowledge/{slug}/original")
+def knowledge_original(request: Request, slug: str):
+    """Originaldatei einer Wissensseite (uploads/<domaene>/). Gleiche Schranke
+    wie die Seite selbst; fehlend und verboten sind nicht unterscheidbar (404)."""
+    user = access.current_user(request)
+    page = require_page(slug, user)
+    name = page.meta.original_datei
+    target = wiki.uploaded_file_path(name, page.meta.domaene)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    return FileResponse(target, filename=Path(name).name)
+
+
 # --- Vorbefuellung ----------------------------------------------------------
 
 
@@ -1449,6 +1577,18 @@ PREFILL_PROPOSAL_PROMPT = (
     'Struktur: {"name": ..., "description": ..., "cost": ..., "benefit": ..., '
     '"duration": ..., ' + ", ".join(f'"{k}": ...' for k, _ in kompass.PFLICHTFELDER) + "}"
 )
+
+
+def _parse_json_object(raw: str) -> dict:
+    """JSON-Objekt aus einer Modellantwort: Code-Zaeune weg, erstes {...} nehmen."""
+    cleaned = llm_metadata.strip_code_fences(raw)
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("kein JSON-Objekt in der Antwort")
+    parsed = json.loads(cleaned[start:end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError(f"JSON ist kein Objekt ({type(parsed).__name__})")
+    return parsed
 
 
 def _prefill_proposal_fallback(text: str, filename: str) -> dict:
@@ -1489,7 +1629,7 @@ async def api_prefill(request: Request, target: str = "knowledge"):
                 return {"status": "error", "fields": None, "message": str(exc)}
     else:
         form = await request.form()
-        uploads = [f for f in form.getlist("files") if isinstance(f, UploadFile) and f.filename]
+        uploads = _form_uploads(form, "files")
         if uploads:
             first = uploads[0]
             filename = first.filename
@@ -1505,28 +1645,38 @@ async def api_prefill(request: Request, target: str = "knowledge"):
     if target == "proposal":
         fields = _prefill_proposal_fallback(text, filename)
         if llm.is_configured() and text.strip():
+            raw = ""
             try:
-                raw = llm.chat(PREFILL_PROPOSAL_PROMPT, text[:8000], max_tokens=1500).strip()
-                raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-                parsed = json.loads(raw)
+                # 4000 statt 1500: denkende Modelle brauchen das Budget zuerst im
+                # Thinking-Block (siehe llm_metadata.HEADER_MAX_TOKENS).
+                raw = llm.chat(PREFILL_PROPOSAL_PROMPT, text[:8000], max_tokens=4000).strip()
+                parsed = _parse_json_object(raw)
                 if isinstance(parsed, dict):
                     for key in list(fields):
                         value = parsed.get(key)
                         fields[key] = str(value).strip() if value not in (None, "") else fields[key]
             except Exception as exc:
                 # Kein Ergebnis vom Modell: die Fallback-Felder bleiben stehen.
-                log.warning("Prefill (Antrag) ohne LLM-Ergebnis: %s", exc)
+                log.warning("Prefill (Antrag) ohne LLM-Ergebnis (%s: %s). Antwort: %.200r",
+                            type(exc).__name__, exc, raw)
         return {"status": "ok", "fields": fields, "readers": ""}
 
-    # target == knowledge: derselbe Weg wie beim Upload (llm_metadata mit Fallback)
+    # target == knowledge: derselbe Weg wie beim Upload (llm_metadata mit
+    # Fallback). Bilder kommen hier bereits als Beschreibung an (extract_image,
+    # je Datei-Hash gecacht - der Upload danach ruft das Modell nicht erneut).
     _, meta, title = llm_metadata.generate_header(text, filename or "eingabe.txt", user)
+    if filename and extractors.is_image(filename) and meta.dokumenttyp in ("", "Dokument"):
+        meta.dokumenttyp = "Bild"  # ohne Modell weiss der Fallback-Kopf nicht, dass es ein Bild ist
     fields = {
         "titel": title,
-        "dokumenttyp": meta.dokumenttyp or None,
+        # Bilder sind immer vom Typ "Bild" (der Fallback-Kopf wuesste es nicht).
+        "dokumenttyp": "Bild" if extractors.is_image(filename) else (meta.dokumenttyp or None),
         "datum": meta.datum or None,
         "verfasser": meta.verfasser or user,
         "domaene": meta.domaene or wiki.DEFAULT_DOMAIN,
         "vertraulichkeit": meta.vertraulichkeit,
+        # Korpus-Stufen (z.B. C-Level) bringen ihre Empfaenger mit; nur bei vertraulich relevant.
+        "empfaenger": ", ".join(meta.empfaenger),
     }
     return {
         "status": "ok",

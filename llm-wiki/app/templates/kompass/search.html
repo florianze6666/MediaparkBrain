@@ -4,7 +4,10 @@
 {% block head %}<h1>Suche</h1><span class="kp-crumb">{% if q %}„{{ q }}“ · {{ snippets | length }} Wissen · {{ hits | length }} Projekte{% else %}Suchbegriff oben eingeben{% endif %}</span>{% endblock %}
 {% block content %}
 {% if antwort %}
-{% set top = antwort.belegte | first %}
+{# Nur ein Fakt MIT formulierter Aussage zaehlt als Ein-Satz-Antwort - ohne
+   Modell (kein LLM_API_KEY) haben Fakten nur ein Zitat, aber keine aussage;
+   dann zeigt der Hinweis-Zweig unten, warum keine Antwort formuliert wurde. #}
+{% set top = antwort.belegte | selectattr("aussage") | first %}
 <section class="kp-section" id="antwort">
   <div class="kp-section-title">Antwort</div>
   <div class="kp-facts" style="grid-template-columns:1fr">
@@ -15,7 +18,7 @@
       <small>Quelle: <a href="/knowledge/{{ top.quelle_slug }}">{{ top.quelle_titel }}</a>{% if top.belegstelle %} · {{ top.belegstelle }}{% endif %}</small>
     </div>
     {% else %}
-    <div class="kp-fact"><small>Semantische Antwort</small><b>{{ antwort.hinweis or "Keine belastbare Antwort gefunden." }}</b></div>
+    <div class="kp-fact"><small>Hinweis</small><b>{{ antwort.hinweis or "Keine belastbare Antwort gefunden." }}</b></div>
     {% endif %}
   </div>
 </section>

@@ -142,7 +142,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 
 /* Wissen */
 .kp-graph-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; }
-.kp-graph { position: relative; height: 420px; background: var(--surface-2); border-radius: var(--r-xl); overflow: hidden; }
+/* Unter ~1600px bleibt neben dem Graphen zu wenig Breite: er muesste waagerecht
+   scrollen, obwohl die Seite Platz haette. Die Wortwolke ruecht dann darunter. */
+@media (max-width: 1600px) { .kp-graph-wrap { grid-template-columns: minmax(0, 1fr); } }
+.kp-graph { position: relative; width: 100%; min-width: var(--kp-graph-min, 900px); aspect-ratio: var(--kp-graph-ratio, 1.6); background: var(--surface-2); border-radius: var(--r-xl); overflow: hidden; }
 /* Kein viewBox: die Linien rechnen in Prozent des Containers, genau wie die
    Knoten (left/top in % + translate(-50%,-50%)) - deshalb treffen sie die
    Kreismittelpunkte exakt, unabhaengig von der Containerbreite. */
@@ -152,7 +155,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kp-graph.is-focus line:not(.is-hot) { opacity: .25; }
 .kp-node { position: absolute; z-index: 1; transform: translate(-50%, -50%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; transition: opacity .15s, box-shadow .15s; }
 .kp-node.is-project { background: var(--ink); color: #fff; width: 64px; height: 64px; text-align: center; line-height: 1.2; }
-.kp-node.is-dept { background: var(--accent); color: #fff; width: 48px; height: 48px; text-align: center; line-height: 1.1; padding: 0 4px; overflow: hidden; }
+/* 10px statt 11px: laengere Domaenennamen wie "allgemein" wurden im Kreis
+   sonst abgeschnitten. */
+.kp-node.is-dept { background: var(--accent); color: #fff; width: 48px; height: 48px; text-align: center; line-height: 1.1; padding: 0 3px; overflow: hidden; font-size: 10px; letter-spacing: -.01em; }
 .kp-node.is-dept-outline { background: #fff; border: 2px solid var(--accent); color: var(--accent); width: 34px; height: 34px; font-size: 10px; overflow: hidden; }
 .kp-node.is-doc { border-radius: 999px; background: #fff; padding: 4px 9px; font-weight: 400; color: var(--ink); box-shadow: var(--shadow-card); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 18px; }
 .kp-node.is-more { background: var(--line); color: var(--ink-2); font-weight: 600; box-shadow: none; }
@@ -161,7 +166,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kp-graph.is-focus .kp-node:not(.is-hot):not(:hover) { opacity: .3; }
 .kp-graph.is-focus .kp-node.is-locked:not(.is-hot):not(:hover) { opacity: .18; }
 .kp-legend { position: absolute; left: 14px; bottom: 10px; z-index: 3; display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); background: rgba(245,245,247,.92); border-radius: 6px; padding: 4px 8px; }
-.kp-graph-hint { display: none; }
+.kp-graph-scroll { min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Wird nur eingeblendet, wenn der Graph tatsaechlich breiter ist als sein Kasten
+   (siehe knowledge.html). */
+.kp-graph-hint { display: none; margin: 6px 2px 0; font-size: 12px; color: var(--muted-2); }
+.kp-graph-scroll.is-scrollable + .kp-graph-hint { display: block; }
 .kp-cloud { background: var(--surface-2); border-radius: var(--r-xl); padding: 18px 20px; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 6px 14px; line-height: 1; }
 .kp-cloud span { color: var(--muted); } .kp-cloud .w1 { font-size: 13px; color: var(--muted-2); } .kp-cloud .w2 { font-size: 15px; } .kp-cloud .w3 { font-size: 18px; color: var(--ink); } .kp-cloud .w4 { font-size: 22px; color: var(--accent); } .kp-cloud .w5 { font-size: 26px; color: var(--ink); } .kp-cloud .w6 { font-size: 30px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; }
 .kp-stale { font-size: 11px; color: var(--warn); font-weight: 600; margin-left: 6px; }
@@ -322,15 +331,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 
   /* Graph und Wortwolke untereinander statt nebeneinander. */
   .kp-graph-wrap { display: block; }
-  .kp-graph-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  /* Die Knoten sitzen auf Prozentkoordinaten: unter ~520px ueberlappen ihre
-     Beschriftungen. Der Graph behaelt daher seine Mindestbreite und scrollt
-     seitlich in seinem eigenen Kasten - die Seite selbst bleibt schmal. */
-  /* Mindestbreite kommt aus dem Template (--kp-graph-min) und waechst mit der
-     Zahl der Domaenen: neun Domaenen brauchen mehr als 520px, sonst
-     beruehren sich die Kreise und die Beschriftungen brechen ab. */
-  .kp-graph { min-width: var(--kp-graph-min, 520px); height: 340px; }
-  .kp-graph-hint { display: block; margin: 6px 2px 0; font-size: 12px; color: var(--muted-2); }
+  /* Der Graph startet mittig, also gehoert die Legende auch in die Mitte -
+     links aussen waere sie ausserhalb des sichtbaren Ausschnitts. */
+  .kp-legend { left: 50%; transform: translateX(-50%); }
+
   .kp-cloud { margin-top: 12px; padding: 14px 16px; gap: 5px 10px; }
   .kp-cloud .w4 { font-size: 19px; } .kp-cloud .w5 { font-size: 22px; } .kp-cloud .w6 { font-size: 25px; }
 
@@ -355,5 +359,4 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 @media (max-width: 520px) {
   .kp-main { padding: 14px 12px 20px; }
   h1 { font-size: 21px; }
-  .kp-graph { height: 300px; }
 }

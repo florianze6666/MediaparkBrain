@@ -8,7 +8,7 @@
 {% block content %}
 <div class="kp-graph-wrap">
   <div class="kp-graph-scroll">
-  <div class="kp-graph" id="kp-graph" style="--kp-graph-min:{{ graph.min_px or 520 }}px">
+  <div class="kp-graph" id="kp-graph" style="--kp-graph-min:{{ graph.min_px or 900 }}px;--kp-graph-ratio:{{ graph.ratio or 1.6 }}">
     {# Prozentkoordinaten statt ViewBox: die Linie endet damit exakt im
        Kreismittelpunkt, weil der Knoten mit denselben Prozenten positioniert
        und per translate(-50%,-50%) zentriert wird. #}
@@ -18,7 +18,7 @@
     {% for n in graph.nodes %}<a href="{{ n.href }}" title="{{ n.title }}" data-dept="{{ n.dept }}" class="kp-node is-{{ n.kind }}{% if n.more %} is-more{% endif %}{% if n.locked %} is-locked{% endif %}" style="left:{{ n.x }}%;top:{{ n.y }}%{% if n.w %};max-width:calc({{ n.w }}% - 4px){% endif %}">{{ n.label }}</a>{% endfor %}
     <div class="kp-legend"><span><i class="kp-dot"></i> Domäne</span><span>○ Dokument</span><span>◌ 🔒 für Sie gesperrt</span></div>
   </div>
-  <p class="kp-graph-hint">Der Graph laesst sich seitlich schieben.</p>
+  <p class="kp-graph-hint">Der Graph lässt sich seitlich schieben.</p>
   </div>
   <div class="kp-cloud">{% for w in cloud %}<span class="w{{ w.weight }}">{{ w.word }}</span>{% endfor %}</div>
 </div>
@@ -42,6 +42,17 @@
 {% endblock %}
 {% block scripts %}
 <script>
+// Passt der Graph nicht in seinen Kasten, mittig einsteigen statt am linken
+// Rand - dort steht sonst nur Leerraum - und den Schiebe-Hinweis zeigen.
+(function(){
+  const box=document.querySelector('.kp-graph-scroll');if(!box)return;
+  const check=()=>{
+    const ueber=box.scrollWidth - box.clientWidth;
+    box.classList.toggle('is-scrollable', ueber > 1);
+    if(ueber > 1 && box.scrollLeft === 0) box.scrollLeft = ueber / 2;
+  };
+  check();addEventListener('resize',check);
+})();
 // Hover: Knoten und die Linien seiner Domaene hervorheben, der Rest tritt zurueck.
 (function(){
   const g=document.getElementById('kp-graph');if(!g)return;

@@ -23,6 +23,8 @@ Was heute fehlt und deshalb "–" oder 0 ist:
 """
 from __future__ import annotations
 
+import math
+
 import markdown as md
 
 import os
@@ -577,64 +579,177 @@ def _cloud(pages: list[wiki.Page]) -> list[dict]:
     ]
 
 
-GRAPH_MAX_DOCS = 6          # mehr wird zu "+N weitere" zusammengefasst
-GRAPH_LABEL_LEN = 22        # Zeichen, danach "…" (voller Titel im title-Attribut)
-_GRAPH_DEPT_Y = 14.0        # Reihe der Domaenen
-_GRAPH_DOC_Y0 = 34.0        # erste Dokumentzeile
-_GRAPH_DOC_DY = 9.0         # Zeilenabstand -> bei 420px Hoehe ~38px, kein Ueberlappen
-_GRAPH_LOCKED_X = 94.0      # Spalte der gesperrten Domaenen, rechts aussen
-_GRAPH_READABLE_SPAN = 86.0  # Platz fuer die lesbaren Domaenen, wenn rechts eine Spalte steht
-_GRAPH_COL_PX = 108         # Platzbedarf einer Domaenenspalte: Kreis (48px) plus
-                            # Luft fuer die Dokumentbeschriftung darunter
-_GRAPH_LOCKED_PX = 90       # zusaetzliche Breite fuer die Spalte gesperrter Domaenen
-_GRAPH_MIN_PX = 520         # darunter beruehren sich schon zwei Domaenen
+# Der Graph ist die Uebersicht, nicht die Liste: Pro Domaene stehen nur wenige
+# Dokumente, der Rest sammelt sich in "+N weitere". Mehr Pillen passen um einen
+# Ring aus neun Domaenen schlicht nicht, ohne sich zu ueberdecken - die volle
+# Aufzaehlung steht in der Tabelle darunter.
+GRAPH_MAX_DOCS = 4          # mehr wird zu "+N weitere" zusammengefasst
+GRAPH_LABEL_LEN = 13        # Zeichen, danach "…" (voller Titel im title-Attribut)
+
+# Der Graph wird auf einer gedachten Flaeche in Pixeln gerechnet und erst am
+# Ende in Prozent umgerechnet. Grund: Die Knoten haben feste Groessen (Kreise,
+# Textpillen), die Positionen aber sind relativ - nur wenn beide dieselbe
+# Bezugsbreite haben, stimmen die Abstaende. Die Flaeche waechst mit der Zahl
+# der Domaenen; der Container uebernimmt ihr Seitenverhaeltnis und ihre
+# Mindestbreite (min_px), auf schmalen Schirmen scrollt er waagerecht.
+_RING_MIN = 190             # kleinster Radius des Domaenenrings in Pixeln
+_RING_PER_DOMAIN = 28       # Radiuszuwachs je Domaene: der Ring braucht Umfang
+_RING_FLAT = 0.55           # Der Ring ist eine flache Ellipse - breite Schirme
+                            # haben waagerecht mehr Platz als senkrecht.
+_MARGIN_X = 80              # halbe Pillenbreite plus Luft zum Rand
+_MARGIN_Y = 34              # Luft zum Rand, unten sitzt die Legende
+_DOC_RINGS = (78, 116, 154)  # Abstaende Dokument <-> Domaene, reihum vergeben:
+                             # benachbarte Dokumente liegen so nie gleich weit
+                             # aussen und koennen sich schlechter ueberdecken
+_FAN_MAX = 116              # groesster Oeffnungswinkel des Dokumentfaechers in Grad
+_FAN_SPREAD = 420           # geteilt durch die Domaenenzahl: Oeffnungswinkel,
+                            # damit benachbarte Faecher nicht ineinandergreifen
+_RELAX_PASSES = 90          # Durchlaeufe der Ueberlappungskorrektur
+_NODE_GAP = 9               # Mindestluft zwischen zwei Knoten in Pixeln
 
 
 def _graph_label(title: str) -> str:
     return (title[:GRAPH_LABEL_LEN] + "…") if len(title) > GRAPH_LABEL_LEN else title
 
 
+def _node_box(node: dict) -> tuple[float, float]:
+    """Ungefaehre Kantenlaengen eines Knotens in Pixeln (fuer die Entzerrung)."""
+    kind = node["kind"]
+    if kind == "project":
+        return 64.0, 64.0
+    if kind == "dept":
+        return 48.0, 48.0
+    if kind == "dept-outline":
+        return 34.0, 34.0
+    # Dokumentpille: Breite folgt der Beschriftung, gedeckelt.
+    return min(140.0, 22.0 + 6.5 * len(node["label"])), 26.0
+
+
+def _relax(nodes: list[dict], w: float, h: float) -> None:
+    """Ueberlappende Dokumentknoten auseinanderschieben.
+
+    Zentrum und Domaenen bleiben stehen - der Ring ist das, was den Graphen
+    lesbar macht. Bewegt werden nur die Dokumente: Bei zwei Dokumenten weicht
+    jedes um die halbe Ueberdeckung aus, gegen einen festen Knoten um die
+    ganze. Feste Reihenfolge, kein Zufall - gleicher Stand, gleiches Bild.
+    """
+    movable = [n for n in nodes if n["kind"] == "doc"]
+    if not movable:
+        return
+    boxes = {id(n): _node_box(n) for n in nodes}
+    for _ in range(_RELAX_PASSES):
+        schub = 0.0
+        for a in movable:
+            aw, ah = boxes[id(a)]
+            for b in nodes:
+                if a is b:
+                    continue
+                bw, bh = boxes[id(b)]
+                dx = a["px"] - b["px"]
+                dy = a["py"] - b["py"]
+                frei_x = (aw + bw) / 2 + _NODE_GAP - abs(dx)
+                frei_y = (ah + bh) / 2 + _NODE_GAP - abs(dy)
+                if frei_x <= 0 or frei_y <= 0:
+                    continue        # beruehren sich nicht
+                anteil = 0.5 if b["kind"] == "doc" else 1.0
+                # Auf der Achse ausweichen, auf der weniger Weg noetig ist.
+                if frei_x * (ah + bh) < frei_y * (aw + bw):
+                    a["px"] += frei_x * anteil * (1.0 if dx >= 0 else -1.0)
+                    schub += frei_x
+                else:
+                    a["py"] += frei_y * anteil * (1.0 if dy >= 0 else -1.0)
+                    schub += frei_y
+            # In der Flaeche halten; unten bleibt Platz fuer die Legende.
+            a["px"] = min(max(a["px"], aw / 2 + 4), w - aw / 2 - 4)
+            a["py"] = min(max(a["py"], ah / 2 + 4), h - ah / 2 - 34)
+        if schub < 0.5:
+            break
+
+
+def _zuschneiden(nodes: list[dict], w: float, h: float) -> tuple[float, float]:
+    """Flaeche auf den belegten Bereich schrumpfen und Knoten mitverschieben.
+
+    Domaenen ohne Dokumente lassen ganze Ecken leer. Ohne Zuschnitt bliebe der
+    Kasten unnoetig gross - auf dem Handy waere der sichtbare Ausschnitt dann
+    vor allem Leerraum.
+    """
+    links = oben = math.inf
+    rechts = unten = -math.inf
+    for n in nodes:
+        bw, bh = _node_box(n)
+        links = min(links, n["px"] - bw / 2)
+        rechts = max(rechts, n["px"] + bw / 2)
+        oben = min(oben, n["py"] - bh / 2)
+        unten = max(unten, n["py"] + bh / 2)
+
+    rand_x, rand_oben, rand_unten = 16.0, 16.0, 34.0   # unten sitzt die Legende
+    neu_w = min(w, rechts - links + 2 * rand_x)
+    neu_h = min(h, unten - oben + rand_oben + rand_unten)
+    for n in nodes:
+        n["px"] -= links - rand_x
+        n["py"] -= oben - rand_oben
+    return round(neu_w, 1), round(neu_h, 1)
+
+
 def _graph(user: str, pages: list[wiki.Page]) -> dict:
-    """Domaenen in einer Reihe, darunter die Dokumente der lesbaren Domaenen.
+    """Sternfoermiges Netz: Wissensbasis in der Mitte, Domaenen auf einem Ring,
+    ihre Dokumente nach aussen aufgefaechert.
 
-    Alle Positionen in Prozent des Containers - dieselbe Einheit, die die
-    Knoten (left/top) und die SVG-Linien benutzen. Deterministisch aus der
-    Reihenfolge in permissions.yaml berechnet: kein Zufall, kein
-    Layout-Algorithmus, bei gleichem Stand immer dasselbe Bild.
+    Deterministisch aus der Reihenfolge in permissions.yaml berechnet: kein
+    Zufall, bei gleichem Stand immer dasselbe Bild. Nicht lesbare Domaenen
+    haengen als Umriss mit im Ring (gesperrt ist nicht dasselbe wie nicht
+    vorhanden), aber ohne ihre Dokumente. Pro Domaene stehen hoechstens sechs
+    Dokumente plus ein Knoten "+N weitere".
 
-    Nicht lesbare Domaenen bleiben als kleiner Umriss rechts aussen sichtbar
-    (gesperrt ist nicht dasselbe wie nicht vorhanden), aber ohne ihre
-    Dokumente. Pro Domaene stehen hoechstens sechs Dokumente (die zuletzt
-    geaenderten) plus ein Knoten "+N weitere", der auf die gefilterte Liste
-    zeigt.
-
-    Jeder Dokumentknoten bekommt eine Maximalbreite `w` in Prozent: so breit
-    wie seine Spalte. Damit koennen zwei Beschriftungen nie uebereinander
-    laufen, egal wie breit der Container gerade ist.
+    Alle Positionen verlassen die Funktion als Prozent der Flaeche - dieselbe
+    Einheit, die Knoten (left/top) und SVG-Linien im Template benutzen.
     """
     domains = access.list_domains()
     readable_set = set(access.readable_domains(user))
-    readable = [d for d in domains if d in readable_set]
-    locked = [d for d in domains if d not in readable_set]
 
     by_domain: dict[str, list[wiki.Page]] = {}
     for page in pages:
         by_domain.setdefault(page.meta.domaene, []).append(page)
 
-    nodes: list[dict] = []
-    edges: list[dict] = []
+    count = max(len(domains), 1)
+    # Erst der Ring: sein Umfang muss die Domaenen tragen. Dann die Flaeche
+    # drumherum - gerade so gross, dass die Dokumentfaecher hineinpassen.
+    # Andersherum (feste Flaeche, Ring als Anteil davon) entstand entweder
+    # toter Rand oder abgeschnittene Dokumente.
+    rx = float(max(_RING_MIN, count * _RING_PER_DOMAIN))
+    ry = rx * _RING_FLAT
+    # Nur die Ringe zaehlen, die auch belegt sind: eine duenne Wissensbasis
+    # bekommt so keine halbleere Flaeche.
+    voll = max((len(by_domain.get(d, [])) for d in domains if d in readable_set), default=0)
+    genutzt = min(max(voll, 1), len(_DOC_RINGS))
+    reach = _DOC_RINGS[genutzt - 1] + 22   # weiteste Dokumentpille plus Luft
+    w = round(2 * (rx + reach + _MARGIN_X), 1)
+    h = round(2 * (ry + reach + _MARGIN_Y), 1)
+    cx, cy = w / 2, h / 2
 
-    span = _GRAPH_READABLE_SPAN if locked else 100.0
-    count = max(len(readable), 1)
-    col = span / count
+    nodes: list[dict] = [{
+        "id": "__wissen__", "label": "Wissen", "title": "Gesamte Wissensbasis",
+        "kind": "project", "px": cx, "py": cy, "w": None,
+        "locked": False, "dept": "", "href": "/knowledge",
+    }]
+    # (Domaenenknoten, Dokumentknoten) - Kanten entstehen erst nach der Entzerrung.
+    links: list[tuple[dict, dict]] = []
 
-    for i, dom in enumerate(readable):
-        x = round((i + 0.5) / count * span, 2)
-        nodes.append({
-            "id": dom, "label": dom, "title": f"Domäne {dom}",
-            "kind": "dept", "x": x, "y": _GRAPH_DEPT_Y, "w": None,
-            "locked": False, "dept": dom, "href": f"/knowledge?dept={dom}",
-        })
+    for i, dom in enumerate(domains):
+        # Start oben, dann im Uhrzeigersinn - unabhaengig von den Rechten, damit
+        # der Ring fuer alle Rollen gleich aussieht.
+        theta = -math.pi / 2 + 2 * math.pi * i / count
+        dept = {
+            "id": dom, "label": dom,
+            "kind": "dept" if dom in readable_set else "dept-outline",
+            "px": cx + rx * math.cos(theta), "py": cy + ry * math.sin(theta),
+            "w": None, "dept": dom, "href": f"/knowledge?dept={dom}",
+        }
+        dept["locked"] = dom not in readable_set
+        dept["title"] = f"Domäne {dom}" if not dept["locked"] else f"🔒 {dom} · für Sie gesperrt"
+        nodes.append(dept)
+        if dept["locked"]:
+            continue
 
         docs = sorted(
             by_domain.get(dom, []),
@@ -653,39 +768,51 @@ def _graph(user: str, pages: list[wiki.Page]) -> dict:
                 "title": f"{rest} weitere Dokumente in {dom}",
                 "kind": "doc", "more": True, "href": f"/knowledge?dept={dom}",
             })
+        if not entries:
+            continue
 
-        # Breite Spalten vertragen zwei Knoten nebeneinander, schmale nicht.
-        per_row = 2 if col >= 30 and len(entries) > 2 else 1
-        slot = col / per_row
+        # Faecher nach aussen: hoechstens so breit wie der Platz bis zur
+        # Nachbardomaene, sonst greifen die Faecher ineinander.
+        fan = math.radians(min(_FAN_MAX, _FAN_SPREAD / count))
+        step = fan / max(len(entries) - 1, 1)
         for j, entry in enumerate(entries):
-            row, pos = divmod(j, per_row)
-            offset = (pos + 0.5) * slot - col / 2 if per_row > 1 else 0.0
+            angle = theta + (j - (len(entries) - 1) / 2) * step
+            radius = _DOC_RINGS[j % len(_DOC_RINGS)]
             entry.update({
-                "x": round(x + offset, 2),
-                "y": round(_GRAPH_DOC_Y0 + row * _GRAPH_DOC_DY, 2),
-                "w": round(slot - 1.5, 2),
-                "locked": False,
-                "dept": dom,
+                "px": dept["px"] + radius * math.cos(angle),
+                "py": dept["py"] + radius * math.sin(angle),
+                "locked": False, "dept": dom,
             })
             nodes.append(entry)
-            edges.append({"x1": x, "y1": _GRAPH_DEPT_Y,
-                          "x2": entry["x"], "y2": entry["y"], "dept": dom})
+            links.append((dept, entry))
 
-    for k, dom in enumerate(locked):
-        y = 20.0 if len(locked) == 1 else round(16.0 + k * (68.0 / (len(locked) - 1)), 2)
-        nodes.append({
-            "id": dom, "label": dom, "title": f"🔒 {dom} · für Sie gesperrt",
-            "kind": "dept-outline", "x": _GRAPH_LOCKED_X, "y": y, "w": None,
-            "locked": True, "dept": dom, "href": f"/knowledge?dept={dom}",
-        })
+    _relax(nodes, w, h)
+    w, h = _zuschneiden(nodes, w, h)
 
-    # Mindestbreite in Pixeln: Die Positionen sind Prozentwerte, die Knoten
-    # haben aber feste Groessen. Wird der Container zu schmal, ueberlappen sich
-    # die Domaenenkreise und ihre Beschriftungen brechen ab. Auf schmalen
-    # Schirmen scrollt der Graph deshalb waagerecht statt zu schrumpfen.
-    min_px = max(_GRAPH_MIN_PX, count * _GRAPH_COL_PX + (_GRAPH_LOCKED_PX if locked else 0))
+    edges: list[dict] = []
+    center = nodes[0]
+    for n in nodes:
+        if n["kind"] in ("dept", "dept-outline"):
+            edges.append({"x1": _pct(center["px"], w), "y1": _pct(center["py"], h),
+                          "x2": _pct(n["px"], w), "y2": _pct(n["py"], h),
+                          "dept": n["dept"]})
+    for dept, entry in links:
+        edges.append({"x1": _pct(dept["px"], w), "y1": _pct(dept["py"], h),
+                      "x2": _pct(entry["px"], w), "y2": _pct(entry["py"], h),
+                      "dept": dept["dept"]})
 
-    return {"nodes": nodes, "edges": edges, "min_px": min_px}
+    for n in nodes:
+        box_w, _ = _node_box(n)
+        n["x"] = _pct(n.pop("px"), w)
+        n["y"] = _pct(n.pop("py"), h)
+        n["w"] = round(box_w / w * 100, 2) if n["kind"] == "doc" else None
+
+    return {"nodes": nodes, "edges": edges,
+            "min_px": int(w), "ratio": round(w / h, 3)}
+
+
+def _pct(value: float, total: float) -> float:
+    return round(value / total * 100, 2)
 
 
 def knowledge_vm(user: str, sort: str = "title", dir: str = "asc", dept: str = "") -> dict:

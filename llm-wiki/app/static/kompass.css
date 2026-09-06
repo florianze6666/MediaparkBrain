@@ -9,6 +9,9 @@
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 * { box-sizing: border-box; }
+/* hidden schlaegt jede Layout-Regel: sonst gewinnt z.B. .kp-sections{display:flex}
+   gegen das [hidden] des Browsers und der Wrapper waere sichtbar. */
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; -webkit-font-smoothing: antialiased; }
 a { color: var(--accent); text-decoration: none; } a:hover { color: var(--accent-hover); }
 h1 { font-size: 26px; margin: 0; letter-spacing: -.02em; font-weight: 600; }
@@ -34,11 +37,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kp-user .kp-gear { margin-left: auto; color: var(--muted-2); }
 .kp-avatar { width: 28px; height: 28px; border-radius: 50%; background: #636366; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
 .kp-main { flex: 1; min-width: 0; padding: 26px 36px 30px; display: flex; flex-direction: column; gap: 22px; }
-.kp-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.kp-head-title { display: flex; align-items: baseline; gap: 12px; }
-.kp-crumb { font-size: 13px; color: var(--muted); }
-.kp-tag { font-size: 12px; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 2px 8px; }
-.kp-search { width: 320px; height: 34px; background: var(--surface-2); border-radius: var(--r); border: 0; padding: 0 12px; font-size: 13.5px; color: var(--ink); }
+.kp-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-width: 0; }
+.kp-head-title { display: flex; align-items: baseline; gap: 12px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.kp-head-title h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.kp-head > form { flex: 0 1 clamp(240px, 38%, 640px); min-width: 0; }
+.kp-crumb { font-size: 13px; color: var(--muted); white-space: nowrap; flex: 0 0 auto; }
+.kp-tag { font-size: 12px; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 2px 8px; white-space: nowrap; flex: 0 0 auto; }
+/* Suche: waechst mit dem Fenster, faellt aber nie unter 320px und draengt
+   Titel/Breadcrumb nicht in den Umbruch. */
+.kp-search { width: 100%; min-width: 0; height: 34px; background: var(--surface-2); border-radius: var(--r); border: 0; padding: 0 12px; font-size: 13.5px; color: var(--ink); }
+@media (max-width: 1100px) { .kp-head > form { flex-basis: 240px; } }
 .kp-search::placeholder { color: var(--muted-2); }
 .kp-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .kp-hint { font-size: 12.5px; color: var(--muted-2); }
@@ -134,36 +142,72 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 
 /* Wissen */
 .kp-graph-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; }
-.kp-graph { position: relative; height: 380px; background: var(--surface-2); border-radius: var(--r-xl); overflow: hidden; }
-.kp-graph svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.kp-node { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+.kp-graph { position: relative; height: 420px; background: var(--surface-2); border-radius: var(--r-xl); overflow: hidden; }
+/* Kein viewBox: die Linien rechnen in Prozent des Containers, genau wie die
+   Knoten (left/top in % + translate(-50%,-50%)) - deshalb treffen sie die
+   Kreismittelpunkte exakt, unabhaengig von der Containerbreite. */
+.kp-graph svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.kp-graph line { transition: stroke .15s, stroke-width .15s, opacity .15s; }
+.kp-graph line.is-hot { stroke: var(--accent); stroke-width: 2; }
+.kp-graph.is-focus line:not(.is-hot) { opacity: .25; }
+.kp-node { position: absolute; z-index: 1; transform: translate(-50%, -50%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; transition: opacity .15s, box-shadow .15s; }
 .kp-node.is-project { background: var(--ink); color: #fff; width: 64px; height: 64px; text-align: center; line-height: 1.2; }
-.kp-node.is-dept { background: var(--accent); color: #fff; width: 48px; height: 48px; }
-.kp-node.is-dept-outline { background: #fff; border: 2px solid var(--accent); width: 40px; height: 40px; }
-.kp-node.is-doc { border-radius: 999px; background: #fff; padding: 4px 9px; font-weight: 400; }
+.kp-node.is-dept { background: var(--accent); color: #fff; width: 48px; height: 48px; text-align: center; line-height: 1.1; padding: 0 4px; overflow: hidden; }
+.kp-node.is-dept-outline { background: #fff; border: 2px solid var(--accent); color: var(--accent); width: 34px; height: 34px; font-size: 10px; overflow: hidden; }
+.kp-node.is-doc { border-radius: 999px; background: #fff; padding: 4px 9px; font-weight: 400; color: var(--ink); box-shadow: var(--shadow-card); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 18px; }
+.kp-node.is-more { background: var(--line); color: var(--ink-2); font-weight: 600; box-shadow: none; }
 .kp-node.is-locked { opacity: .45; }
-.kp-legend { position: absolute; left: 14px; bottom: 12px; display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); }
+.kp-node:hover { z-index: 2; box-shadow: 0 0 0 2px var(--accent); }
+.kp-graph.is-focus .kp-node:not(.is-hot):not(:hover) { opacity: .3; }
+.kp-graph.is-focus .kp-node.is-locked:not(.is-hot):not(:hover) { opacity: .18; }
+.kp-legend { position: absolute; left: 14px; bottom: 10px; z-index: 3; display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); background: rgba(245,245,247,.92); border-radius: 6px; padding: 4px 8px; }
 .kp-cloud { background: var(--surface-2); border-radius: var(--r-xl); padding: 18px 20px; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 6px 14px; line-height: 1; }
 .kp-cloud span { color: var(--muted); } .kp-cloud .w1 { font-size: 13px; color: var(--muted-2); } .kp-cloud .w2 { font-size: 15px; } .kp-cloud .w3 { font-size: 18px; color: var(--ink); } .kp-cloud .w4 { font-size: 22px; color: var(--accent); } .kp-cloud .w5 { font-size: 26px; color: var(--ink); } .kp-cloud .w6 { font-size: 30px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; }
 .kp-stale { font-size: 11px; color: var(--warn); font-weight: 600; margin-left: 6px; }
 
 /* Hochladen */
-.kp-drop-row { display: grid; grid-template-columns: 1.4fr 1fr .7fr; gap: 10px; max-width: 760px; width: 100%; align-self: center; }
+.kp-drop-row { display: grid; grid-template-columns: 1.15fr 1.5fr .62fr; gap: 10px; max-width: 760px; width: 100%; align-self: center; }
 .kp-drop { height: 88px; border-radius: var(--r-lg); background: var(--surface-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .kp-drop.is-files { background: none; border: 1.5px dashed var(--disabled); } .kp-drop.is-over { border-color: var(--accent); background: #eef5fd; }
 .kp-drop small { font-size: 11.5px; color: var(--muted-2); font-weight: 400; } .kp-drop .kp-mic { width: 28px; height: 28px; border-radius: 50%; background: var(--bad); }
+/* Link/Text: kein prompt() mehr, sondern ein Feld, das immer offen dasteht. */
+.kp-paste { min-height: 88px; align-self: start; border-radius: var(--r-lg); background: var(--surface-2); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.kp-paste > span { font-size: 11.5px; color: var(--muted-2); }
+.kp-paste-row { display: flex; align-items: flex-end; gap: 8px; flex: 1; }
+.kp-paste textarea { flex: 1; min-height: 38px; max-height: 76px; height: 38px; resize: none; overflow-y: auto; line-height: 18px; padding: 9px 12px; background: #fff; border: 1px solid var(--line); border-radius: var(--r); }
+.kp-paste button { width: 34px; height: 38px; flex-shrink: 0; border: 0; border-radius: var(--r); background: var(--accent); color: #fff; font-size: 15px; cursor: pointer; }
+.kp-paste button[disabled] { background: var(--line); color: var(--muted-2); cursor: default; }
+
+/* Drei Schritte ueber dem Drop-In */
+.kp-flow-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; color: var(--muted-2); max-width: 760px; width: 100%; align-self: center; }
+.kp-flow-steps b { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
+.kp-flow-steps b i { font-style: normal; width: 18px; height: 18px; border-radius: 50%; background: var(--line); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 600; }
+.kp-flow-steps b.is-current { color: var(--ink); font-weight: 600; }
+.kp-flow-steps b.is-current i { background: var(--accent); color: #fff; }
+.kp-flow-steps b.is-done i { background: var(--ok); color: #fff; }
+.kp-flow-sep { color: var(--disabled); }
+.kp-manual { max-width: 760px; width: 100%; align-self: center; font-size: 12.5px; }
+.kp-manual a { color: var(--muted); text-decoration: underline; }
+.kp-manual a:hover { color: var(--accent); }
 .kp-segment { display: flex; gap: 4px; font-size: 13px; background: var(--surface-2); border-radius: 8px; padding: 3px; }
 .kp-segment a { padding: 4px 10px; border-radius: 6px; color: var(--muted); } .kp-segment a.is-active { background: #fff; color: var(--ink); font-weight: 600; box-shadow: var(--shadow-card); }
 .kp-fill[hidden] { display: none; }
 .kp-fill { display: flex; flex-direction: column; gap: 14px; max-width: 760px; width: 100%; align-self: center; }
 .kp-fill-status { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); }
 .kp-fill-status .kp-dot.is-pulse { animation: kp-pulse 1s ease-in-out infinite; } .kp-fill-status.is-done { color: var(--ok); }
+.kp-fill-status.is-error { color: var(--bad); } .kp-dot.is-bad { background: var(--bad); }
 .kp-fill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .kp-field small { display: block; font-size: 12px; color: var(--muted-2); margin-bottom: 4px; }
 .kp-field .kp-value { height: 40px; border-radius: var(--r); background: var(--surface-2); display: flex; align-items: center; padding: 0 12px; font-size: 14px; position: relative; overflow: hidden; }
 .kp-field .kp-value.is-filled span { animation: kp-in .4s ease-out both; }
 .kp-field .kp-value.is-active::after { content: ""; position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgba(0,113,227,.10), rgba(0,113,227,.25)); animation: kp-fill .9s linear both; }
 .kp-field .kp-value.is-empty::before { content: ""; width: 90px; height: 10px; border-radius: 5px; background: var(--line); }
+.kp-field .kp-value > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kp-field .kp-value.is-filled { cursor: pointer; }
+.kp-field .kp-value.is-none { color: var(--muted-2); font-size: 12.5px; }
+.kp-caret { display: inline-block; width: 1px; height: 16px; background: var(--ink); margin-left: 2px; flex-shrink: 0; animation: kp-pulse .7s steps(2) infinite; }
+.kp-reveal { animation: kp-reveal .45s ease-out both; }
+@keyframes kp-reveal { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .kp-field input { width: 100%; height: 40px; background: var(--surface-2); border: 0; }
 @keyframes kp-fill { from { width: 0; } to { width: 100%; } }
 @keyframes kp-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

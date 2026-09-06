@@ -282,3 +282,76 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   font-size: 12.5px; color: var(--muted);
 }
 .kp-fakt.is-unbelegt .kp-fakt-aussage { color: var(--muted); }
+
+/* ---------------------------------------------------------------------------
+   Responsive
+   Die Shell ist fuer breite Fenster gebaut: feste Seitenleiste von 208px und
+   Tabellen mit bis zu neun Spalten. Zwei Stufen darunter.
+   --------------------------------------------------------------------------- */
+
+/* Tablet und schmales Fenster: mehrspaltige Raster halbieren bzw. stapeln,
+   breite Tabellen scrollen in sich statt die Seite zu sprengen. */
+@media (max-width: 1000px) {
+  .kp-main { padding: 22px 20px 26px; gap: 18px; }
+
+  /* Neun Spalten passen hier nicht. Statt sie zu quetschen, scrollt die
+     Tabelle waagerecht - der Seitenkoerper bleibt unverschoben. */
+  .kp-table { overflow-x: auto; }
+  .kp-tr { min-width: 880px; }
+  .kp-markdown table { display: block; overflow-x: auto; max-width: 100%; }
+
+  .kp-layout-detail,
+  .kp-graph-wrap,
+  .kp-role-detail { grid-template-columns: minmax(0, 1fr); }
+  .kp-facts,
+  .kp-role-cards,
+  .kp-roles-pick,
+  .kp-grid-3,
+  .kp-missing { grid-template-columns: repeat(2, 1fr); }
+  .kp-kpis { flex-wrap: wrap; gap: 18px 24px; }
+}
+
+/* Telefon: Seitenleiste wird zur Kopfleiste. Bewusst nicht die eingeklappte
+   Variante - die blendet nur die Beschriftungen aus, und da es keine Icons
+   gibt, waere die Navigation dann leer. */
+@media (max-width: 760px) {
+  .kp-app, .kp-app.is-collapsed { flex-direction: column; }
+  .kp-side,
+  .kp-app.is-collapsed .kp-side {
+    width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: 6px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+  }
+  /* Ein gespeichertes kp_collapsed darf die Beschriftungen hier nicht
+     verstecken, sonst bleiben leere Schaltflaechen stehen. */
+  .kp-app.is-collapsed .kp-side .kp-label { display: inline; }
+  .kp-collapse { display: none; }
+  .kp-brand { margin-bottom: 0; padding: 0; flex: 0 0 auto; }
+  .kp-nav { display: flex; flex-wrap: wrap; gap: 2px; margin-left: auto; }
+  .kp-side-bottom { margin-top: 0; flex-direction: row; align-items: center;
+                    gap: 10px; flex: 1 1 100%; }
+  .kp-side-bottom .kp-user { margin-left: auto; padding: 4px 8px; }
+  .kp-side-bottom .kp-secondary { padding: 4px 8px; }
+
+  .kp-main { padding: 18px 14px 22px; gap: 16px; }
+  h1 { font-size: 21px; }
+  /* Titel und Suche untereinander: nebeneinander bleibt fuer beides zu wenig. */
+  .kp-head { flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+  .kp-head > form { flex: 1 1 100%; }
+
+  .kp-facts,
+  .kp-role-cards,
+  .kp-roles-pick,
+  .kp-grid-3,
+  .kp-missing,
+  .kp-fill-grid,
+  .kp-drop-row,
+  .kp-flow { grid-template-columns: minmax(0, 1fr); }
+  /* Die Pfeile zwischen den Schritten ergeben senkrecht keinen Sinn. */
+  .kp-flow .kp-arrow { display: none; }
+
+  .kp-kpis { gap: 14px 20px; }
+  .kp-kpi.is-right { margin-left: 0; text-align: left; }
+  .kp-kpi b { font-size: 24px; }
+  .kp-setting { gap: 12px; }
+  .kp-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+}

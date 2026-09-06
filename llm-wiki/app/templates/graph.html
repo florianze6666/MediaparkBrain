@@ -3,23 +3,33 @@
 {% block main_class %} content-graph{% endblock %}
 {% block content %}
   <div class="graph-page">
-    <header class="graph-bar">
+    <header class="graph-bar" id="graph-controls">
       <div class="graph-bar-row">
         <h1 class="graph-title">Wissensgraph</h1>
-        <input type="search" id="graph-search" class="graph-search"
+        <a href="/dashboard" class="btn btn-graph">← Wissensübersicht</a>
+        <input type="search" data-graph-search class="graph-search"
                placeholder="Knoten suchen …" autocomplete="off"
                aria-label="Knoten im Graphen suchen">
         <div class="graph-toggles">
-          <label><input type="checkbox" id="toggle-domain" checked> Domänen</label>
-          <label><input type="checkbox" id="toggle-role" checked> Rollen</label>
-          <label><input type="checkbox" id="toggle-similar" checked> Ähnlichkeit</label>
+          <label><input type="checkbox" data-graph-toggle="domain" checked> Domänen</label>
+          <label><input type="checkbox" data-graph-toggle="role" checked> Rollen</label>
+          <label><input type="checkbox" data-graph-toggle="similar" checked> Ähnlichkeit</label>
         </div>
+        {% if darf_anonymisiert %}
+        {# Der Schalter erscheint nur mit Recht; entschieden wird trotzdem der
+           Server (access.can_see_anonymized in graph.build_graph). #}
+        <div class="graph-toggles graph-modus">
+          <label><input type="radio" name="graph-modus" value="eigen" data-graph-modus checked> Nur mein Wissen</label>
+          <label><input type="radio" name="graph-modus" value="anonymisiert" data-graph-modus> Verborgenes anonymisiert</label>
+        </div>
+        {% endif %}
       </div>
       <div class="graph-bar-row graph-bar-meta">
         <p class="graph-stats" id="graph-stats">
           {{ graph_stats.seiten }} Seiten · {{ graph_stats.vorschlaege }} Vorschläge ·
           {{ graph_stats.domaenen }} Domänen · {{ graph_stats.kanten }} Kanten
         </p>
+        <p class="graph-hidden-note" id="graph-hidden-note"></p>
         <ul class="graph-legend">
           <li><span class="lg lg-page"></span>Seite</li>
           <li><span class="lg lg-proposal"></span>Vorschlag</li>
@@ -27,18 +37,18 @@
           <li><span class="lg lg-role"></span>Rolle (Herkunft)</li>
           <li><span class="lg lg-link"></span>Verlinkung</li>
           <li><span class="lg lg-similar"></span>Ähnlichkeit</li>
+          {% if darf_anonymisiert %}<li><span class="lg lg-hidden"></span>Verborgen</li>{% endif %}
         </ul>
         <p class="graph-hint-user">Sichtbar als <strong>{{ user_name }}</strong>: nur Wissen mit Leserecht.</p>
       </div>
     </header>
 
-    <div class="graph-canvas-wrap" id="graph-canvas-wrap">
-      <svg id="graph-canvas" role="img" aria-label="Graph des sichtbaren Wissens"></svg>
-      <p class="graph-message" id="graph-message" hidden></p>
-      <div class="graph-tooltip" id="graph-tooltip" hidden></div>
-    </div>
+    <div class="graph-canvas-wrap" id="graph-canvas-wrap"
+         data-graph-mount
+         data-graph-controls="#graph-controls"
+         data-graph-hidden-out="#graph-hidden-note"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-  <script src="/static/graph.js?v=4"></script>
+  <script src="/static/graph.js?v=6"></script>
 {% endblock %}

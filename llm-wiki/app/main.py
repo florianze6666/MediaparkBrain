@@ -19,7 +19,8 @@ logging.basicConfig(level=logging.INFO)
 # access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
 # load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
 from . import (  # noqa: E402
-    access, evaluation, extractors, graph, llm, llm_metadata, proposals, stats, wiki,
+    access, evaluation, extractors, graph, llm, llm_metadata, overview, proposals,
+    stats, usage, wiki,
 )
 from .access import PageMeta  # noqa: E402
 
@@ -307,6 +308,11 @@ def index(request: Request):
 def view_page(request: Request, slug: str, gespeichert: int = 0, uploaded: int = 0):
     user = access.current_user(request)
     page = require_page(slug, user)
+    # Erst NACH require_page protokollieren: ein verbotener oder fehlender
+    # Aufruf endet oben mit 404 und hinterlaesst bewusst keine Spur - sonst
+    # waere das Zugriffsprotokoll selbst ein Kanal, aus dem sich die Existenz
+    # verbotener Seiten ablesen liesse.
+    usage.record_view(slug, user)
     html = render_markdown(page.content)
     return templates.TemplateResponse(
         request,
@@ -367,6 +373,53 @@ def edit_page_save(
     # US-17: save_page legt die Datei im Ordner ihrer Domaene ab und verschiebt bei Wechsel.
     wiki.save_page(new_slug, title, content, meta)
     return RedirectResponse(f"/wiki/{new_slug}?gespeichert=1", status_code=303)
+
+
+SHARE_403 = "Teilen darf nur, wer die Seite eingebracht hat"
+
+
+@app.post("/wiki/{slug}/share")
+def share_page(
+    request: Request,
+    slug: str,
+    empfaenger: str = Form(""),
+    vertraulich: str = Form(""),
+    next: str = Form("/dashboard"),
+):
+    """Empfaenger einer Seite ergaenzen ("Wissen teilen").
+
+    Nur der Ersteller darf teilen - nicht der Admin (der verwaltet Rechte und
+    liest nichts, Gewaltenteilung) und nicht jeder Leser (sonst koennte jeder,
+    der eine vertrauliche Seite sieht, sie weiterreichen).
+
+    Die Domaene kommt bewusst NICHT aus dem Formular: Teilen verschiebt nichts,
+    es ergaenzt nur Empfaenger und kann optional auf `vertraulich` hochstufen.
+    Das Ergebnis geht trotzdem durch `require_writable` (Write ⊆ Read) - eine
+    Freigabe, nach der der Ersteller die Seite selbst nicht mehr saehe, waere
+    keine.
+    """
+    user = access.current_user(request)
+    page = require_page(slug, user)      # 404, wenn sie fehlt oder verboten ist
+    require_author(request)              # Gast teilt nichts
+    if page.meta.erstellt_von != user:
+        raise HTTPException(status_code=403, detail=SHARE_403)
+
+    meta = page.meta
+    vorhanden = list(meta.empfaenger)
+    for r in parse_recipients(empfaenger):
+        if r not in vorhanden:
+            vorhanden.append(r)
+    meta.empfaenger = vorhanden
+    if vertraulich:
+        meta.vertraulichkeit = "vertraulich"
+    meta.geaendert_von = user
+    meta.geaendert_am = now_iso()
+    require_writable(user, meta)
+    wiki.save_page(slug, page.title, page.content, meta)
+
+    ziel = _safe_next(next)
+    trenner = "&" if "?" in ziel else "?"
+    return RedirectResponse(f"{ziel}{trenner}geteilt={quote(page.title)}", status_code=303)
 
 
 @app.post("/wiki/{slug}/delete")
@@ -715,23 +768,31 @@ def proposal_delete(request: Request, slug: str):
 
 
 @app.get("/dashboard")
-def dashboard(request: Request):
+def dashboard(request: Request, modus: str = graph.MODE_EIGEN, geteilt: str = ""):
+    """Wissensübersicht: Graph, Abteilungen, Wortwolke, Artikel, Anträge, Scans.
+
+    Der Modus wird durchgereicht und in `graph.build_graph` geprueft; wer das
+    Recht nicht hat, bekommt still den Standardmodus.
+    """
     user = access.current_user(request)
-    dashboard_stats = stats.get_dashboard_stats(user)
+    daten = overview.build_overview(user, modus)
     return templates.TemplateResponse(
-        request, "dashboard.html", ctx(request, stats=dashboard_stats)
+        request,
+        "dashboard.html",
+        ctx(
+            request,
+            uebersicht=daten,
+            gruppen=access.load_permissions()["gruppen"],
+            geteilt=geteilt,
+        ),
     )
 
 
 @app.get("/dashboard/projektantraege")
 def dashboard_proposals(request: Request):
-    user = access.current_user(request)
-    proposal_stats = stats.get_proposal_stats(user)
-    return templates.TemplateResponse(
-        request,
-        "dashboard_proposals.html",
-        ctx(request, proposal_stats=proposal_stats),
-    )
+    """Die Projektantraege sind ein Abschnitt der Wissensuebersicht geworden.
+    308 statt 301: die Methode bleibt erhalten, alte Lesezeichen funktionieren."""
+    return RedirectResponse("/dashboard#projektantraege", status_code=308)
 
 
 # ---------------------------------------------------------------------------
@@ -740,13 +801,15 @@ def dashboard_proposals(request: Request):
 
 
 @app.get("/ask")
-def ask_form(request: Request):
+def ask_form(request: Request, q: str = ""):
+    """`?q=` fuellt das Feld vor - so landet ein Klick auf ein Wort der
+    Wortwolke direkt bei der fertigen Frage. Gefragt wird erst per POST."""
     return templates.TemplateResponse(
         request,
         "ask.html",
         ctx(
             request,
-            question="",
+            question=q,
             antwort=None,
             snippets=[],
             llm_configured=llm.is_configured(),
@@ -782,17 +845,28 @@ def ask_submit(request: Request, question: str = Form(...)):
 
 
 @app.get("/api/graph")
-def api_graph(request: Request):
+def api_graph(request: Request, modus: str = graph.MODE_EIGEN):
+    """Graphdaten. `modus=anonymisiert` ergaenzt graue Platzhalter fuer nicht
+    lesbare Dokumente - aber nur fuer Nutzer mit dem Recht
+    `graph.anonymisiert_sehen`. Alle anderen bekommen mit demselben Parameter
+    exakt dieselbe Antwort wie ohne ihn; die Pruefung steckt serverseitig in
+    `graph.build_graph`, nie im Frontend."""
     user = access.current_user(request)
-    return graph.build_graph(user)
+    return graph.build_graph(user, modus)
 
 
 @app.get("/graph")
-def graph_page(request: Request):
+def graph_page(request: Request, modus: str = graph.MODE_EIGEN):
     user = access.current_user(request)
-    data = graph.build_graph(user)
+    data = graph.build_graph(user, modus)
     return templates.TemplateResponse(
-        request, "graph.html", ctx(request, graph_stats=data["stats"])
+        request,
+        "graph.html",
+        ctx(
+            request,
+            graph_stats=data["stats"],
+            darf_anonymisiert=access.can_see_anonymized(user),
+        ),
     )
 
 

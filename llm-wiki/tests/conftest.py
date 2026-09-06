@@ -65,6 +65,9 @@ def pages_env(tmp_path, monkeypatch):
     uploads.mkdir()
     monkeypatch.setenv("MPB_UPLOADS_DIR", str(uploads))
     monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
+    # Zugriffsprotokoll und Scan-Stand pro Test nach tmp - sonst schriebe jeder
+    # Testlauf in llm-wiki/data/, und die Zaehler waeren nie leer.
+    monkeypatch.setenv("MPB_DATA_DIR", str(tmp_path / "data"))
 
     import app.access as access
     import app.wiki as wiki

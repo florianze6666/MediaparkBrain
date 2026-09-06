@@ -216,10 +216,18 @@ def test_graph_seite_liefert_button_und_skript(client):
     assert "Sichtbar als" in html
 
 
-def test_graph_button_steht_in_jeder_seitenleiste(client):
+def test_seitenleiste_fuehrt_ueber_die_wissensuebersicht_zum_graph(client):
+    """Die Seitenleiste hat seit der Wissensuebersicht EINEN Einstieg statt drei
+    (Graph, Dateien-Dashboard, Antraege-Dashboard). Der Vollbild-Graph bleibt
+    erreichbar - von dort aus."""
     r = client.get("/")
     assert r.status_code == 200
-    assert 'href="/graph"' in r.text
+    assert 'href="/dashboard"' in r.text
+    assert "Wissensübersicht" in r.text
+
+    d = client.get("/dashboard")
+    assert d.status_code == 200
+    assert 'href="/graph"' in d.text
 
 
 def test_api_graph_liefert_json_mit_stats(client):

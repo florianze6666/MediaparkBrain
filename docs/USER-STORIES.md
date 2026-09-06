@@ -38,6 +38,12 @@ automatisierter Test, Testfall steht beim Eintrag.
 | US-23 | Markenpalette, Badge und Sound beim Speichern, Sprachausgabe bei Antwort | KERN | P3 | #20 | manuell |
 | US-24 | Seitenliste nach Domäne gruppiert | KERN | P3 | #25 | manuell |
 | US-39 | Wissensgraph: Seiten, Vorschläge, Domänen und Rollen als interaktiver Graph, nur mit Leserecht | KERN | P2 | Wissensgraph-PR | test_graph (26, 7 security) |
+| US-40 | Wissensübersicht: eine Seite mit Graph, Statistik, Artikeltabelle, Projektanträgen, Scans und drei Hauptaktionen | KERN | P1 | Wissensübersicht-PR | test_overview (33, security-Teil) |
+| US-41 | Graph-Modus „Verborgenes anonymisiert" nur mit Recht; Platzhalter ohne Titel, Ersteller, Inhalt | SYSTEM | P2 | Wissensübersicht-PR | test_overview::anonymisiert* |
+| US-42 | Artikeltabelle sortierbar: Zugriffe, letzter Zugriff, Bearbeitungen, Bearbeiter, Abteilung, Restriktionen, Anlagen und Links | WISSEN | P2 | Wissensübersicht-PR | test_overview (Zugriffsprotokoll, Bearbeitungen) |
+| US-43 | Wissen teilen: Ersteller gibt eine Seite für Nutzer oder Gruppen frei, Link zum Kopieren | WISSEN | P2 | Wissensübersicht-PR | test_overview::teilen* |
+| US-44 | Wissen nach Abteilung und Wortwolke, Wort klickbar in „Frag das Wiki" | WISSEN | P3 | Wissensübersicht-PR | test_overview (Wortwolke-Leak-Test) |
+| US-45 | Zuletzt gescannte Quellen (SharePoint-Demo-Daten plus echte Uploads) | WISSEN | P3 | Wissensübersicht-PR | test_overview::scans* |
 | US-1 | Herkunft (angelegt von, wann) auf jeder Seite | WISSEN | P1 | Paket 1, #18 | test_access_routes::test_neue_seite_traegt_aktuellen_nutzer |
 | US-3 | Autor wird automatisch gesetzt, nicht editierbar | WISSEN | P1 | Paket 1 | test_frontmatter::test_bearbeiten_setzt_geaendert_und_erhaelt_ersteller |
 | US-4 | Vertraulichkeit wählbar (öffentlich, intern, vertraulich) | WISSEN | P1 | Paket 1 | test_decide (11) |
@@ -245,7 +251,8 @@ Tests: `test_security_fixes::test_ungueltige_slugs_sind_404`,
 | test_extractors.py | 4 | DOCX, XLSX, TXT, PDF roh |
 | test_pdf_ingest.py | 13 | PDF strukturiert (Modul, nicht angebunden) |
 | test_graph.py | 26 | Wissensgraph, Rechte im Graph |
-| **Summe** | **148** | 45 davon mit Marker `security` |
+| test_overview.py | 33 | Wissensübersicht, anonymisierter Modus, Zugriffe, Teilen, Scans |
+| **Summe** | **181** | 45 davon mit Marker `security` |
 
 **Ohne automatisierten Test:** US-22, US-23, US-24 (Oberfläche), US-33 (Hash-Dublette), US-34
 (Bewertung), US-35 (Projektanträge-Dashboard).

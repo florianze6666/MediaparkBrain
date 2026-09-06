@@ -18,13 +18,29 @@ aus diesen sichtbaren Dokumenten abgeleitet:
 
 Damit aendert sich der Graph beim Rollenwechsel in der Seitenleiste - das ist
 der Demo-Punkt und zugleich die Probe aufs Exempel.
+
+EINE Ausnahme, klar abgegrenzt: der Modus "anonymisiert" (MODE_ANONYM). Er ist
+eine eigene Berechtigung (`access.can_see_anonymized`, permissions.yaml unter
+`graph.anonymisiert_sehen`) und wird ausschliesslich in `_hidden_documents`
+gebaut - der EINZIGEN Funktion dieses Moduls, die die Rohlisten anfasst. Sie
+liefert graue Platzhalter ohne jede Identitaet: nur Domaene, Vertraulichkeit
+und eine Kante zum Domaenen-Hub. Die Leitung sieht damit, DASS in `br` drei
+Dokumente liegen - nicht, welche. Jeder andere Aufrufer bekommt im Modus
+"anonymisiert" exakt dasselbe wie im Standardmodus (Durchsetzung serverseitig
+in `main.api_graph`, nie im Frontend).
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
 from typing import Any, Iterable
 
 from . import access, proposals, wiki
+
+# Sichtbarkeitsmodi
+MODE_EIGEN = "eigen"              # Standard: nur eigenes Wissen (wie bisher)
+MODE_ANONYM = "anonymisiert"      # zusaetzlich graue Platzhalter, nur mit Recht
 
 # Kantenarten
 KIND_DOMAIN = "domain"
@@ -85,6 +101,26 @@ def role_id(user_id: str) -> str:
     return f"role:{user_id}"
 
 
+HIDDEN_LABEL = "Verborgen"
+HIDDEN_HASH_LENGTH = 12
+
+
+def hidden_id(kind: str, slug: str) -> str:
+    """Stabile, aber nicht sprechende Kennung eines verborgenen Dokuments.
+
+    sha256 ueber `<art>:<slug>`, gekuerzt - der Slug selbst taucht nie auf, und
+    zwei gleichnamige Dokumente verschiedener Art kollidieren nicht. Die
+    Kennung ist nur dazu da, denselben Platzhalter ueber Ticks und Neuladen
+    hinweg wiederzuerkennen.
+    """
+    # Gesalzen mit dem Server-Secret (HMAC): ohne Secret laesst sich der Platzhalter
+    # eines erratenen Slugs nicht bestaetigen. Kennung, kein Geheimnis - aber
+    # kein Orakel.
+    from . import access as _access
+    digest = hmac.new(_access._SECRET, f"{kind}:{slug}".encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"hidden:{digest[:HIDDEN_HASH_LENGTH]}"
+
+
 def content_tokens(*parts: str) -> set[str]:
     """Tokens fuer den Aehnlichkeitsvergleich: `wiki._tokenize` (derselbe
     Tokenizer wie die Suche) minus Stoppwoerter und minus kurze Woerter."""
@@ -127,12 +163,61 @@ def _resolve_link_target(raw: str, by_slug: dict[str, str], by_title: dict[str, 
 # ---------------------------------------------------------------------------
 
 
-def build_graph(user: str | None) -> dict[str, Any]:
+def _hidden_documents(
+    visible_pages: list[Any], visible_props: list[Any]
+) -> list[dict[str, str]]:
+    """DIE EINZIGE STELLE IM MODUL, DIE DIE ROHLISTEN BENUTZT.
+
+    Warum ueberhaupt: Der anonymisierte Modus soll der Leitung zeigen, wie viel
+    Wissen ausserhalb ihrer Sicht liegt und in welcher Abteilung - eine
+    Mengenaussage, keine Inhaltsaussage. Dafuer braucht es die Gesamtmenge, und
+    die gibt es nur ungefiltert. Deshalb steht das hier gebuendelt, einmal, mit
+    diesem Kommentar - und nicht verteilt ueber build_graph.
+
+    Was diese Funktion herausgibt, ist bewusst auf zwei Felder beschraenkt:
+    `domaene` und `vertraulichkeit`. Titel, Slug, Ersteller, Inhalt, URL und
+    Aehnlichkeiten verlassen sie nie. Die Slugs dienen nur der Differenzmenge
+    und der Kennung (gehasht, siehe hidden_id).
+
+    Der Aufrufer (build_graph) darf sie NUR aufrufen, wenn `can_see_anonymized`
+    das Recht bestaetigt hat.
+    """
+    sichtbar_seiten = {p.slug for p in visible_pages}
+    sichtbar_props = {p.slug for p in visible_props}
+    out: list[dict[str, str]] = []
+    for page in wiki.list_pages():             # Rohliste - siehe Docstring
+        if page.slug in sichtbar_seiten:
+            continue
+        out.append({
+            "id": hidden_id("page", page.slug),
+            "domaene": page.meta.domaene,
+            "vertraulichkeit": page.meta.vertraulichkeit,
+        })
+    for p in proposals.list_proposals():       # Rohliste - siehe Docstring
+        if p.slug in sichtbar_props:
+            continue
+        out.append({
+            "id": hidden_id("proposal", p.slug),
+            "domaene": p.meta.domaene,
+            "vertraulichkeit": p.meta.vertraulichkeit,
+        })
+    return out
+
+
+def build_graph(user: str | None, modus: str = MODE_EIGEN) -> dict[str, Any]:
     """Knoten, Kanten und Statistik aus Sicht von `user`.
+
+    `modus` MODE_EIGEN (Standard) verhaelt sich exakt wie bisher. MODE_ANONYM
+    ergaenzt graue Platzhalter fuer nicht lesbare Dokumente - aber nur, wenn
+    `access.can_see_anonymized(user)` das Recht bestaetigt; sonst faellt der
+    Modus still auf MODE_EIGEN zurueck (Fail-closed, keine Fehlermeldung, die
+    die Existenz des Modus verraet).
 
     Rueckgabe: {"nodes": [...], "links": [...], "stats": {...}}.
     Invariante (am Ende geprueft): jede Kante verweist auf existierende Knoten.
     """
+    anonym = modus == MODE_ANONYM and access.can_see_anonymized(user)
+
     pages = wiki.list_pages(user)              # gefiltert - nie die Rohvariante
     props = proposals.list_proposals(user)     # gefiltert - nie die Rohvariante
 
@@ -270,6 +355,32 @@ def build_graph(user: str | None) -> dict[str, Any]:
         used[id_b] = used.get(id_b, 0) + 1
         add_link(id_a, id_b, KIND_SIMILAR, round(score, 4))
 
+    # --- Verborgene Dokumente (nur Modus anonymisiert, nur mit Recht) -------
+    # Platzhalter ohne Identitaet: Label "Verborgen", Felder nur domaene und
+    # vertraulichkeit, genau eine Kante - die zum Domaenen-Hub. Keine
+    # Aehnlichkeit, keine Herkunft, keine URL. Ein Domaenen-Hub, den es bisher
+    # nicht gab, entsteht hier hohl (`verborgen`) und zeigt nur die Existenz
+    # der Abteilung - das ist der Zweck des Modus.
+    hidden_count = 0
+    if anonym:
+        for doc in _hidden_documents(pages, props):
+            add_node({
+                "id": doc["id"],
+                "type": "hidden",
+                "label": HIDDEN_LABEL,
+                "domaene": doc["domaene"],
+                "vertraulichkeit": doc["vertraulichkeit"],
+            })
+            hidden_count += 1
+            dom = doc["domaene"]
+            if not dom:
+                continue
+            did = domain_id(dom)
+            if did not in node_ids:
+                add_node({"id": did, "type": "domain", "label": dom,
+                          "domaene": dom, "verborgen": True})
+            add_link(doc["id"], did, KIND_DOMAIN, WEIGHT_DOMAIN)
+
     # --- Statistik ---------------------------------------------------------
     kanten_je_kind = {KIND_DOMAIN: 0, KIND_HERKUNFT: 0, KIND_LINK: 0, KIND_SIMILAR: 0}
     for link in links:
@@ -283,6 +394,8 @@ def build_graph(user: str | None) -> dict[str, Any]:
         "knoten": len(nodes),
         "kanten": sum(kanten_je_kind.values()),
         "kanten_je_kind": kanten_je_kind,
+        "hidden": hidden_count,        # im Standardmodus immer 0
+        "modus": MODE_ANONYM if anonym else MODE_EIGEN,
     }
 
     graph = {"nodes": nodes, "links": links, "stats": stats}

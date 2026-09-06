@@ -13,11 +13,25 @@ Wissen überhaupt nutzbar? Und traut der Vorstand dem Ergebnis? Antjes Alltag ma
 ohne dass wir etwas erklären müssen. Anselms Firmenbrain-Geschichte ist der Beleg, dass das Problem
 nicht Antje-spezifisch ist: Jeder, der ein Brain baut, landet bei der Rechtefrage.
 
-## Leitstory: Antje, Projektmanagerin im Konzern-PMO
+## Der Hook für dieses Publikum
 
-Antje leitet Projektportfolio in einem Konzern mit über 100.000 Mitarbeitern. So sieht ein
-Projektantrag bei ihr heute aus (Version 1, aus öffentlichen Quellen und Antjes Schilderung; Version
-2 nach dem Interview):
+Im Raum sitzen Teams, die heute Spiele, Augmented Reality und Vibe-Coding gezeigt haben. Wir sind der
+Enterprise-Track. Das klingt nach dem langweiligsten Pitch des Tages, bis der erste Satz fällt:
+
+> „Ihr habt heute Dinge gesehen, die Spaß machen. Wir zeigen euch etwas, das ein Konzern morgen
+> einsetzen darf. Und warum das schwerer ist, als es aussieht."
+
+Dann sofort Antje. Nicht als Persona, sondern als Mensch im Team, der das Problem jahrelang hatte.
+
+## Leitstory: Antje Baumann, Portfolio-Managerin bei Metro
+
+Antje sitzt im Team. Sie war drei Jahre Strategic IT Portfolio Manager bei METRONOM, der
+IT-Tochter von Metro, davor bei Metrosystems, heute berät sie Unternehmen zu KI-PMO. Sie hat den
+Prozess, den wir hier zeigen, nicht recherchiert, sondern gelebt. Das ist der Beleg, dass der Use Case
+nicht ausgedacht ist: So werden Projektportfolios in Konzernen gesteuert, mit Millionenbudgets.
+
+So sah ein Projektantrag bei ihr aus (Version 1 nach Antjes Schilderung, Version 2 nach dem
+Interview mit ihren Worten und Zahlen):
 
 1. Ein Bereich reicht einen Projektvorschlag ein: Charter, Business Case, Excel.
 2. Antje prüft auf Vollständigkeit und trägt ihn in **die** Excel ein: vierzig Spalten, hundert Zeilen,
@@ -33,7 +47,7 @@ Arbeitstage, erzeugt der Prozess Reibung statt Steuerung. Bei Antje sind es Woch
 **Der Schmerz in einem Satz:** Das Wissen für die Entscheidung ist da. Es liegt nur in fünf Köpfen,
 zehn SharePoints und einer Excel, und keiner darf alles davon sehen.
 
-## Nebenstory: Anselm und das Firmenbrain
+## Nebenstory: Anselm und das Firmenbrain (ein Satz, nicht mehr)
 
 Anselm hat für sein Unternehmen ein Brain gebaut: Wissen als Markdown, Skills, ein Assistent, der
 alles kennt. Es funktionierte, bis die Frage kam: Darf der Assistent das Gehaltsdokument lesen, wenn
@@ -107,13 +121,13 @@ Status, Dokumenten und Einreicher. Das ist der Vorstandsbericht, den sie bisher 
 
 | Zahl | Bedeutung | Quelle |
 |------|-----------|--------|
-| 6 Wochen → 6 Minuten | Antrag bis Bewertung | Antjes Schilderung, Systemmessung (V2 präzisieren) |
+| 6 Wochen → 6 Minuten | Antrag bis Bewertung. Bewusst drastisch; realistisch eher 6 Wochen → 2 Tage, weil Menschen die Ergebnisse noch lesen und entscheiden müssen. Für V1 so lassen, in V2 mit Antje festlegen | Antjes Schilderung |
 | 10 Arbeitstage | Benchmark: darüber ist ein PMO-Prozess Reibung | öffentliche PMO-Quelle |
 | 4 | Experten-Rollen, die jeden Antrag bewerten | PLAN.md |
 | 9 | getrennte Ablageorte, wie im Konzern | Korpus |
 | 216 | Dokumente im Demo-Korpus einer fiktiven Firma | docs/FUNKTIONSWEISE.md |
 | 38 / 100+ / 45 | User Stories / Tests / Sicherheitstests | docs/USER-STORIES.md |
-| 8 / 1 Tag / 38 PRs | Team / Zeit / Pull Requests | GitHub |
+| 8 / 2 Tage / 39 PRs | Team / Zeit / Pull Requests | GitHub |
 
 ## Offene Punkte für Version 2 (nach Antjes Interview)
 

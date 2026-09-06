@@ -1,10 +1,38 @@
 {% extends "kompass/layout.html" %}
-{# Eine Suche, zwei Listen. Kontext: q, snippets (wiki.Snippet), hits (Vorschlaege) #}
+{# Eine Suche: erst die belegte Antwort, dann die Fundstellen, dann die Projekte.
+   Kontext: q, antwort (llm.Antwort), snippets (wiki.Snippet), hits (Vorschlaege) #}
 {% block title %}Suche · Kompass{% endblock %}
 {% block head %}<h1>Suche</h1><span class="kp-crumb">{% if q %}„{{ q }}“ · {{ snippets | length }} Wissen · {{ hits | length }} Projekte{% else %}Suchbegriff oben eingeben{% endif %}</span>{% endblock %}
 {% block content %}
+{% if antwort %}
+<section class="kp-section" id="antwort">
+  <div class="kp-section-title">Antwort</div>
+
+  {% if not llm_configured %}
+    <div class="kp-hint">Kein <code>LLM_API_KEY</code> gesetzt — unten stehen die gefundenen
+      Belegstellen, aber keine daraus formulierte Antwort. Schlüssel in
+      <code>llm-wiki/.env</code> eintragen, Vorlage ist <code>.env.example</code>.</div>
+  {% elif antwort.hinweis %}
+    <div class="kp-hint">{{ antwort.hinweis }}</div>
+  {% endif %}
+
+  {% for f in antwort.fakten %}
+  <article class="kp-fakt{% if not f.belegt %} is-unbelegt{% endif %}">
+    {% if f.belegt %}
+      {# Erst der Beleg, dann die Aussage: was im Dokument steht, kommt zuerst. #}
+      <blockquote class="kp-zitat"><span class="kp-zitat-label">Zitat</span><span
+        class="kp-zitat-text">{{ f.zitat }}</span><cite class="kp-zitat-quelle"><a
+        href="/knowledge/{{ f.quelle_slug }}">{{ f.quelle_titel }}</a>{% if f.belegstelle %} · {{ f.belegstelle }}{% endif %}</cite></blockquote>
+    {% else %}
+      <p class="kp-zitat-fehlt">Ohne Beleg — kein wörtliches Zitat in der Wissensbasis gefunden.</p>
+    {% endif %}
+    {% if f.aussage %}<p class="kp-fakt-aussage">{{ f.aussage }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
 <section class="kp-section" id="wissen">
-  <div class="kp-section-title">Wissen</div>
+  <div class="kp-section-title">{% if antwort and antwort.fakten %}Durchsuchte Fundstellen{% else %}Wissen{% endif %}</div>
   {% if snippets %}
   <div class="kp-table">
     {% for s in snippets %}
@@ -35,6 +63,6 @@
 </section>
 <div class="kp-footer">
   <span class="kp-hint">Gesperrtes taucht hier nicht auf — gesperrt ≠ nicht vorhanden</span>
-  <a class="kp-btn kp-btn-primary" href="/ask">Frage ans Wiki stellen</a>
+  <a class="kp-btn" href="/ask">Klassische Ansicht</a>
 </div>
 {% endblock %}

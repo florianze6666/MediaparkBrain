@@ -56,7 +56,10 @@ def test_knowledge_detail_404_fuer_verbotene(client):
 
 
 @pytest.mark.security
-def test_suche_findet_finance_nur_fuer_finance(client):
+def test_suche_findet_finance_nur_fuer_finance(client, monkeypatch):
+    # Die Suche beantwortet die Frage inzwischen selbst - ohne Schluessel
+    # bleibt es beim Fallback, statt im Testlauf das Modell zu rufen.
+    monkeypatch.setenv("LLM_API_KEY", "")
     r = client.get("/search?q=Budget", cookies=as_user("cfo"))
     assert r.status_code == 200
     assert "Budget Finance" in r.text

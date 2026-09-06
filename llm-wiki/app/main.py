@@ -18,7 +18,9 @@ logging.basicConfig(level=logging.INFO)
 
 # access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
 # load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
-from . import access, evaluation, extractors, llm, llm_metadata, proposals, stats, wiki  # noqa: E402
+from . import (  # noqa: E402
+    access, evaluation, extractors, graph, llm, llm_metadata, proposals, stats, wiki,
+)
 from .access import PageMeta  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -769,6 +771,28 @@ def ask_submit(request: Request, question: str = Form(...)):
             snippets=snippets,
             llm_configured=llm.is_configured(),
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wissensgraph. Kein Auth-Zwang: der Gast sieht seinen Mini-Graphen aus der
+# Lobby. Die Filterung steckt komplett in graph.build_graph(user), das
+# ausschliesslich die gefilterten Listen benutzt.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/graph")
+def api_graph(request: Request):
+    user = access.current_user(request)
+    return graph.build_graph(user)
+
+
+@app.get("/graph")
+def graph_page(request: Request):
+    user = access.current_user(request)
+    data = graph.build_graph(user)
+    return templates.TemplateResponse(
+        request, "graph.html", ctx(request, graph_stats=data["stats"])
     )
 
 

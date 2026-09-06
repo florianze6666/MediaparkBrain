@@ -251,6 +251,31 @@ def is_admin(user_id: str | None) -> bool:
     return ADMIN_GROUP in user_groups(user_id)
 
 
+# Eigener Abschnitt in permissions.yaml:
+#   graph:
+#     anonymisiert_sehen: [leitung, admin]
+GRAPH_SECTION = "graph"
+ANONYMIZED_PERMISSION = "anonymisiert_sehen"
+
+
+def can_see_anonymized(user_id: str | None) -> bool:
+    """Darf der Nutzer den anonymisierten Graphmodus sehen?
+
+    Das ist eine eigene Berechtigung, kein Leserecht: Wer sie hat, sieht die
+    ANZAHL und die Domaene verborgener Dokumente - niemals Titel, Slug, Inhalt
+    oder Herkunft (siehe `graph.build_graph`, Modus "anonymisiert"). Die
+    Gruppenliste steht in permissions.yaml unter `graph.anonymisiert_sehen`;
+    fehlt der Abschnitt, darf niemand (sicherer Standard).
+
+    Der Gast hat keine Gruppen und damit nie das Recht.
+    """
+    cfg = load_permissions().get(GRAPH_SECTION) or {}
+    allowed = set(cfg.get(ANONYMIZED_PERMISSION) or [])
+    if not allowed:
+        return False
+    return bool(set(user_groups(user_id)) & allowed)
+
+
 # ---------------------------------------------------------------------------
 # Entscheidungsregel
 # ---------------------------------------------------------------------------
@@ -406,7 +431,15 @@ def _existing_layout(path: Path) -> tuple[list[str], dict[str, str]]:
     return header, comments
 
 
-def render_permissions(data: dict[str, Any], header: list[str], comments: dict[str, str]) -> str:
+MANAGED_SECTIONS = ("gruppen", "nutzer", "domaenen")
+
+
+def render_permissions(
+    data: dict[str, Any],
+    header: list[str],
+    comments: dict[str, str],
+    extra_sections: dict[str, Any] | None = None,
+) -> str:
     def with_comment(text: str, key: str, width: int) -> str:
         c = comments.get(key)
         if not c:
@@ -433,6 +466,16 @@ def render_permissions(data: dict[str, Any], header: list[str], comments: dict[s
         key = f"{dom}:"
         text = f"  {key:<10} {{lesen: {_yaml_list(list(spec.get('lesen') or []))}}}"
         lines.append(with_comment(text, f"domaenen/{dom}", 42))
+    # Abschnitte, die das Admin-Dashboard nicht verwaltet (vertraulichkeitsstufen,
+    # graph, ...), werden unveraendert weitergeschrieben. Ohne das wuerde jede
+    # Rechteaenderung sie stillschweigend loeschen - und damit z. B. das Recht
+    # `graph.anonymisiert_sehen` fuer alle entziehen.
+    for key, value in (extra_sections or {}).items():
+        lines.append("")
+        block = yaml.safe_dump(
+            {key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False
+        ).rstrip("\n")
+        lines.append(block)
     return "\n".join(lines) + "\n"
 
 
@@ -442,11 +485,16 @@ def save_permissions(data: dict[str, Any], changed_by: str, change_note: str) ->
     die Aenderung gilt sofort (kein Neustart)."""
     path = permissions_path()
     header, comments = _existing_layout(path)
-    text = render_permissions(data, header, comments)
+    current = load_permissions()
+    extra = {k: v for k, v in current.items() if k not in MANAGED_SECTIONS}
+    text = render_permissions(data, header, comments, extra)
     # Sicherheitsnetz: was wir schreiben, muss sich wieder lesen lassen.
     parsed = yaml.safe_load(text) or {}
-    for key in ("gruppen", "nutzer", "domaenen"):
+    for key in MANAGED_SECTIONS:
         if parsed.get(key) != data.get(key):
+            raise ValueError(f"permissions.yaml: Abschnitt {key} liesse sich nicht identisch zurücklesen")
+    for key, value in extra.items():
+        if parsed.get(key) != value:
             raise ValueError(f"permissions.yaml: Abschnitt {key} liesse sich nicht identisch zurücklesen")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")

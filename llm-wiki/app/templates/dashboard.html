@@ -1,55 +1,360 @@
 {% extends "layout.html" %}
-{% block title %}Dateien im MediaparkBrain{% endblock %}
+{% block title %}Wissensübersicht{% endblock %}
+{% block main_class %} content-uebersicht{% endblock %}
 {% block content %}
+{% set ist_gast = (user == "gast") %}
+
 <div class="page-header">
-  <h1>Dateien im MediaparkBrain</h1>
+  <h1>Wissensübersicht</h1>
 </div>
+<p class="page-meta">
+  <span>Sichtbar als <strong>{{ user_name }}</strong> — jede Zahl und jede Zeile
+    zeigt nur Wissen, das du lesen darfst.</span>
+</p>
 
-<div class="dashboard-summary">
-  <div class="stat-card">
-    <div class="stat-value">{{ stats.total_files }}</div>
-    <div class="stat-label">Dateien insgesamt</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value">{{ stats.total_folders }}</div>
-    <div class="stat-label">Ordner</div>
-  </div>
-</div>
+{% if geteilt %}
+<p class="hint hint-erfolg">Freigabe gespeichert: {{ geteilt }}</p>
+{% endif %}
 
-<h2>Letzte {{ stats.recent_documents|length }} Dokumente</h2>
-<div class="dashboard-table-wrap">
-  <table class="dashboard-table">
+{# --- 0. Drei Hauptaktionen ------------------------------------------------ #}
+<section class="uebersicht-aktionen" aria-label="Hauptaktionen">
+  {% if ist_gast %}
+    <span class="action-card is-disabled" aria-disabled="true">Neues Wissen hochladen</span>
+    <span class="action-card is-disabled" aria-disabled="true">Wissen teilen</span>
+    <span class="action-card is-disabled" aria-disabled="true">Wissen bearbeiten</span>
+    <p class="action-hint">Als Gast kannst du nur lesen. Wähle links, als wer du arbeitest.</p>
+  {% else %}
+    <a href="/upload" class="action-card action-upload">
+      <span class="action-titel">Neues Wissen hochladen</span>
+      <span class="action-text">Datei einlesen, Kopf automatisch erzeugen</span>
+    </a>
+    <button type="button" class="action-card action-teilen" data-open-dialog="dialog-teilen-auswahl">
+      <span class="action-titel">Wissen teilen</span>
+      <span class="action-text">Link kopieren, Empfänger ergänzen</span>
+    </button>
+    <button type="button" class="action-card action-bearbeiten" data-open-dialog="dialog-bearbeiten">
+      <span class="action-titel">Wissen bearbeiten</span>
+      <span class="action-text">Seite auswählen und ändern</span>
+    </button>
+  {% endif %}
+</section>
+
+{# --- 1. Wissensgraph ----------------------------------------------------- #}
+<section class="uebersicht-block" id="graph">
+  <div class="block-kopf" id="graph-controls">
+    <h2>Wissensgraph</h2>
+    <a href="/graph" class="block-link">Vollbild ↗</a>
+    <div class="graph-toggles">
+      <label><input type="checkbox" data-graph-toggle="domain" checked> Domänen</label>
+      <label><input type="checkbox" data-graph-toggle="role" checked> Rollen</label>
+      <label><input type="checkbox" data-graph-toggle="similar" checked> Ähnlichkeit</label>
+    </div>
+    {% if uebersicht.darf_anonymisiert %}
+    {# Der Schalter erscheint nur mit Recht. Entschieden wird er trotzdem auf
+       dem Server: /api/graph?modus=anonymisiert liefert allen anderen exakt
+       dasselbe wie der Standardmodus (access.can_see_anonymized). #}
+    <div class="graph-toggles graph-modus">
+      <label><input type="radio" name="graph-modus" value="eigen" data-graph-modus checked> Nur mein Wissen</label>
+      <label><input type="radio" name="graph-modus" value="anonymisiert" data-graph-modus> Verborgenes anonymisiert</label>
+    </div>
+    {% endif %}
+  </div>
+  <p class="block-meta">
+    {{ uebersicht.graph.stats.seiten }} Seiten · {{ uebersicht.graph.stats.vorschlaege }} Vorschläge ·
+    {{ uebersicht.graph.stats.kanten }} Kanten
+    <span class="graph-hidden-note" id="graph-hidden-note"></span>
+  </p>
+  <div class="uebersicht-graph graph-canvas-wrap"
+       data-graph-mount data-graph-compact
+       data-graph-controls="#graph-controls"
+       data-graph-hidden-out="#graph-hidden-note"></div>
+</section>
+
+{# --- 2. Statistik: Abteilungen und Wortwolke ------------------------------ #}
+<section class="uebersicht-block uebersicht-statistik">
+  <div class="statistik-spalte">
+    <div class="block-kopf"><h2>Wissen nach Abteilung</h2></div>
+    {% if uebersicht.abteilungen %}
+    <ul class="balken-liste">
+      {% for a in uebersicht.abteilungen %}
+      <li class="balken-zeile">
+        <span class="balken-label">{{ a.domaene }}</span>
+        <span class="balken-spur">
+          <span class="balken balken-sichtbar" style="width: {{ a.anteil_sichtbar }}%"
+                title="{{ a.seiten }} Seiten, {{ a.vorschlaege }} Vorschläge"></span>
+          {% if a.verborgen %}
+          <span class="balken balken-verborgen" style="width: {{ a.anteil_verborgen }}%"
+                title="{{ a.verborgen }} verborgene Dokumente (nur Anzahl)"></span>
+          {% endif %}
+        </span>
+        <span class="balken-zahl">
+          {{ a.sichtbar }}{% if a.verborgen %} <span class="zahl-verborgen">+{{ a.verborgen }}</span>{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="block-fuss">
+      Abteilung = Domäne. Graue Balken sind Dokumente ohne dein Leserecht —
+      sichtbar ist nur ihre Anzahl.
+    </p>
+    {% else %}
+    <p class="empty">Noch kein Wissen in deiner Sicht.</p>
+    {% endif %}
+  </div>
+
+  <div class="statistik-spalte">
+    <div class="block-kopf"><h2>Häufige Begriffe</h2></div>
+    {% if uebersicht.wortwolke %}
+    <div class="wortwolke">
+      {% for w in uebersicht.wortwolke %}
+      <a class="wolkenwort" href="/ask?q={{ w.wort | urlencode }}"
+         style="font-size: {{ w.groesse }}px"
+         title="{{ w.anzahl }} Seiten enthalten „{{ w.wort }}“">{{ w.wort }}</a>
+      {% endfor %}
+    </div>
+    <p class="block-fuss">Nur Wörter aus Seiten, die du lesen darfst. Klick stellt die Frage.</p>
+    {% else %}
+    <p class="empty">Zu wenig Text für eine Wortwolke.</p>
+    {% endif %}
+  </div>
+</section>
+
+{# --- 3. Tabelle der Wissensartikel ---------------------------------------- #}
+<section class="uebersicht-block" id="artikel">
+  <div class="block-kopf">
+    <h2>Wissensartikel</h2>
+    <span class="block-meta">{{ uebersicht.artikel | length }} Seiten · Kopfzeile klicken sortiert</span>
+  </div>
+  <div class="dashboard-table-wrap">
+    <table class="dashboard-table artikel-tabelle" data-sortable>
+      <thead>
+        <tr>
+          <th data-sort="text" aria-sort="none">Titel</th>
+          <th data-sort="text">Abteilung</th>
+          <th data-sort="text">Restriktionen</th>
+          <th data-sort="num" class="col-center">Zugriffe</th>
+          <th data-sort="text">Letzter Zugriff</th>
+          <th data-sort="num" class="col-center">Bearb.</th>
+          <th data-sort="num" class="col-center">Bearbeiter</th>
+          <th data-sort="text">Letzte Bearbeitung</th>
+          <th data-sort="num" class="col-center">Anlagen</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in uebersicht.artikel %}
+        <tr>
+          <td><a href="{{ a.url }}" class="doc-title-link">{{ a.titel }}</a></td>
+          <td><span class="badge badge-domain">{{ a.domaene }}</span></td>
+          <td data-value="{{ a.vertraulichkeit }}">
+            <span class="badge badge-{{ a.vertraulichkeit }}">{{ a.vertraulichkeit }}</span>
+            {% if a.empfaenger %}<span class="empfaenger-liste">{{ a.empfaenger | join(", ") }}</span>{% endif %}
+          </td>
+          <td class="col-center" data-value="{{ a.zugriffe }}">{{ a.zugriffe }}</td>
+          <td data-value="{{ a.letzter_zugriff }}">
+            {% if a.letzter_zugriff %}{{ a.letzter_zugriff | ts }}<br>
+              <span class="zell-nebentext">{{ a.letzter_zugriff_von }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="col-center" data-value="{{ a.bearbeitungen }}">{{ a.bearbeitungen }}</td>
+          <td class="col-center" data-value="{{ a.bearbeiter }}">{{ a.bearbeiter }}</td>
+          <td data-value="{{ a.letzte_bearbeitung }}">
+            {% if a.letzte_bearbeitung %}{{ a.letzte_bearbeitung | ts }}<br>
+              <span class="zell-nebentext">{{ a.letzter_bearbeiter }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="col-center" data-value="{{ a.anlagen.anzahl }}">
+            {% if a.anlagen.anzahl %}
+            <details class="anlagen">
+              <summary>{{ a.anlagen.anzahl }}</summary>
+              <div class="anlagen-inhalt">
+                {% if a.anlagen.verlinkt %}
+                <p class="anlagen-titel">Verlinkt</p>
+                <ul>{% for l in a.anlagen.verlinkt %}<li><a href="{{ l.url }}">{{ l.titel }}</a></li>{% endfor %}</ul>
+                {% endif %}
+                {% if a.anlagen.aehnlich %}
+                <p class="anlagen-titel">Ähnlich</p>
+                <ul>{% for l in a.anlagen.aehnlich %}<li><a href="{{ l.url }}">{{ l.titel }}</a></li>{% endfor %}</ul>
+                {% endif %}
+                {% if a.anlagen.original_datei %}
+                <p class="anlagen-titel">Originaldatei</p>
+                <ul><li>{{ a.anlagen.original_datei }}</li></ul>
+                {% endif %}
+              </div>
+            </details>
+            {% else %}0{% endif %}
+          </td>
+          <td class="artikel-aktionen">
+            {% if not ist_gast %}
+            <a href="{{ a.url }}/edit" class="zeilen-link">Bearbeiten</a>
+            <button type="button" class="zeilen-link"
+                    data-teilen-slug="{{ a.slug }}"
+                    data-teilen-titel="{{ a.titel }}"
+                    data-teilen-vertraulichkeit="{{ a.vertraulichkeit }}"
+                    data-teilen-ersteller="{{ 1 if a.ist_ersteller else 0 }}">Teilen</button>
+            {% else %}<span class="zell-nebentext">—</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="empty">Noch kein Wissen in deiner Sicht.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# --- 5. Projektanträge (uebernommen aus dashboard_proposals.html) --------- #}
+<section class="uebersicht-block" id="projektantraege">
+  <div class="block-kopf">
+    <h2>Projektanträge</h2>
+    <a href="/proposals/new" class="block-link">Neuen einreichen ↗</a>
+  </div>
+  <div class="dashboard-table-wrap">
+    <table class="dashboard-table proposals-table">
+      <thead>
+        <tr>
+          <th>Titel</th>
+          <th>Domäne</th>
+          <th class="col-center">Dokumente</th>
+          <th>Beantragt von</th>
+          <th>Datum</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in uebersicht.proposals %}
+        <tr>
+          <td><a href="/proposals/{{ p.slug }}" class="proposal-title-link">{{ p.title }}</a></td>
+          <td><span class="badge badge-domain">{{ p.domaene }}</span></td>
+          <td class="col-center"><span class="doc-count-pill">{{ p.document_count }}</span></td>
+          <td>{{ p.submitted_by | user_name }}</td>
+          <td>{{ p.submitted_at }}</td>
+          <td><span class="badge badge-status">{{ p.status }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">Noch keine Projektanträge eingereicht.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# --- 6. Zuletzt gescannt -------------------------------------------------- #}
+<section class="uebersicht-block scans-block" id="scans">
+  <div class="block-kopf"><h2>Zuletzt gescannt</h2></div>
+  <table class="dashboard-table scans-tabelle">
     <thead>
-      <tr>
-        <th>Dokument</th>
-        <th>Hochgeladen am</th>
-        <th>Von</th>
-        <th>Status</th>
-      </tr>
+      <tr><th>Quelle</th><th class="col-center">Anzahl</th><th>Zeit</th><th>Status</th></tr>
     </thead>
     <tbody>
-      {% for doc in stats.recent_documents %}
+      {% for s in uebersicht.scans %}
       <tr>
-        <td class="doc-title-cell">
-          <a href="/wiki/{{ doc.slug }}" class="doc-title-link">{{ doc.title }}</a>
-          <button type="button" class="title-expand-btn" onclick="toggleTitleExpand(this)" aria-label="Titel ein-/ausklappen">⋯</button>
-        </td>
-        <td>{{ doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else '—' }}</td>
-        <td>{{ doc.uploaded_by }}</td>
-        <td>
-          {% if doc.is_update %}
-          <span class="badge badge-update">Aktualisiert</span>
-          {% else %}
-          <span class="badge badge-new">Neu</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="4" class="empty">Noch keine Dokumente vorhanden.</td>
+        <td>{{ s.quelle }}{% if s.demo %} <span class="badge badge-demo">Demo</span>{% endif %}</td>
+        <td class="col-center">{{ s.anzahl }}</td>
+        <td>{{ s.zeit | ts }}</td>
+        <td>{{ s.status }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-</div>
+  <p class="block-fuss">
+    „Demo“ heißt: erfundene Werte für Ablageorte, die ein Konnektor später wirklich
+    scannt. Upload-Zeilen sind echt und stammen nur aus Abteilungen, die du lesen darfst.
+  </p>
+</section>
+
+{# --- 4. Dialoge ----------------------------------------------------------- #}
+{% if not ist_gast %}
+<datalist id="empfaenger-vorschlaege">
+  {% for u in users %}{% if u.id != "gast" %}<option value="{{ u.id }}">{{ u.name }}</option>{% endif %}{% endfor %}
+  {% for g in gruppen %}<option value="{{ g }}">Gruppe {{ g }}</option>{% endfor %}
+</datalist>
+
+<dialog id="dialog-teilen" class="mpb-dialog">
+  <form method="post" id="teilen-form" class="dialog-form">
+    <h2>Wissen teilen</h2>
+    <p class="dialog-seite" id="teilen-titel"></p>
+
+    <label>Link zum Kopieren
+      <span class="kopier-zeile">
+        <input type="text" id="teilen-link" readonly>
+        <button type="button" class="btn" id="teilen-kopieren">Kopieren</button>
+      </span>
+    </label>
+
+    <p class="hint" id="teilen-hinweis" hidden></p>
+
+    <label id="teilen-vertraulich-zeile" hidden>
+      <span class="checkbox-zeile">
+        <input type="checkbox" name="vertraulich" value="1" id="teilen-vertraulich">
+        Seite auf <strong>vertraulich</strong> setzen, damit die Freigabe wirkt
+      </span>
+    </label>
+
+    <label>Freigeben für (Nutzer oder Gruppen, mit Komma getrennt)
+      <input type="text" name="empfaenger" list="empfaenger-vorschlaege"
+             placeholder="z. B. pmo-leitung, finance" autocomplete="off">
+    </label>
+
+    <p class="hint" id="teilen-fremd" hidden>
+      Teilen darf nur, wer die Seite eingebracht hat. Diese Seite stammt von jemand anderem.
+    </p>
+
+    <input type="hidden" name="next" value="/dashboard">
+    <div class="dialog-aktionen">
+      <button type="button" class="btn btn-sekundaer" data-close-dialog>Schließen</button>
+      <button type="submit" class="btn" id="teilen-absenden">Freigabe speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialog-teilen-auswahl" class="mpb-dialog">
+  <div class="dialog-form">
+    <h2>Welche Seite teilen?</h2>
+    <p class="dialog-hinweis">Teilen kann nur, wer die Seite eingebracht hat.</p>
+    <ul class="dialog-liste">
+      {% for a in uebersicht.artikel if a.ist_ersteller %}
+      <li>
+        <span>{{ a.titel }}</span>
+        <button type="button" class="zeilen-link"
+                data-teilen-slug="{{ a.slug }}"
+                data-teilen-titel="{{ a.titel }}"
+                data-teilen-vertraulichkeit="{{ a.vertraulichkeit }}"
+                data-teilen-ersteller="1">Teilen</button>
+      </li>
+      {% else %}
+      <li class="empty">Du hast noch keine eigene Seite eingebracht.</li>
+      {% endfor %}
+    </ul>
+    <div class="dialog-aktionen">
+      <button type="button" class="btn btn-sekundaer" data-close-dialog>Schließen</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dialog-bearbeiten" class="mpb-dialog">
+  <div class="dialog-form">
+    <h2>Welche Seite bearbeiten?</h2>
+    <input type="search" class="graph-search" id="bearbeiten-suche"
+           placeholder="Seite suchen …" autocomplete="off" aria-label="Seite suchen">
+    <ul class="dialog-liste" id="bearbeiten-liste">
+      {% for a in uebersicht.artikel %}
+      <li data-titel="{{ a.titel | lower }}">
+        <span>{{ a.titel }} <span class="badge badge-domain">{{ a.domaene }}</span></span>
+        <a class="zeilen-link" href="{{ a.url }}/edit">Bearbeiten</a>
+      </li>
+      {% else %}
+      <li class="empty">Keine Seite in deiner Sicht.</li>
+      {% endfor %}
+    </ul>
+    <div class="dialog-aktionen">
+      <button type="button" class="btn btn-sekundaer" data-close-dialog>Schließen</button>
+    </div>
+  </div>
+</dialog>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="/static/graph.js?v=6"></script>
+<script src="/static/overview.js?v=1"></script>
 {% endblock %}

@@ -25,4 +25,6 @@ Thumbs.db
 llm-wiki/uploads/*
 !llm-wiki/uploads/.gitkeep
 
-
+# Laufzeitdaten (Zugriffsprotokoll, Scan-Stand) - gehoeren nicht ins Repo
+llm-wiki/data/*
+!llm-wiki/data/.gitkeep

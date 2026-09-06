@@ -1526,10 +1526,13 @@ async def api_prefill(request: Request, target: str = "knowledge"):
 
 @app.get("/search")
 def search(request: Request, q: str = ""):
-    """Eine Suche, zwei Listen. Der Rechte-Filter steckt in search_snippets
-    bzw. list_proposals(user) - hier wird nichts zusaetzlich gefiltert."""
+    """Eine Suche, zwei Listen - plus eine semantische Ein-Satz-Antwort mit
+    Quellenlink oben drueber (US: konsistent semantische Suche statt reiner
+    Stichwortliste). Der Rechte-Filter steckt in search_snippets bzw.
+    list_proposals(user) - hier wird nichts zusaetzlich gefiltert."""
     user = access.current_user(request)
     snippets = wiki.search_snippets(q, user) if q.strip() else []
+    antwort = llm.ask_llm(q, snippets) if q.strip() else None
     needle = q.strip().lower()
     hits = []
     if needle:
@@ -1544,7 +1547,7 @@ def search(request: Request, q: str = ""):
                 })
     return templates.TemplateResponse(
         request, "kompass/search.html",
-        kctx(request, "", q=q, snippets=snippets, hits=hits),
+        kctx(request, "", q=q, snippets=snippets, hits=hits, antwort=antwort),
     )
 
 

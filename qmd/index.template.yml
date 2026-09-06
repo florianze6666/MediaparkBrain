@@ -1,0 +1,35 @@
+# Vorlage fuer .qmd/index.yml. index.ps1 ersetzt {{QMD_ROOT}} durch den
+# absoluten Pfad dieses Ordners und schreibt das Ergebnis nach .qmd/index.yml.
+# Die erzeugte Datei ist rechnerspezifisch und bleibt unversioniert (.gitignore).
+#
+# Rechtemodell: alle sehen intern, der Betriebsrat zusaetzlich br, C-Level
+# zusaetzlich clevel. br und clevel sind ausgeschlossen (includeByDefault: false),
+# eine Abfrage ohne -c durchsucht nur intern. antraege ist ebenfalls
+# ausgeschlossen und nur ueber ingest/reset.py und ingest/import.py erreichbar.
+#
+# Modelle: Embedding nvidia/Nemotron-3-Embed-1B (GGUF Q8_0, 2048 Dimensionen,
+# Praefixe query:/passage:, siehe patches/apply.mjs), Reranker Qwen3 0.6B,
+# Query-Expansion qmd-query-expansion 1.7B. Alle drei laufen lokal ueber
+# node-llama-cpp auf GPU oder CPU.
+collections:
+  intern:
+    path: {{QMD_ROOT}}\view\intern
+    pattern: "**/*.md"
+  br:
+    path: {{QMD_ROOT}}\view\br
+    pattern: "**/*.md"
+    includeByDefault: false
+  clevel:
+    path: {{QMD_ROOT}}\view\clevel
+    pattern: "**/*.md"
+    includeByDefault: false
+  # Phase 5 (Fit-Gap I-3): Projektantraege, getrennt ruecksetzbar (UC-01).
+  # Kein Agent fragt sie ab; ingest/rollen.py kennt nur intern, br, clevel.
+  antraege:
+    path: {{QMD_ROOT}}\view\antraege
+    pattern: "**/*.md"
+    includeByDefault: false
+models:
+  embed: hf:NeoRoth/nemotron-3-embed-1b-gguf/nemotron-3-embed-1b-q8_0.gguf
+  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf
+  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf

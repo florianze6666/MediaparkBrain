@@ -1,0 +1,95 @@
+{
+  "description": "MediaparkBrain Stufe 1: Retrieval-Qualitaet auf der Collection intern. Sechs Faelle zu Glaswerk Nord 2013 plus zwei zu anderen Ereignissen. Fragen sind bewusst anders formuliert als die Zieldokumente, damit Semantik und nicht Wortgleichheit geprueft wird (BM25 soll leer ausgehen). Bestanden, wenn jede Frage im Backend full mindestens ein Zieldokument unter den ersten drei hat.",
+  "version": 1,
+  "queries": [
+    {
+      "id": "01-annahme-ohne-messung",
+      "query": "Welches Vorhaben ist frueher unwirtschaftlich geworden, weil eine muendliche Kundenangabe zur Waermequelle nie ueberprueft wurde?",
+      "type": "semantic",
+      "description": "Kernfall der CFO-Erinnerungsspur. Jedes der sechs Glaswerk-Nord-Dokumente in intern beantwortet die Frage; verlangt wird, dass die ersten drei Treffer alle aus diesem Fall stammen (precision_at_k = 1).",
+      "expected_files": [
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-02-22-abweichung-von-kalkulation-und-ist-kosten-festhalten.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-05-01-technische-bewertung-der-abweichung-protokollieren.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-09-25-erfahrungen-aus-der-abwicklung-festhalten.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-11-07-nachtragsforderung-gegenueber-dem-kunden-dokumentier.md",
+        "qm_lenkung/glaswerk-nord-margenverlust-durch-/2013/2013-09-02-technische-angebotsreviews-ab-500000-eur-verbindlich.md",
+        "mailarchiv/glaswerk-nord-margenverlust-durch-/2013/2013-04-21-auf-die-abweichende-waermequellentemperatur-hinweise.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "02-messkampagne-abgas",
+      "query": "Welche Werte hat die externe Messfirma im Fruehjahr 2013 hinter dem Regenerator ermittelt und wie weit lagen sie unter der Auslegung?",
+      "type": "semantic",
+      "description": "Besprechungsprotokoll der technischen Bewertung (Messtechnik Ostwestfalen, 352 bis 368 statt 420 Grad)",
+      "expected_files": [
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-05-01-technische-bewertung-der-abweichung-protokollieren.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "03-nachforderung-kunde",
+      "query": "Haben wir beim Kunden Mehrkosten geltend gemacht, weil die in seiner Anfrage genannte Rauchgastemperatur im Betrieb nicht erreicht wurde?",
+      "type": "semantic",
+      "description": "Nachtragsanzeige des Vertriebs (165 statt 128 Grad, zusaetzliche Waermetauscherstufe)",
+      "expected_files": [
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-11-07-nachtragsforderung-gegenueber-dem-kunden-dokumentier.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "04-regel-angebotsreview",
+      "query": "Ab welchem Auftragsvolumen muss ein Angebot vor Abgabe technisch gegengeprueft werden, und welches Formblatt gehoert dazu?",
+      "type": "semantic",
+      "description": "Arbeitsanweisung AA-2013-07 (Review ab 500.000 EUR, Angebotsdatenblatt thermische Auslegung)",
+      "expected_files": [
+        "qm_lenkung/glaswerk-nord-margenverlust-durch-/2013/2013-09-02-technische-angebotsreviews-ab-500000-eur-verbindlich.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "05-eskalation-zusatzaufwand",
+      "query": "In welcher Nachricht meldet der Projektleiter der Geschaeftsfuehrung, dass die Temperatur hinter dem Rekuperator des Kunden rund 15 Kelvin unter der Angebotsannahme liegt und deshalb Uebertragerflaeche und Pumpen nachgeruestet wurden?",
+      "type": "semantic",
+      "description": "Eskalationsmail des Projektleiters (Mailarchiv, Klasse intern); Frage beschreibt den Inhalt, nicht die Form der Mail",
+      "expected_files": [
+        "mailarchiv/glaswerk-nord-margenverlust-durch-/2013/2013-04-21-auf-die-abweichende-waermequellentemperatur-hinweise.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "06-lehren-projektleiter",
+      "query": "Welche Lehren zog der Projektleiter nach der Inbetriebnahme des Glashuetten-Projekts fuer kuenftige Auslegungen?",
+      "type": "semantic",
+      "description": "Lessons Learned; 'Glashuette' statt 'Glaswerk', 'Lehren' statt 'Lessons Learned'",
+      "expected_files": [
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-09-25-erfahrungen-aus-der-abwicklung-festhalten.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "07-erp-verschiebung",
+      "query": "Warum hat das Lenkungsgremium Anfang 2024 den Produktivstart des neuen Unternehmenssystems nach hinten geschoben?",
+      "type": "semantic",
+      "description": "Alle Dokumente des Ereignisses ONE-LTT-Go-live-Verschiebung in intern (Protokoll, Risiken, Begruendung, Mail); Frage meidet ERP, Go-live, Verschiebung",
+      "expected_files": [
+        "mailarchiv/verschiebung-des-erp-go-live-und-a/2024/2024-02-25-bewertung-der-verbleibenden-offenen-punkte-melden.md",
+        "projektlaufwerk/verschiebung-des-erp-go-live-und-a/2024/2024-02-02-beschluss-zur-verschiebung-protokollieren.md",
+        "projektlaufwerk/verschiebung-des-erp-go-live-und-a/2024/2024-03-10-risiken-nach-der-verschiebung-aktualisieren.md",
+        "sharepoint_gf/verschiebung-des-erp-go-live-und-a/2024/2024-03-18-verschiebung-intern-begruenden.md"
+      ],
+      "expected_in_top_k": 3
+    },
+    {
+      "id": "08-crm-opportunity-pflege",
+      "query": "Welche Vorgaben gelten dafuer, wie Verkaufschancen im Kundensystem angelegt und aktuell gehalten werden, damit der monatliche Forecast belastbar ist?",
+      "type": "semantic",
+      "description": "Arbeitsanweisung und Schulungsunterlage zur Pflege der Opportunity-Daten im CRM (qm_lenkung)",
+      "expected_files": [
+        "qm_lenkung/crm-einfuehrung-als-70-prozent-erf/2023/2023-05-16-pflege-der-opportunity-daten-regeln.md",
+        "qm_lenkung/crm-einfuehrung-als-70-prozent-erf/2023/2023-05-06-vertrieb-auf-pflichtfelder-und-forecast-einweisen.md"
+      ],
+      "expected_in_top_k": 3
+    }
+  ]
+}

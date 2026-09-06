@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LLM-Wiki{% endblock %} · MediaparkBrain</title>
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=6">
   <script>
     // Wird gerufen, sobald dem Nutzer neue Informationen bereitgestellt werden
     // (frische LLM-Antwort) - spricht "Yeah, Yeah!" laut aus.
@@ -59,6 +59,13 @@
         // Web Audio API nicht verfuegbar - stumm weitermachen
       }
     }
+
+    // Dashboard "Letzte Dokumente": Titel stehen einzeilig mit "...", ein Klick
+    // auf das Symbol klappt den vollen Titel auf (der Link selbst bleibt normal
+    // klickbar und navigiert weiterhin zur Seite).
+    function toggleTitleExpand(btn) {
+      btn.closest(".doc-title-cell").classList.toggle("expanded");
+    }
   </script>
 </head>
 <body>
@@ -97,7 +104,6 @@
           Projektanträge eingereicht
         </a>
         <a href="/proposals/evaluate" class="btn btn-evaluate">Projektbewertung</a>
-        <a href="/ask" class="btn btn-ask">Frag das Wiki</a>
         <a href="/dashboard" class="btn btn-dashboard">
           <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="3" y="3" width="7" height="9"></rect>
@@ -108,6 +114,7 @@
           Dashboards
         </a>
         <a href="/proposals" class="btn btn-list">Projektvorschläge</a>
+        <a href="/wissen/upload" class="btn btn-list">Wissen erweitern</a>
         {% if is_admin %}
         <a href="/admin" class="btn btn-admin">Admin</a>
         {% endif %}

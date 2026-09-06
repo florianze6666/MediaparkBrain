@@ -198,12 +198,14 @@ def test_leere_tabelle_ergibt_nichts():
 
 
 # ---------------------------------------------------------------------------
-# Abnahmekriterium: der Inhalt ist danach ueber "Frag das Wiki" auffindbar
+# Abnahmekriterium: der Inhalt steht danach als Wikiseite mit Beleg bereit.
+# (Die Wortsuche der App ist am 06.09.2026 entfernt; gesucht wird ueber die
+# Embedding-Suche in qmd/, die Seite muss dafuer den Inhalt tragen.)
 # ---------------------------------------------------------------------------
 
 
-def test_eingelesenes_pdf_ist_ueber_die_suche_auffindbar(pages_env):
-    """Das "Fertig wenn" aus Paket 8, end-to-end."""
+def test_eingelesenes_pdf_landet_als_seite_mit_inhalt(pages_env):
+    """Das "Fertig wenn" aus Paket 8, end-to-end bis zur gespeicherten Seite."""
     import app.wiki as wiki
     from app.access import PageMeta
 
@@ -224,7 +226,7 @@ def test_eingelesenes_pdf_ist_ueber_die_suche_auffindbar(pages_env):
         ),
     )
 
-    treffer = wiki.search_snippets("Wie hoch ist der One-Off Betrag fuer CONI?", "projektmanager")
-    assert treffer, "das eingelesene PDF taucht nicht als Quelle auf"
-    assert any("450" in t.paragraph for t in treffer)
-    assert any(t.page.meta.quelle == "vorstellung.pdf" for t in treffer)
+    seite = wiki.get_page_for(wiki.slugify(res.title), "projektmanager")
+    assert seite is not None, "das eingelesene PDF taucht nicht als Seite auf"
+    assert "450" in seite.content
+    assert seite.meta.quelle == "vorstellung.pdf"

@@ -6,11 +6,12 @@
 </div>
 
 <div class="dashboard-table-wrap">
-  <table class="dashboard-table">
+  <table class="dashboard-table proposals-table">
     <thead>
       <tr>
         <th>Titel</th>
-        <th>Anzahl Dokumente</th>
+        <th>Domäne</th>
+        <th class="col-center">Dokumente</th>
         <th>Beantragt von</th>
         <th>Datum</th>
         <th>Status</th>
@@ -19,15 +20,16 @@
     <tbody>
       {% for p in proposal_stats %}
       <tr>
-        <td><a href="/proposals/{{ p.slug }}">{{ p.title }}</a></td>
-        <td>{{ p.document_count }}</td>
+        <td><a href="/proposals/{{ p.slug }}" class="proposal-title-link">{{ p.title }}</a></td>
+        <td><span class="badge badge-domain">{{ p.domaene }}</span></td>
+        <td class="col-center"><span class="doc-count-pill">{{ p.document_count }}</span></td>
         <td>{{ p.submitted_by | user_name }}</td>
         <td>{{ p.submitted_at }}</td>
         <td><span class="badge badge-status">{{ p.status }}</span></td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="5" class="empty">Noch keine Projektanträge eingereicht.</td>
+        <td colspan="6" class="empty">Noch keine Projektanträge eingereicht.</td>
       </tr>
       {% endfor %}
     </tbody>

@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import secrets
+import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
@@ -102,11 +103,16 @@ class PageMeta:
 # ---------------------------------------------------------------------------
 
 
+# Einmal aufgeloest: Path.resolve() geht unter Windows auf das Dateisystem und
+# kostete bei jedem Rechte-Aufruf rund 150 us (Phase 0.2).
+_DEFAULT_PERMISSIONS_FILE = Path(__file__).resolve().parent.parent / "permissions.yaml"
+
+
 def permissions_path() -> Path:
     env = os.environ.get("MPB_PERMISSIONS_FILE")
     if env:
         return Path(env)
-    return Path(__file__).resolve().parent.parent / "permissions.yaml"
+    return _DEFAULT_PERMISSIONS_FILE
 
 
 def changelog_path() -> Path:
@@ -116,22 +122,50 @@ def changelog_path() -> Path:
     return permissions_path().parent / "permissions-changelog.md"
 
 
-_cache: dict[str, Any] = {"key": None, "data": None}
+# Phase 0.2: Der Rechtefilter lief je Seite dreimal ueber load_permissions, und
+# jeder Aufruf machte einen stat() auf permissions.yaml. Bei 218 Seiten sind das
+# rund 160 ms nur fuer den Filter. Jetzt: der stat() gilt fuer _STAT_INTERVAL
+# Sekunden als frisch, und readable_domains wird je Rechtestand und Nutzer
+# einmal berechnet. Verhalten bleibt: save_permissions/clear_cache wirken sofort,
+# eine von aussen geaenderte Datei wird innerhalb des Intervalls erkannt, und
+# ein anderer Pfad (Testisolation ueber MPB_PERMISSIONS_FILE) laedt immer neu.
+_STAT_INTERVAL = 0.25  # Sekunden
+
+_cache: dict[str, Any] = {"key": None, "data": None, "checked": 0.0}
+# (Rechtestand-Schluessel, Nutzer-ID) -> lesbare Domaenen; wird mit dem
+# Rechtestand verworfen, nie ueber Nutzer hinweg geteilt.
+_readable_cache: dict[tuple[Any, str | None], list[str]] = {}
 
 
 def clear_cache() -> None:
     _cache["key"] = None
     _cache["data"] = None
+    _cache["checked"] = 0.0
+    _readable_cache.clear()
 
 
 def load_permissions() -> dict[str, Any]:
-    """Laedt permissions.yaml; wird bei Aenderung der Datei neu eingelesen."""
+    """Laedt permissions.yaml; wird bei Aenderung der Datei neu eingelesen.
+
+    Der stat() auf die Datei laeuft hoechstens alle _STAT_INTERVAL Sekunden,
+    und nur fuer denselben Pfad; ein anderer Pfad wird sofort geladen.
+    """
     path = permissions_path()
+    cached_key = _cache["key"]
+    now = time.monotonic()
+    if (
+        _cache["data"] is not None
+        and cached_key is not None
+        and cached_key[0] == str(path)
+        and now - _cache["checked"] < _STAT_INTERVAL
+    ):
+        return _cache["data"]
     try:
         key = (str(path), path.stat().st_mtime_ns)
     except FileNotFoundError:
         key = (str(path), None)
-    if _cache["key"] == key and _cache["data"] is not None:
+    _cache["checked"] = now
+    if cached_key == key and _cache["data"] is not None:
         return _cache["data"]
     if key[1] is None:
         data = {"gruppen": [], "nutzer": {}, "domaenen": {}}
@@ -142,6 +176,7 @@ def load_permissions() -> dict[str, Any]:
     data.setdefault("domaenen", {})
     _cache["key"] = key
     _cache["data"] = data
+    _readable_cache.clear()  # neuer Rechtestand: abgeleitete Domaenenlisten verwerfen
     return data
 
 
@@ -234,16 +269,25 @@ def readable_domains(user_id: str | None) -> list[str]:
 
     Der Ordner ist die einzige Wahrheit: `wiki.list_pages(user)` betritt NUR
     diese Ordner; ein Label `oeffentlich` in einem fremden Ordner oeffnet ihn nicht.
+
+    Einmal je Rechtestand und Nutzer berechnet (Phase 0.2); der Aufrufer
+    bekommt immer eine eigene Liste, damit niemand den Cache veraendert.
     """
+    perms = load_permissions()
+    cache_key = (_cache["key"], user_id)
+    hit = _readable_cache.get(cache_key)
+    if hit is not None:
+        return list(hit)
     groups = set(user_groups(user_id))
     out: list[str] = []
-    for dom, spec in load_permissions()["domaenen"].items():
+    for dom, spec in perms["domaenen"].items():
         readers = set((spec or {}).get("lesen") or [])
         if dom == LOBBY_DOMAIN or (groups & readers):
             out.append(dom)
     if LOBBY_DOMAIN not in out:
         out.insert(0, LOBBY_DOMAIN)
-    return out
+    _readable_cache[cache_key] = out
+    return list(out)
 
 
 def is_admin(user_id: str | None) -> bool:
@@ -256,8 +300,37 @@ def is_admin(user_id: str | None) -> bool:
 # ---------------------------------------------------------------------------
 
 
+# Zaehler abgelehnter Sichtbarkeitsentscheidungen seit Prozessstart. Kein
+# Persistenzformat, kein Personenbezug - nur eine Zahl fuer die Grundsatzseite
+# ("Zugriffe heute abgelehnt"). Ein Neustart setzt sie zurueck; das ist ehrlich,
+# weil auch die Anzeige "seit Prozessstart" meint.
+_deny_count = 0
+
+
+def deny_count() -> int:
+    return _deny_count
+
+
+def reset_deny_count() -> None:
+    global _deny_count
+    _deny_count = 0
+
+
 def decide(user_id: str | None, meta: PageMeta) -> str:
-    """Genau die Regeln aus dem Konzeptdokument."""
+    """Genau die Regeln aus dem Konzeptdokument.
+
+    Einziger Zugriffsweg - deshalb wird hier auch mitgezaehlt, wie oft
+    abgelehnt wurde (siehe `_deny_count`). Die Regeln selbst stehen in
+    `_decide` und sind unveraendert.
+    """
+    global _deny_count
+    result = _decide(user_id, meta)
+    if result == DENY:
+        _deny_count += 1
+    return result
+
+
+def _decide(user_id: str | None, meta: PageMeta) -> str:
     # 1. oeffentlich -> ALLOW, auch fuer Gast
     if meta.vertraulichkeit == "oeffentlich":
         return ALLOW

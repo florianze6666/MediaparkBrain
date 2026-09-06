@@ -9,8 +9,8 @@ project_manager: "Marketing Automation Product Lead"
 project_sponsor: "VP Marketing"
 affected_countries: [CORP, FR, HR, IN, IT, NL, PT, RO, RS, UA]
 source_documents:
-  - "test project data/__Project_Charter_MAX_Marketing_Automation_Company1.docx"
-  - "test project data/__Business_Case_MAX_Marketing_Automation_Company1.xlsx"
+  - "test project data/Project_Charter_Product_2_TESTDATA.docx"
+  - "test project data/Business_Case_Product_2_TESTDATA_.xlsx"
 classification: internal
 ---
 

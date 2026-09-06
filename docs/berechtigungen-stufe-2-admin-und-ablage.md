@@ -54,8 +54,7 @@ llm-wiki/pages/
 - **Migration beim Start** (`wiki.migrate_flat_pages()`): jede `pages/*.md` auf oberster Ebene wird
   anhand ihres Kopfes einsortiert, ohne Kopf nach `allgemein/`. Läuft bei jedem Start, ist idempotent.
 - `list_pages(user)` liest **nur Ordner**, deren Domäne der Nutzer lesen darf, und wendet danach
-  `decide` pro Seite an (Vertraulichkeit, Empfänger). `search_snippets(query, user)` nutzt genau diese
-  Liste. Zwei Schranken, dieselbe Regel.
+  `decide` pro Seite an (Vertraulichkeit, Empfänger).
 - **`allgemein` ist die Lobby:** diesen Ordner betritt jeder, auch der Gast. Fremde Ordner werden
   nie geöffnet, auch nicht, um nach öffentlich markierten Seiten zu suchen. Das Label `oeffentlich`
   erweitert nie die Ordnerrechte (Label verschärft nur). Eine öffentliche Seite, die jeder sehen soll,
@@ -140,7 +139,7 @@ er nicht lesen darf.
 |----------|-----|--------------------|
 | Ordner-Schranke | `wiki.list_pages`, `proposals.list_proposals` | Fremde Ordner werden nie geöffnet; eine falsch beschriftete Datei im falschen Ordner erreicht nie den Kontext |
 | `decide` pro Dokument | `access.decide`, `can_read` | Vertraulichkeit und Empfänger innerhalb lesbarer Ordner |
-| Vorfilter vor Top-k | `wiki.search_snippets` | Das Sprachmodell sieht keinen Text, den der Fragende nicht sehen darf |
+| Collections je Rechteklasse | `qmd/ingest/rollen.py`, `-c`-Flags der Embedding-Suche | Das Sprachmodell sieht nur Treffer aus Collections, die die Rolle lesen darf (die Wortsuche der App ist am 06.09.2026 entfernt) |
 | Write ⊆ Read | `access.can_write`, `main.require_writable` | Einschleusen von Text in fremde Domänen (Prompt-Injection über die Wissensbasis) |
 | Signierter Identitäts-Cookie | `access.sign_user` / `verify_user`, HMAC-SHA256 mit `MPB_SECRET` | Rollenwechsel durch Editieren des Cookies im Browser |
 | Slug-Validierung | `wiki.is_valid_slug`, in Wiki und Vorschlägen | Path-Traversal über die URL auf Dateien außerhalb der Ablage |

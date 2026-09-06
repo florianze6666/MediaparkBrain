@@ -32,7 +32,6 @@ UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 SLUG_RE = re.compile(r"[^a-z0-9-]+")          # was slugify entfernt
 VALID_SLUG_RE = re.compile(r"^[a-z0-9-]+$")    # was ein Slug sein darf (URL, Dateiname)
 
-WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß0-9]+")
 FRONTMATTER_DELIM = "---"
 VERTRAULICH_DIR = "vertraulich"
 DEFAULT_DOMAIN = access.LOBBY_DOMAIN  # "allgemein"
@@ -343,48 +342,8 @@ def migrate_flat_pages() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Suche
+# Suche: Die Wortsuche (search_snippets) ist am 06.09.2026 entfernt worden.
+# Gesucht wird ausschliesslich ueber die Embedding-Suche im Teilprojekt qmd/,
+# siehe docs/wissensspeicher-qmd.md. Der Rechte-Filter fuer Seiten bleibt
+# list_pages(user) / get_page_for(slug, user).
 # ---------------------------------------------------------------------------
-
-
-def _tokenize(text: str) -> set[str]:
-    return {w.lower() for w in WORD_RE.findall(text)}
-
-
-@dataclass
-class Snippet:
-    page: Page
-    paragraph: str
-    score: float
-
-
-def search_snippets(query: str, user: str, top_k: int = 5) -> list[Snippet]:
-    """Volltextsuche aus Sicht von `user`.
-
-    Der Rechte-Filter greift VOR dem Scoring und der Top-k-Auswahl (US-7):
-    verbotene Seiten werden gar nicht erst bewertet, fremde Ordner gar nicht
-    erst geoeffnet (US-18). `user` ist Pflicht, damit niemand versehentlich
-    ungefiltert sucht.
-    """
-    query_words = _tokenize(query)
-    if not query_words:
-        return []
-    results: list[Snippet] = []
-    for page in list_pages(user):
-        title_words = _tokenize(page.title)
-        paragraphs = [p.strip() for p in page.content.split("\n\n") if p.strip()]
-        if not paragraphs:
-            paragraphs = [page.title]
-        for para in paragraphs:
-            # Titelwoerter zaehlen mit, da relevanter Inhalt oft nur im Titel steht
-            # (z.B. kurze Notizseiten wie "heute ist ein schoener Tag").
-            para_words = _tokenize(para) | title_words
-            if not para_words:
-                continue
-            overlap = query_words & para_words
-            if not overlap:
-                continue
-            score = len(overlap) / len(query_words)
-            results.append(Snippet(page=page, paragraph=para, score=score))
-    results.sort(key=lambda s: s.score, reverse=True)
-    return results[:top_k]

@@ -1,0 +1,29 @@
+# Eigene Python-Umgebung des Teilprojekts qmd/ (Entkopplung vom Wiki).
+#
+# Der CFO-Treiber und der spaetere Orchestrator brauchen ein aktuelles
+# anthropic-SDK. Bisher lief das ueber die uv-Umgebung von llm-wiki
+# (`uv run --project ../llm-wiki`), was die Abschottungszusage des Teilprojekts
+# brach und im systemweiten Python 3.14 mit einem alten SDK wie ein fachlicher
+# Testfehler aussah. Jetzt: `uv sync` hier, .venv liegt unter qmd/ (gitignored),
+# Aufruf `uv run --project qmd python qmd/eval/cfo_e2e.py` beziehungsweise aus
+# qmd/ heraus `uv run python eval\cfo_e2e.py`.
+#
+# Kein Python-Download: `uv sync --no-python-downloads` nimmt den vorhandenen
+# Interpreter (3.12 oder 3.14). Rueckbau bleibt das Loeschen von qmd/.
+
+[project]
+name = "mediaparkbrain-qmd-agenten"
+version = "0.1.0"
+description = "Agentenpfad ueber den qmd-Wissensspeicher: CFO-Treiber, Orchestrator, Tests"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.4.0",
+    "pyyaml>=6.0",
+    "numpy>=1.26",   # Aehnlichkeit gegen die Indexvektoren (Plan 09, suche.py)
+]
+
+[dependency-groups]
+dev = ["pydantic>=2", "pytest>=8"]  # Structured Output (Plan 08, Zug B); Tests T1 bis T4
+
+[tool.uv]
+package = false

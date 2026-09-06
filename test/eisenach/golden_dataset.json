@@ -1,0 +1,36 @@
+{
+  "zweck": "Golden Dataset fuer den Testfall IP-2026-07 Abwaermenutzung Giesserei Eisenach (Phase 1, CFO). Uebertragen aus der Konstante GOLDEN in qmd/eval/cfo_e2e.py, damit agenten/e2e.py --rolle cfo denselben Fall faehrt.",
+  "erstellt": "2026-09-06",
+  "quelle": "qmd/eval/cfo_e2e.py, GOLDEN und GOLDEN_MINDEST",
+  "antrag": [
+    "project_proposals/abwaermenutzung-giesserei-eisenach-charter.md",
+    "project_proposals/abwaermenutzung-giesserei-eisenach-businesscase.md"
+  ],
+  "bekannte_schwaeche": "Zahlenkollision 420 Grad C: der Antrag teilt den Auslegungswert mit zwei Glaswerk-Dokumenten von 2013; der Fall prueft dadurch schwaecher auf Semantik (.plans/Feature_Branch.md, Abschnitt 4).",
+  "rollen": {
+    "cfo": {
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "erinnerungsspur": "Eine Annahme ohne Beleg ist die teuerste Position einer Vorlage.",
+      "erinnerungsspur_quelle": "persona/cfo_persona.md, Abschnitt Haltung",
+      "praezedenz": "Glaswerk Nord 2013 (KP-2013-042): eine nie gemessene Waermequellentemperatur aus einer muendlichen Kundenauskunft zehrte einen kalkulierten Deckungsbeitrag von rund zwoelf Prozent auf; daraus POL-VTR-001, technischer Angebotsreview ab 500.000 EUR.",
+      "falle": "Die Abgastemperatur von 420 Grad C stammt aus einem Gespraech mit dem Betriebsleiter vom 14.07.2026, eine Messkampagne fehlt, und die gesamte Nutzenrechnung haengt daran. Die Charter nennt eine Amortisation unter vier Jahren, der Business Case rechnet mit der gueltigen Gaspreispraemisse 47,9 Jahre. Keine Deckung im Investitionsrahmen 2027, Nutzenverantwortung und Messstellen nicht festgelegt, keine Sensitivitaet auf die Temperatur.",
+      "golden": [
+        "mailarchiv/glaswerk-nord-margenverlust-durch-/2013/2013-04-21-auf-die-abweichende-waermequellentemperatur-hinweise.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-02-22-abweichung-von-kalkulation-und-ist-kosten-festhalten.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-05-01-technische-bewertung-der-abweichung-protokollieren.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-09-25-erfahrungen-aus-der-abwicklung-festhalten.md",
+        "projektlaufwerk/glaswerk-nord-margenverlust-durch-/2013/2013-11-07-nachtragsforderung-gegenueber-dem-kunden-dokumentier.md",
+        "qm_lenkung/glaswerk-nord-margenverlust-durch-/2013/2013-09-02-technische-angebotsreviews-ab-500000-eur-verbindlich.md",
+        "sharepoint_gf/glaswerk-nord-margenverlust-durch-/2013/2013-06-16-ergebnisauswirkung-fuer-die-geschaeftsfuehrung-zusam.md"
+      ],
+      "mindest": 4,
+      "erwartete_richtung": {
+        "status": "BEWERTET",
+        "tendenz": "deutlich kritisch; der Lauf vom 06.09.2026 01:48 ergab Score 2 mit Praezedenz Glaswerk Nord und Hinweis auf fehlende Deckung"
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}{{ job.titel }}{% endblock %}
+{% block head %}{% if job.laeuft %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block content %}
+<article class="page">
+  {% if job.laeuft %}<meta http-equiv="refresh" content="3">{% endif %}
+  <h1>{{ job.titel }}</h1>
+  <p class="meta-row">
+    <span>Job <code>{{ job.job_id }}</code></span>
+    <span>gestartet {{ job.gestartet_am | ts }} von {{ job.gestartet_von | user_name }}</span>
+    {% if job.beendet_am %}<span>beendet {{ job.beendet_am | ts }}</span>{% endif %}
+  </p>
+
+  <section class="job-stand" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+    <p style="font-size: 1.15rem; margin: 0 0 0.5rem;">
+      Stand: <strong class="job-status job-{{ job.status }}">{{ job.status_text }}</strong>
+    </p>
+    {% if job.fortschritt %}
+    <p class="job-fortschritt" style="font-size: 1.4rem; font-weight: 600; margin: 0.25rem 0;">{{ job.fortschritt }}</p>
+    {% endif %}
+    {% if job.prozent is not none %}
+    <div style="background: #e2e8f0; border-radius: 6px; height: 14px; overflow: hidden; margin: 0.5rem 0 0.75rem;">
+      <div style="width: {{ job.prozent }}%; height: 100%; background: {% if job.status == 'fehler' %}#c53030{% else %}#2b6cb0{% endif %};"></div>
+    </div>
+    {% endif %}
+    {% if job.laeuft %}
+    <p class="hint">Die Seite aktualisiert sich alle drei Sekunden.</p>
+    {% elif job.fertig %}
+    <p class="hint ok">Fertig. Die Dokumente stehen für RAG-Abfragen zur Verfügung.</p>
+    {% else %}
+    <p class="hint error">Der Job ist nicht sauber beendet worden{% if job.exit_code is not none %} (Exit {{ job.exit_code }}){% endif %}. {{ job.fehler }}</p>
+    {% endif %}
+  </section>
+
+  {% if job.dateien %}
+  <h2>Dateien</h2>
+  <ul>
+    {% for f in job.dateien %}<li><code>{{ f }}</code></li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if not job.laeuft %}
+  <p><a href="{{ job.weiter }}" class="btn btn-proposal">OK</a></p>
+  {% endif %}
+
+  <details {% if not job.fertig %}open{% endif %}>
+    <summary>Protokoll (letzte Zeilen)</summary>
+    <pre style="white-space: pre-wrap; font-size: 0.85rem;">{{ job.log_ende }}</pre>
+  </details>
+</article>
+{% endblock %}

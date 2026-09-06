@@ -1,0 +1,26 @@
+{% extends "kompass/layout.html" %}
+{# Kontext: target 'knowledge'|'proposal', fill_fields, fill_endpoint, readers (str), original_note #}
+{% block title %}Hochladen · Kompass{% endblock %}
+{% block head %}
+<h1>Hochladen</h1>
+<div class="kp-segment"><a href="/upload?target=knowledge" class="{% if target == 'knowledge' %}is-active{% endif %}">Wissen</a><a href="/proposals/new" class="{% if target == 'proposal' %}is-active{% endif %}">Projektantrag</a></div>
+{% endblock %}
+{% block content %}
+<form method="post" action="/upload" enctype="multipart/form-data" id="kp-upload" style="display:contents">
+  <input type="hidden" name="target" value="{{ target }}">
+  {% include "kompass/_dropin.html" %}
+  <div class="kp-footer">
+    <span class="kp-hint">Original bleibt · Ersteller und Zeit werden gespeichert · sichtbar für <span id="kp-readers">{{ readers }}</span></span>
+    <div style="display:flex;gap:8px"><button class="kp-btn" type="button" onclick="document.querySelectorAll('.kp-value.is-filled').forEach(c=>c.click())">Korrigieren</button><button class="kp-btn kp-btn-primary" type="submit" id="kp-save" disabled>Speichern</button></div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('kp:filled',e=>{document.getElementById('kp-save').disabled=false;if(e.detail.readers)document.getElementById('kp-readers').textContent=e.detail.readers;});
+// Nach erfolgreichem POST rendert der Server upload.html mit saved=True -> Feuerwerk + "Weiteres Wissen hochladen"
+{% if saved %}
+(function(){const b=document.createElement('div');b.className='kp-burst';const cols=['#0071e3','#34c759','#ff9f0a','#1d1d1f'];[[30,25],[58,20],[78,45]].forEach((o,oi)=>{for(let i=0;i<12;i++){const a=i/12*Math.PI*2,d=50+(i%3)*18,s=document.createElement('i');s.style.cssText=`left:${o[0]}%;top:${o[1]}%;background:${cols[(oi+i)%4]};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d+24}px;animation-delay:${oi*.25}s`;b.appendChild(s);}});document.querySelector('.kp-main').style.position='relative';document.querySelector('.kp-main').appendChild(b);setTimeout(()=>b.remove(),2500);})();
+{% endif %}
+</script>
+{% endblock %}

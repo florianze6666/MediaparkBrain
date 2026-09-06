@@ -1,0 +1,46 @@
+{% extends "kompass/layout.html" %}
+{# Eine Suche, zwei Listen. Kontext: q, treffer (wissenssuche.Treffer), such_fehler, hits (Vorschlaege).
+   Das Wissen kommt seit dem 06.09.2026 semantisch aus dem qmd-Index ueber den Korpus,
+   nicht mehr per Wortabgleich aus den Wiki-Seiten. Korpusdokumente sind keine Wiki-Seiten,
+   deshalb kein Link auf /knowledge/<slug>, sondern Pfad, Titel und Ausschnitt. #}
+{% block title %}Suche · Kompass{% endblock %}
+{% block head %}<h1>Suche</h1><span class="kp-crumb">{% if q %}„{{ q }}“ · {{ treffer | length }} Wissen · {{ hits | length }} Projekte{% else %}Suchbegriff oben eingeben{% endif %}</span>{% endblock %}
+{% block content %}
+<section class="kp-section" id="wissen">
+  <div class="kp-section-title">Wissen</div>
+  {% if such_fehler %}
+  <div class="kp-hint">Die Wissenssuche ist gerade nicht verfügbar: {{ such_fehler }}</div>
+  {% elif treffer %}
+  <div class="kp-table">
+    {% for t in treffer %}
+    <div class="kp-tr" style="grid-template-columns:1fr">
+      <div><span class="kp-name">{{ t.titel }}</span>
+        <span class="kp-sub"> · {{ t.collection }}</span>
+        <div class="kp-sub" style="font-size:12px;margin-top:2px"><code>{{ t.quelle }}</code></div>
+        <div class="kp-sub" style="font-size:13px;line-height:1.5;margin-top:4px">{{ t.ausschnitt }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif q %}<div class="kp-hint">Keine Treffer im Wissen, das Sie sehen dürfen.</div>
+  {% else %}<div class="kp-hint">Suchbegriff oben eingeben.</div>{% endif %}
+</section>
+<section class="kp-section" id="projekte">
+  <div class="kp-section-title">Projekte</div>
+  {% if hits %}
+  <div class="kp-table">
+    {% for h in hits %}
+    <div class="kp-tr" style="grid-template-columns:1fr">
+      <div><a class="kp-name" href="/proposals/{{ h.slug }}">{{ h.name }}</a>
+        <span class="kp-sub"> · {{ h.owner }}</span>
+        <div class="kp-sub" style="font-size:13px;line-height:1.5;margin-top:4px">{{ h.excerpt }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="kp-hint">Keine Treffer in den Projekten, die Sie sehen dürfen.</div>{% endif %}
+</section>
+<div class="kp-footer">
+  <span class="kp-hint">Gesperrtes taucht hier nicht auf — gesperrt ≠ nicht vorhanden</span>
+</div>
+{% endblock %}

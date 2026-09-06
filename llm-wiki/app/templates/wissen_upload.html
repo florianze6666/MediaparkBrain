@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Wissen erweitern{% endblock %}
+{% block content %}
+<article class="page">
+  <h1>Unternehmenswissen erweitern</h1>
+  <p class="meta-row">
+    <span>UC-03 · Dokumente werden nach Markdown gewandelt, bekommen den Korpus-Dokumentkopf und landen unter <code>corpus/erweiterung/</code> und im Wissensspeicher.</span>
+  </p>
+
+  {% if error %}
+  <div class="alert alert-danger" style="background: #fed7d7; color: #9b2c2c; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+    <strong>Fehler:</strong> {{ error }}
+  </div>
+  {% endif %}
+  {% if job_aktiv %}
+  <p class="hint">Es läuft gerade der Job <a href="/wissen/jobs/{{ job_aktiv }}"><code>{{ job_aktiv }}</code></a>. Ein neuer Upload wartet, bis er fertig ist.</p>
+  {% endif %}
+
+  {% if user == "gast" %}
+  <p class="hint">Als Gast kannst du kein Wissen hochladen. Wähle links eine Rolle.</p>
+  {% else %}
+  <form method="post" action="/wissen/upload" enctype="multipart/form-data" class="edit-form" style="background: #fff; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <div style="margin-bottom: 1.5rem; border: 2px dashed #cbd5e0; padding: 2rem; text-align: center; border-radius: 8px; background: #f8fafc;">
+      <label for="files" style="display: block; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; cursor: pointer;">
+        Eine oder mehrere Dateien auswählen
+      </label>
+      <div style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">
+        Formate: <strong>PDF, Word (DOCX), Excel (XLSX), Markdown (MD), Text (TXT)</strong>
+      </div>
+      <input type="file" id="files" name="files" multiple required accept=".pdf,.docx,.doc,.xlsx,.xls,.md,.txt" style="font-size: 1rem; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 4px; background: #fff;">
+    </div>
+
+    <fieldset style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+      <legend style="font-weight: 600; padding: 0 0.5rem; color: #334155;">Herkunft</legend>
+      <p style="margin: 0.25rem 0;">Rolle: <strong>{{ user_name }}</strong> (<code>{{ user }}</code>), wählbar links in der Seitenleiste.</p>
+      <p style="margin: 0.25rem 0;">Vertraulichkeit aus der Rollenvorgabe: <strong>{{ stufe }}</strong>. Ablageort: <code>erweiterung</code>.</p>
+      <p style="margin: 0.25rem 0; color: #64748b; font-size: 0.85rem;">Die weiteren Kopfdaten (Titel, Dokumenttyp, Datum, Verfasser) werden aus dem Inhalt abgeleitet.</p>
+    </fieldset>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <a href="/" class="btn" style="text-decoration: none;">Abbrechen</a>
+      <button type="submit" class="btn btn-proposal" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;" {% if job_aktiv %}disabled{% endif %}>
+        In die Wissensbasis aufnehmen
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</article>
+{% endblock %}

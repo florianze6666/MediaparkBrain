@@ -6,18 +6,18 @@ TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "test project da
 
 
 def test_extract_docx_real_project_charter():
-    docx_file = TEST_DATA_DIR / "__Project_Charter_M-Companion_anonymisiert 1.docx"
+    docx_file = TEST_DATA_DIR / "Project_Charter_HARBOR_Logistics.docx"
     assert docx_file.exists(), f"Testdatei nicht gefunden: {docx_file}"
     text = extractors.extract_docx(docx_file)
     assert text is not None
     assert len(text) > 100
-    assert "M-Companion" in text or "Companion" in text
+    assert "HARBOR" in text
     # Pruefen, dass Tabellen oder Absaetze extrahiert wurden
     assert "\n" in text
 
 
 def test_extract_xlsx_real_business_case():
-    xlsx_file = TEST_DATA_DIR / "__Business_Case_M-Companion_Company1.xlsx"
+    xlsx_file = TEST_DATA_DIR / "BC_2026_TANGENT_CorporateIT.xlsx"
     assert xlsx_file.exists(), f"Testdatei nicht gefunden: {xlsx_file}"
     text = extractors.extract_xlsx(xlsx_file)
     assert text is not None

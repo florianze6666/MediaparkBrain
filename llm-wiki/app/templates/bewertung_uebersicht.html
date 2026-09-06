@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+{% block title %}Projektbewertung{% endblock %}
+{% block content %}
+  <h1>Projektbewertung</h1>
+  <p class="hint">
+    Vier Experten-Agenten (Betriebsrat, CFO/Controlling, IT/Architektur/Cybersecurity,
+    CEO/Strategie) bewerten einen benannten Antrag nacheinander gegen die Wissensbasis,
+    ein geskripteter Orchestrator prüft zuerst die Vollständigkeit und führt danach die
+    Ergebnisse zusammen. Maßgeblich ist <code>Bewertungslogik_Experten-Agent.md</code>:
+    je Rolle ein Score von 0 bis 10 oder bewusst <strong>KEIN SCORE</strong>, wenn
+    Informationen fehlen. Ein Lauf dauert je Rolle mehrere Minuten.
+  </p>
+
+  <div class="risk-legend">
+    <span><i class="risk-dot" style="background:#2f9e6e"></i> 7–10: starke Priorisierungsempfehlung</span>
+    <span><i class="risk-dot" style="background:#f0ad4e"></i> 4–6: moderat / kritisch abzuwägen</span>
+    <span><i class="risk-dot" style="background:#d9534f"></i> 0–3: erhebliche Bedenken</span>
+    <span><i class="risk-dot" style="background:var(--border)"></i> ohne Score: Information fehlt</span>
+  </div>
+
+  {% if fehler == "laeuft" %}
+    <p class="hint error">Es läuft bereits ein Bewertungslauf. Bitte warten, bis er beendet ist.</p>
+  {% endif %}
+  {% if aktiv %}
+    <p class="hint">Gerade läuft: <code>{{ aktiv }}</code>. Es wird ein Lauf zugleich ausgeführt, weil sich die vier Agenten eine Wissensbasis teilen.</p>
+  {% endif %}
+
+  {% if not zeilen %}
+    <p class="hint">Keine Projektvorschläge sichtbar. <a href="/proposals/new">Vorschlag einreichen</a>.</p>
+  {% else %}
+  <div class="dashboard-table-wrap">
+    <table class="dashboard-table">
+      <thead>
+        <tr>
+          <th>Antrag</th>
+          <th>Letzter Lauf</th>
+          <th>Stand</th>
+          <th>Gesamtscore</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for z in zeilen %}
+        {% set p = z.proposal %}{% set l = z.lauf %}
+        <tr>
+          <td><a href="/proposals/{{ p.slug }}">{{ p.project_name }}</a></td>
+          <td>{% if l %}{{ l.gestartet_am | ts }}{% else %}<span class="hint-inline">noch nicht bewertet</span>{% endif %}</td>
+          <td>
+            {% if l %}
+              <span class="badge badge-status lauf-{{ l.status }}">{{ l.status_text }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if l and l.fertig and z.gesamt %}
+              <a href="/proposals/{{ p.slug }}/evaluation?lauf={{ l.lauf_id }}">
+                <span class="risk-badge {{ z.gesamt.gesamtscore | risk_class }}">{{ z.gesamt.gesamtscore | dezimal }}{% if z.gesamt.gesamtscore is not none %}/10{% endif %}</span>
+              </a>
+            {% elif l %}
+              <a href="/proposals/{{ p.slug }}/evaluation?lauf={{ l.lauf_id }}">{{ l.status_text }}</a>
+            {% else %}
+              –
+            {% endif %}
+          </td>
+          <td>
+            {% if user != "gast" %}
+            <form method="post" action="/proposals/{{ p.slug }}/evaluate" style="display:inline">
+              <button type="submit" class="btn btn-evaluate btn-small" {% if aktiv %}disabled{% endif %}>Bewerten</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+{% endblock %}

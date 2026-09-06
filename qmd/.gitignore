@@ -1,0 +1,44 @@
+# Alles Schwere und alles Generierte bleibt aus dem Repository heraus.
+# Zusammen mit dem Ordner selbst ist damit der Rueckbau ein einziger Loeschbefehl.
+
+node_modules/
+
+# Lokale GGUF-Modelle, rund 2 GB.
+# Pfad ergibt sich aus XDG_CACHE_HOME, das env.ps1 auf diesen Ordner setzt
+# (siehe node_modules/@tobilu/qmd/dist/llm.js, MODEL_CACHE_DIR).
+.cache/
+
+# Projektlokale QMD-Konfiguration und Suchindex, angelegt durch "qmd init".
+# Enthaelt index.yaml und index.sqlite (siehe dist/collections.js,
+# findLocalConfigPath und getLocalDbPath).
+.qmd/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Generierte Domaenen-Sicht auf corpus/ (Hardlinks, siehe Plan Abschnitt 5)
+view/
+
+# Zugangsdaten, falls jemals welche noetig werden (QMD selbst braucht keine)
+.env
+
+# Eigene Python-Umgebung des Agentenpfads (uv sync aus pyproject.toml);
+# uv.lock bleibt versioniert, die Umgebung nicht.
+.venv/
+
+# Generierte Testartefakte. Treiber und Fixture bleiben versioniert,
+# Berichte und Bewertungen eines Laufs nicht.
+eval/cfo_e2e_report.json
+eval/bewertungen.jsonl
+eval/report.md
+
+# Bench-Berichte und Protokolle eines Laufs (Fixtures bleiben versioniert)
+eval/bench_*.json
+eval/*.log
+eval/__pycache__/
+
+# Laeufe des Orchestrators (Zeilen, Protokolle, Zusammenfassungen; Plan 08 Abschnitt 5)
+laeufe/
+
+# Import- und Reset-Jobs des Wikis (Phase 5, UC-01 bis UC-03): Log und Status je Job
+jobs/

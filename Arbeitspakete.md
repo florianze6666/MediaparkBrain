@@ -13,21 +13,22 @@ der Tabelle und im Paket-Abschnitt und stellt einen kurzen PR.
 
 Jedes Paket hat genau einen Verantwortlichen. Wer ein Paket anfängt, arbeitet auf einem eigenen Branch
 (`<name>/<thema>`) und stellt einen PR nach `main`. Kleine PRs, oft mergen. Gemeinsame Basis ist das
-LLM-Wiki (FastAPI, Markdown-Seiten in `llm-wiki/pages/`, Fragen über `/ask`). Wer eine Schnittstelle
+LLM-Wiki (FastAPI, Markdown-Seiten in `llm-wiki/pages/`; Fragen laufen seit 06.09.2026 ausschließlich
+über den Embedding-Wissensspeicher `qmd/`, siehe `docs/wissensspeicher-qmd.md`). Wer eine Schnittstelle
 braucht, die ein anderes Paket liefert, spricht das kurz ab und baut solange gegen einen Platzhalter.
 
 | Nr | Paket | Verantwortlich | Zustand |
 |----|-------|----------------|---------|
 | 1 | Berechtigungen und Herkunft von Dokumenten | Anselm | ✅ Fertig |
-| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | 🟡 In Arbeit |
+| 2 | Datei-Upload und Überführung in die Wissensdatenbank | Ekkehardt | ✅ Fertig |
 | 3 | Funktionsbeschreibung des Systems | Florian | 🟡 In Arbeit |
-| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | 🟡 In Arbeit |
+| 4 | Bewertungslogik: Gab es das Projekt schon? | Marc | ✅ Fertig |
 | 5 | Upload-Feedback: pinker Rahmen und Sound | Oxana | 🟡 In Arbeit |
 | 6 | Statistik: Wie viele Dokumente sind drin? | Antje | 🟡 In Arbeit |
 | 7 | Ablage-Zuordnung hochgeladener Dateien | Frank | ⬜ Offen |
-| 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | 🟡 In Arbeit |
+| 8 | PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen | Florian | ✅ Fertig |
 | 9 | Erweitertes Berechtigungsmanagement: Herkunft überall, Admin-Dashboard, getrennte Ablage | Anselm | ✅ Fertig |
-| 10 | Quellenzitat zu jeder Antwort im „Frag das Wiki“ | Florian | ⬜ Offen |
+| 10 | Quellenzitat zu jeder Antwort der Embedding-Suche | Florian | ⬜ Offen |
 
 ---
 
@@ -57,8 +58,7 @@ Ablageort nutzt.
 
 ## 2. Datei-Upload und Überführung in die Wissensdatenbank — Ekkehardt
 
-**Zustand:** 🟡 In Arbeit
-
+**Zustand:** ✅ Fertig (PR #24 gemerged: Upload mit Textextraktion für PDF, DOCX, XLSX, MD, TXT und LLM-Kopfdaten)
 
 **Ziel:** Nutzer laden Dateien (PDF, DOCX, XLSX, MD, TXT) hoch, der Inhalt landet durchsuchbar im Wiki.
 
@@ -69,8 +69,8 @@ Ablageort nutzt.
 - Metadaten aus Paket 1 werden beim Upload gesetzt (mindestens: Uploader, Zeitpunkt).
 
 **Fertig wenn**
-- Ein Project Charter aus `test project data/` lässt sich hochladen und taucht danach als Quelle unter
-  „Frag das Wiki" auf.
+- Ein Project Charter aus `test project data/` lässt sich hochladen und taucht danach als Wikiseite mit
+  Inhalt auf (Wissensbasis für die Embedding-Suche in `qmd/`).
 
 **Schnittstellen:** Paket 5 hängt sich an das Upload-Erfolgsereignis, Paket 6 zählt die Ergebnisse.
 
@@ -97,7 +97,7 @@ Ablageort nutzt.
 
 ## 4. Bewertungslogik: Gab es das Projekt schon? — Marc
 
-**Zustand:** 🟡 In Arbeit (PR #17 und #21 gemerged: Einreichung mit Namens-Dublettenprüfung)
+**Zustand:** ✅ Fertig (PR #17, #21 und #29 gemerged: Einreichung mit Namens- und Hash-Dublettenprüfung)
 
 **Ziel:** Ein neuer Projektvorschlag wird gegen die vorhandenen Projekte abgeglichen. Das System sagt:
 „Das gab es schon", mit Verweis auf das bestehende Projekt.
@@ -173,16 +173,15 @@ Ablageort nutzt.
 
 ## 8. PDF-Einlesen: Inhalt hochgeladener PDFs durchsuchbar machen — Florian
 
-**Zustand:** 🟡 In Arbeit
+**Zustand:** ✅ Fertig (PR #27 gemerged: pdfplumber, Folien- und Fließtexterkennung, Tabellen, Abweisung von Bild-PDFs)
 
-**Ziel:** Wer im Datei-Upload ein PDF hochlädt, findet dessen **Inhalt** anschließend unter „Frag das
-Wiki" wieder — nicht nur den Dateinamen.
+**Ziel:** Wer im Datei-Upload ein PDF hochlädt, findet dessen **Inhalt** anschließend über die
+Embedding-Suche wieder — nicht nur den Dateinamen.
 
 **Ausgangslage:** Unter `/proposals/new` lassen sich bereits Dateien hochladen, sie landen aber
 unverändert als Bytes in `project_proposals/uploads/<slug>/`. Es findet **keine Textextraktion** statt,
-und die erzeugte Markdown-Datei listet nur die Dateinamen. Da `search_snippets()` ausschließlich
-`llm-wiki/pages/` durchsucht, ist der Inhalt eines hochgeladenen PDFs heute für keine Frage
-auffindbar (siehe `docs/FUNKTIONSWEISE.md`, Abschnitt 4.6).
+und die erzeugte Markdown-Datei listet nur die Dateinamen. Ohne Textextraktion ist der Inhalt eines
+hochgeladenen PDFs für keine Frage auffindbar (siehe `docs/FUNKTIONSWEISE.md`, Abschnitt 4.6).
 
 **Technologieentscheidung: Textlayer zuerst, OCR nur als Notfall.**
 Digital erzeugte PDFs — Exporte aus Word, Excel, PowerPoint, also praktisch alle Projektunterlagen —
@@ -207,7 +206,7 @@ wenn tatsächlich gescannte PDFs auftauchen.
 - Seitenzahl als Belegstelle mitführen, damit eine Aussage im Original nachprüfbar bleibt.
 
 **Fertig wenn**
-- Ein PDF wird hochgeladen; eine Frage nach einem Detail daraus liefert unter „Frag das Wiki" einen
+- Ein PDF wird hochgeladen; eine Frage nach einem Detail daraus liefert über die Embedding-Suche einen
   Absatz aus genau diesem PDF als Quelle.
 - Ein PDF ohne Textlayer wird mit verständlicher Meldung abgelehnt und hinterlässt keine leere Seite.
 
@@ -240,20 +239,25 @@ Frontmatter-Schema aus Paket 1 und den Ablageort aus Paket 7. Paket 6 zählt die
 
 ---
 
-## 10. Quellenzitat zu jeder Antwort im „Frag das Wiki" — Florian
+## 10. Quellenzitat zu jeder Antwort der Embedding-Suche — Florian
 
 **Zustand:** ⬜ Offen
+
+Hinweis 06.09.2026: Die Route `/ask` ist entfernt. Quellenzitate kommen seither über die API-Zitate der
+Bewertungsläufe (`qmd/agenten/treiber.py`, Anzeige je Rolle als aufklappbarer Beleg in
+`llm-wiki/app/bewertung.py`). Das Paket zielt damit auf die Darstellung dieser Zitate, nicht mehr auf
+eine Frage-Route.
 
 **Ziel:** Keine Aussage ohne Beleg. Zu jedem Fakt, den das Wiki liefert, steht **darüber** eine
 Zitatbox mit dem wörtlichen Satz aus dem Originaldokument, aus dem dieser Fakt stammt.
 
-**Ausgangslage:** Heute liefert `/ask` einen Fließtext von Claude und darunter, getrennt davon, eine
-Liste der gefundenen Ausschnitte. Wer die Antwort liest, sieht nicht, welcher Satz welche Aussage
-trägt — und ob überhaupt einer.
+**Ausgangslage:** Die Frage-Route `/ask` der App ist am 06.09.2026 entfernt; Antworten entstehen aus
+den Treffern des Embedding-Wissensspeichers `qmd/`. Der CFO-Ende-zu-Ende-Test (`qmd/eval/cfo_e2e.py`)
+belegt Aussagen bereits über `document`-Blöcke mit `citations`; in der App fehlt diese Darstellung.
 
 **Umfang**
 - Die Antwort wird **strukturiert** statt als ein Textblock: eine Liste von Fakten, jeder mit
-  wörtlichem Zitat, Seitentitel und Link auf die Wiki-Seite. Dafür gibt `llm.ask_llm()` ein
+  wörtlichem Zitat, Seitentitel und Link auf die Wiki-Seite. Dafür liefert die Antwortfunktion ein
   festes Format zurück, statt freien Text.
 - **Darstellung:** Über jedem Fakt eine abgesetzte Zitatbox — typografische Anführungszeichen,
   Serifenschrift, linker Balken, gedämpfter Hintergrund. Darunter, in der normalen Schrift, die
@@ -275,8 +279,8 @@ trägt — und ob überhaupt einer.
 - Die Zitate stammen ausschließlich aus Seiten, die der Fragende sehen darf — der Rechtefilter aus
   Paket 1 bleibt wirksam, auch für die Zitattexte.
 
-**Schnittstellen:** Nutzt die Treffer aus `wiki.search_snippets()`, die Paket 1 bereits nach Rechten
-filtert. Die Seitenzahl als Belegstelle kommt aus Paket 8. Für die Experten-Agenten aus `PLAN.md` §8
+**Schnittstellen:** Nutzt die Treffer der Embedding-Suche in `qmd/`, die über Collections je
+Rechteklasse gefiltert sind (`qmd/ingest/rollen.py`). Die Seitenzahl als Belegstelle kommt aus Paket 8. Für die Experten-Agenten aus `PLAN.md` §8
 ist das die Vorarbeit: deren `assessment` soll später genauso belegt sein.
 
 ---

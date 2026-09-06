@@ -1,0 +1,45 @@
+{# Kompass Shell — ersetzt layout.html. Erwartet: current_user {display_name, initials, key}, visible_domains (list), active (str), collapsed (bool) #}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Kompass{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='kompass.css') }}">
+</head>
+<body>
+<div class="kp-app{% if collapsed %} is-collapsed{% endif %}" id="kp-app">
+  <aside class="kp-side">
+    <div class="kp-brand">
+      <a href="/"><span class="kp-logo"></span><span class="kp-label">Kompass</span></a>
+      <button class="kp-collapse" type="button" onclick="kpToggleSidebar()" aria-label="Menü einklappen">‹</button>
+    </div>
+    <nav class="kp-nav">
+      <a href="/" class="{% if active == 'dashboard' %}is-active{% endif %}"><span class="kp-label">Dashboard</span></a>
+      <a href="/proposals" class="{% if active == 'proposals' %}is-active{% endif %}"><span class="kp-label">Anträge</span></a>
+      <a href="/knowledge" class="{% if active == 'knowledge' %}is-active{% endif %}"><span class="kp-label">Wissen</span></a>
+      <a href="/upload" class="{% if active == 'upload' %}is-active{% endif %}"><span class="kp-label">Hochladen</span></a>
+    </nav>
+    <div class="kp-side-bottom">
+      <a href="/principles" class="kp-secondary kp-label">Grundsätze</a>
+      <a href="/settings" class="kp-user {% if active == 'settings' %}is-active{% endif %}">
+        <span class="kp-avatar">{{ current_user.initials }}</span>
+        <span class="kp-label">{{ current_user.display_name }}</span>
+        <span class="kp-gear kp-label">⚙</span>
+      </a>
+    </div>
+  </aside>
+  <main class="kp-main">
+    <div class="kp-head">
+      <div class="kp-head-title">{% block head %}{% endblock %}</div>
+      <form action="/search" method="get"><input class="kp-search" type="search" name="q" placeholder="Wissen und Projekte durchsuchen" value="{{ q or '' }}"></form>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+function kpToggleSidebar(){const a=document.getElementById('kp-app');a.classList.toggle('is-collapsed');document.cookie='kp_collapsed='+(a.classList.contains('is-collapsed')?'1':'0')+';path=/;max-age=31536000';}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

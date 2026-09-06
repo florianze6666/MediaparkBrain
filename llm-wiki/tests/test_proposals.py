@@ -167,3 +167,23 @@ def test_doppelter_name_bleibt_409(client):
     r = _submit(client, "cfo", "Doppelt")
     assert r.status_code == 409
     assert "bereits eingereicht" in r.text
+
+FILE_RAW = (
+    "---\nproject_id: BC-2026-0001\nproject_name: \"Datei-Antrag\"\nclassification: internal\n---\n\n"
+    "# Projektvorschlag\n\n## Beschreibung des vorgeschlagenen Vorhabens\n\nText aus der Datei.\n\n"
+    "## Business Case\n\nROI 3,1\n"
+)
+
+
+def test_datei_antrag_ohne_beschreibungsabschnitt_liefert_body(pages_env):
+    """Charter, Business Case und Marcs Format haben kein '## Beschreibung':
+    dann ist der Body nach der Titelzeile die Beschreibung (Fallback)."""
+    import app.proposals as proposals
+
+    proposals.proposals_dir().mkdir(parents=True, exist_ok=True)
+    (proposals.proposals_dir() / "datei-antrag.md").write_text(FILE_RAW, encoding="utf-8")
+    p = proposals.get_proposal("datei-antrag")
+    assert p.project_name == "Datei-Antrag"
+    assert "Text aus der Datei." in p.description and "ROI 3,1" in p.description
+    assert not p.description.startswith("# ")
+    assert p.files == []

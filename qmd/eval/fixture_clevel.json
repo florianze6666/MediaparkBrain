@@ -1,0 +1,17 @@
+{
+  "description": "MediaparkBrain Stufe 1: Retrieval auf der ausgeschlossenen Collection clevel. Laeuft nur mit -c clevel; ohne das Flag darf das Dokument nicht auftauchen (Rechtemodell).",
+  "version": 1,
+  "collection": "clevel",
+  "queries": [
+    {
+      "id": "07-ergebniswirkung-gf",
+      "query": "Wie hat die Geschaeftsfuehrung 2013 die finanzielle Wirkung des Glashuettenauftrags bewertet und welche Regel fuer kuenftige Angebote wurde daraus abgeleitet?",
+      "type": "semantic",
+      "description": "Management Summary des geschaeftsfuehrenden Gesellschafters (Nullgeschaeft, Annahme weder gemessen noch belegt)",
+      "expected_files": [
+        "sharepoint_gf/glaswerk-nord-margenverlust-durch-/2013/2013-06-16-ergebnisauswirkung-fuer-die-geschaeftsfuehrung-zusam.md"
+      ],
+      "expected_in_top_k": 3
+    }
+  ]
+}

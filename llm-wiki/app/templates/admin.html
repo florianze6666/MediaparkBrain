@@ -139,6 +139,48 @@
     <button type="submit" class="btn btn-small">Anlegen</button>
   </form>
 
+  <h2 id="wissen">Wissensmanagement zurücksetzen und importieren</h2>
+  <p class="page-meta">
+    <span>Korpus: <strong>{{ korpus_anzahl }}</strong> Markdown-Dokumente unter <code>corpus/</code></span>
+    <span>Projektanträge: <strong>{{ antraege_anzahl }}</strong></span>
+    {% if job_aktiv %}<span class="error">Es läuft gerade der Job <code>{{ job_aktiv }}</code></span>{% endif %}
+  </p>
+  <p class="hint">Zwei getrennte Bereiche (UC-01). Jeder Reset verlangt das Wort <code>RESET</code> im Feld daneben.</p>
+  <div class="admin-reset">
+    <form method="post" action="/admin/reset/wissen" class="admin-inline-form">
+      <label>Bestätigung <input type="text" name="bestaetigung" placeholder="RESET" autocomplete="off" class="admin-input" required></label>
+      <button type="submit" class="btn btn-small danger" {% if job_aktiv %}disabled{% endif %}>Unternehmenswissen zurücksetzen</button>
+      <span class="field-hint">leert die Collections intern, br, clevel im Index; <code>corpus/</code> bleibt</span>
+    </form>
+    <form method="post" action="/admin/import/corpus" class="admin-inline-form">
+      <button type="submit" class="btn btn-small" {% if job_aktiv %}disabled{% endif %}>Korpus importieren ({{ korpus_anzahl }} Dokumente)</button>
+      <span class="field-hint">Sicht, Index und Einbettung mit Fortschritt „n von {{ korpus_anzahl }}“ (UC-02)</span>
+    </form>
+    <form method="post" action="/admin/reset/antraege" class="admin-inline-form">
+      <label>Bestätigung <input type="text" name="bestaetigung" placeholder="RESET" autocomplete="off" class="admin-input" required></label>
+      <button type="submit" class="btn btn-small danger" {% if job_aktiv %}disabled{% endif %}>Projektanträge zurücksetzen</button>
+      <span class="field-hint">löscht Antragsdateien, Uploads und Bewertungsläufe und leert die Collection antraege</span>
+    </form>
+  </div>
+  {% if jobs %}
+  <div class="dashboard-table-wrap">
+    <table class="dashboard-table admin-table">
+      <thead><tr><th>Gestartet</th><th>Job</th><th>Von</th><th>Stand</th><th>Fortschritt</th></tr></thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td>{{ j.gestartet_am | ts }}</td>
+          <td><a href="/wissen/jobs/{{ j.job_id }}">{{ j.titel }}</a></td>
+          <td>{{ j.gestartet_von | user_name }}</td>
+          <td>{{ j.status_text }}</td>
+          <td><code>{{ j.fortschritt }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <h2 id="protokoll">Protokoll (letzte {{ changelog | length }})</h2>
   {% if changelog %}
     <ul class="admin-log">

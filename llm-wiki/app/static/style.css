@@ -313,10 +313,48 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 }
 .dashboard-table th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
 .dashboard-table td.empty { color: var(--muted); text-align: center; padding: 24px; }
+.dashboard-table tbody tr:hover { background: var(--panel); }
+.dashboard-table th.col-center, .dashboard-table td.col-center { text-align: center; }
 
-.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-new { background: rgba(50, 205, 50, 0.18); color: #6fe06f; }
 .badge-update { background: rgba(110, 168, 254, 0.18); color: var(--accent); }
+
+/* --- Dashboard "Letzte Dokumente": Titel einzeilig, per Klick aufklappbar --- */
+.doc-title-cell { display: flex; align-items: center; gap: 6px; max-width: 320px; }
+.doc-title-link {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-title-cell.expanded { max-width: none; }
+.doc-title-cell.expanded .doc-title-link { white-space: normal; overflow: visible; }
+.title-expand-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  font-size: 12px;
+  cursor: pointer;
+}
+.title-expand-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* --- Dashboard "Projektanträge" --- */
+.doc-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 12px;
+}
 
 /* --- Projektbewertung: gaengiges Ampel-Colour-Coding (Rot/Gelb/Gruen) fuer
    Risk-/Portfolio-Reports. Bewusst die etablierten RAG-Statusfarben statt der
@@ -456,3 +494,27 @@ h1 { font-size: 26px; margin-bottom: 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 11px; }
 .hint.ok { border-color: #2f9e6e; color: #7fd4a8; }
+
+/* --- Bewertungslaeufe (Phase 4): Fortschritt, Status, Beleg --- */
+.btn-small { padding: 4px 10px; font-size: 12px; }
+.lauf-laeuft { background: rgba(110, 168, 254, 0.18); color: var(--accent); }
+.lauf-fertig { background: rgba(47, 158, 110, 0.18); color: #7fd4a8; }
+.lauf-gate, .lauf-vorbedingung { background: rgba(240, 173, 78, 0.18); color: #f5c987; }
+.lauf-abgebrochen { background: rgba(217, 83, 79, 0.18); color: #f19a97; }
+.lauf-fortschritt { list-style: none; padding: 0; margin: 12px 0 0; }
+.lauf-fortschritt li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.fortschritt-mark { display: inline-block; width: 22px; font-weight: 700; }
+.fortschritt-fertig .fortschritt-mark { color: #7fd4a8; }
+.fortschritt-fehler .fortschritt-mark { color: #f19a97; }
+.fortschritt-laeuft .fortschritt-mark { color: var(--accent); }
+.fortschritt-offen { color: var(--muted); }
+.eval-role .hinweis { color: var(--text); }
+.eval-role .quellen code, .beleg code { font-size: 11px; overflow-wrap: anywhere; }
+.beleg { margin-top: 10px; font-size: 13px; }
+.beleg summary { cursor: pointer; color: var(--accent); }
+.beleg blockquote { margin: 4px 0; padding-left: 10px; border-left: 3px solid var(--accent-purple); font-style: italic; color: var(--text); }
+.essay, .log-ende { white-space: pre-wrap; font-family: inherit; font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--muted); }
+.fehlerliste li { color: #f19a97; }
+.lauf-aktionen { margin: 20px 0; }
+.lauf-liste { list-style: none; padding: 0; }
+.lauf-liste li { padding: 4px 0; font-size: 13px; }

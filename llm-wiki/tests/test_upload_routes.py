@@ -7,14 +7,15 @@ TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "test project da
 
 
 def test_upload_form_get(client):
-    res = client.get("/upload", cookies=as_user("projektmanager"))
+    # /upload zeigt jetzt die Kompass-Maske; die alte Maske liegt unter ?classic=1
+    res = client.get("/upload?classic=1", cookies=as_user("projektmanager"))
     assert res.status_code == 200
     assert "Datei hochladen" in res.text
     assert "Unterstützte Formate" in res.text
 
 
 def test_upload_docx_and_search(client, pages_env):
-    docx_file = TEST_DATA_DIR / "__Project_Charter_M-Companion_anonymisiert 1.docx"
+    docx_file = TEST_DATA_DIR / "Project_Charter_HARBOR_Logistics.docx"
     assert docx_file.exists()
 
     with open(docx_file, "rb") as f:
@@ -22,7 +23,7 @@ def test_upload_docx_and_search(client, pages_env):
 
     res = client.post(
         "/upload",
-        files={"file": ("Project_Charter_M_Companion.docx", file_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={"file": ("Project_Charter_HARBOR_Logistics.docx", file_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
         data={"vertraulichkeit": "intern", "domaene": "projekt"},
         cookies=as_user("projektmanager"),
     )
@@ -35,10 +36,10 @@ def test_upload_docx_and_search(client, pages_env):
     assert page_res.status_code == 200
     assert "Quelle: Upload" in page_res.text
 
-    # Pruefen, dass die Seite als Such-Snippet fuer 'Companion' gefunden wird
-    snippets = wiki.search_snippets("Companion", user="projektmanager")
-    assert len(snippets) > 0
-    assert any("Companion" in s.page.title or "Companion" in s.paragraph for s in snippets)
+    # Pruefen, dass der Inhalt auf der Seite steht (Wissensbasis fuer die Embedding-Suche)
+    assert "HARBOR" in page_res.text
+    assert any("HARBOR" in p.title or "HARBOR" in p.content
+               for p in wiki.list_pages("projektmanager"))
 
 
 def test_upload_c_level_confidentiality_isolation(client, pages_env):
@@ -65,13 +66,13 @@ def test_upload_c_level_confidentiality_isolation(client, pages_env):
     res_mitarbeiter = client.get(redirect_url, cookies=as_user("mitarbeiter"))
     assert res_mitarbeiter.status_code == 404
 
-    # Suche: Mitarbeiter findet nichts, CEO findet es
-    assert len(wiki.search_snippets("Rothenberg", user="mitarbeiter")) == 0
-    assert len(wiki.search_snippets("Rothenberg", user="ceo")) > 0
+    # Seitenliste: Mitarbeiter sieht die Seite nicht, CEO schon
+    assert not any("Rothenberg" in p.content for p in wiki.list_pages("mitarbeiter"))
+    assert any("Rothenberg" in p.content for p in wiki.list_pages("ceo"))
 
 
 def test_api_extract_document_prepopulate(client):
-    docx_file = TEST_DATA_DIR / "__Project_Charter_M-Companion_anonymisiert 1.docx"
+    docx_file = TEST_DATA_DIR / "Project_Charter_HARBOR_Logistics.docx"
     assert docx_file.exists()
 
     with open(docx_file, "rb") as f:
@@ -79,7 +80,7 @@ def test_api_extract_document_prepopulate(client):
 
     res = client.post(
         "/api/extract-document",
-        files={"file": ("Project_Charter_M_Companion.docx", file_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={"file": ("Project_Charter_HARBOR_Logistics.docx", file_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
         cookies=as_user("projektmanager"),
     )
     assert res.status_code == 200

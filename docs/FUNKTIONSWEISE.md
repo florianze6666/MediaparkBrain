@@ -23,7 +23,7 @@ Verwirrung, deshalb steht er ganz vorn.
 
 | | **A: Demo-Korpus** | **B: Upload** |
 |---|---|---|
-| Was | 216 vorbereitete Dokumente der fiktiven Lahnberg Thermotechnik GmbH | Dateien, die ein Nutzer im Betrieb hochlädt |
+| Was | 218 vorbereitete Dokumente der fiktiven Lahnberg Thermotechnik GmbH | Dateien, die ein Nutzer im Betrieb hochlädt |
 | Wo | `corpus/`, 9 Ablageorte, Zeitraum 2011–2025 | `llm-wiki/pages/` + Ablage der Originaldatei |
 | Format | Markdown mit YAML-Frontmatter (13 Metadatenfelder) | PDF, DOCX, XLSX, MD, TXT → wird zu Markdown |
 | Status | **liegt im Repo** | **Zielbild, Arbeitspaket 2** |
@@ -129,7 +129,7 @@ flowchart TD
     F --> G["5 Metadaten + Ablageort<br/>Uploader · Datum · Vertraulichkeit<br/>ablageort: projektlaufwerk"]
     G --> H["6 Schreiben<br/>Original in die Ablage<br/>Seite nach llm-wiki/pages/"]
     H --> I["7 Rückmeldung<br/>pinker Rahmen + Sound · Zähler"]
-    H --> K["Ab sofort Quelle<br/>für 'Frag das Wiki'"]
+    H --> K["Ab sofort Wissensbasis<br/>für die Embedding-Suche"]
 ```
 
 ### 4.3 Die sieben Schritte, konkret
@@ -236,34 +236,31 @@ aufzumachen.
 
 ### 4.5 Und so taucht es in einer Abfrage auf
 
-Jemand fragt unter „Frag das Wiki":
+Die Frage-Route „Frag das Wiki" (`/ask`, Wortabgleich über `pages/`) ist am 06.09.2026
+entfernt worden. Die einzige Suche ist die Embedding-Suche im Teilprojekt `qmd/`
+(siehe [Wissensspeicher qmd](wissensspeicher-qmd.md)): Dokumente werden in Chunks von
+900 Token mit `nvidia/Nemotron-3-Embed-1B` eingebettet, eine Frage wird als Vektor gesucht,
+mit BM25 fusioniert und von einem Reranker neu geordnet. Beispiel:
 
-> **Wie hoch sind die One-Off-Kosten für CONI?**
+```powershell
+cd qmd; . .\env.ps1
+.\node_modules\.bin\qmd.ps1 query "Wie hoch sind die One-Off-Kosten für CONI?" -n 5
+```
 
-Das Wiki zerlegt die Frage in Wörter und vergleicht sie absatzweise mit allen Seiten. Diese
-Werte sind **nachgerechnet**, nicht geschätzt:
+**Offen:** Der Wissensspeicher indiziert heute `corpus/`. Hochgeladene Wikiseiten unter
+`llm-wiki/pages/` sind noch nicht angebunden; bis dahin ist der Inhalt eines Uploads über
+keine Abfrage auffindbar.
 
-| Absatz auf der Seite | erkannte Wörter | Überschneidung | Score |
-|---|---|---|---|
-| `TotalOne-Off 450 T€` (roh übernommen) | `450, off, t, totalone` | `off` | **0,11** |
-| `**Total One-Off:** 450 T€` (normalisiert) | `450, off, one, t, total` | `off, one` | **0,22** |
-| `**Iteration Value:** 180 T€` | `180, iteration, t, value` | – | **0,00** |
-
-Die Normalisierung aus Schritt 3 **verdoppelt** den Score desselben Inhalts. Die besten fünf
-Absätze gehen anschließend als Kontext an Claude, das ausschließlich daraus antwortet und die
-verwendeten Seitentitel nennt (`llm-wiki/app/llm.py`).
-
-Daran hängt die wichtigste Einsicht für die Dateiverarbeitung: **Die Qualität der Extraktion
-entscheidet über die Auffindbarkeit, nicht die Qualität des Prompts.** Was beim Einlesen zu
-einer Textwand verklebt oder als Wortsalat ankommt, ist danach nicht mehr zu retten.
+Die Einsicht für die Dateiverarbeitung bleibt: **Die Qualität der Extraktion entscheidet
+über die Auffindbarkeit, nicht die Qualität des Prompts.** Eine Textwand oder Wortsalat
+beim Einlesen ergibt auch als Embedding keinen brauchbaren Treffer.
 
 ### 4.6 Die Originaldatei wird bei einer Abfrage nie geöffnet
 
 Das ist die zentrale Architekturentscheidung, und sie steht so im Code:
 
-- `search_snippets()` durchläuft ausschließlich `pages/*.md` (`llm-wiki/app/wiki.py:82`).
-- `ask_llm()` bekommt als Kontext nur die gefundenen **Absatztexte** aus diesen Seiten
-  (`llm-wiki/app/llm.py:25`).
+- Die Embedding-Suche in `qmd/` indiziert ausschließlich Markdown-Dateien (Chunks von 900 Token) und liefert Ausschnitte daraus.
+- Der CFO-Ende-zu-Ende-Test (`qmd/eval/cfo_e2e.py`) übergibt dem Modell nur die Volltexte der gefundenen **Markdown-Dokumente** als `document`-Blöcke.
 - Es gibt **keine Stelle im Code, die eine PDF-, DOCX- oder XLSX-Datei zur Fragezeit öffnet.**
 
 Daraus folgt die Regel, an der die ganze Dateiverarbeitung hängt:
@@ -294,7 +291,7 @@ dass jemand die Datei erneut hochladen muss.
 
 ## 5. Das Metadaten-Schema
 
-Der Demo-Korpus gibt das Schema bereits vor — **alle 216 Dokumente** tragen dieselben
+Der Demo-Korpus gibt das Schema bereits vor — **217 der 218 Dokumente** tragen dieselben
 13 Felder im YAML-Frontmatter. Der Upload sollte dieselben Felder füllen, sonst zerfällt die
 Wissensbasis in zwei Welten.
 
@@ -318,7 +315,8 @@ ablageort: it_doku                   # einer von 9 Ablageorten
 
 Drei Felder tragen die Logik des Gesamtsystems:
 
-- **`vertraulichkeit`** — im Korpus 180× `intern`, 23× `C-Level`, 13× `Betriebsrat-intern`.
+- **`vertraulichkeit`** — im Korpus 181× `intern`, 23× `C-Level`, 13× `Betriebsrat-intern`; `ATTRIBUTION.md` hat
+  keinen Kopf und gilt als intern.
   Daran hängt Arbeitspaket 1: Treffer, die der Fragende nicht sehen darf, dürfen dem LLM gar
   nicht erst vorgelegt werden. Das ist die technische Umsetzung der Informationsgrenzen aus
   `PLAN.md` §4.
@@ -341,7 +339,7 @@ Die 9 Ablageorte im Korpus mit ihrer Dokumentzahl:
 
 Im Repo liegen zwei unvereinbare Frontmatter-Varianten, und beide sind gepflegt:
 
-| | `corpus/*.md` (216 Dateien) | `project_proposals/*.md` (4 Dateien) |
+| | `corpus/*.md` (218 Dateien) | `project_proposals/*.md` (4 Dateien) |
 |---|---|---|
 | Sprache der Schlüssel | deutsch | englisch |
 | Felder | 13 | 11 |
@@ -356,7 +354,7 @@ sonst erzeugt Paket 2 Seiten, die entweder die Zugriffsprüfung (Paket 1) oder d
 (Paket 6) nicht bedienen können.
 
 **Vorschlag zur Klärung:** Das Korpus-Schema ist die Grundlage — es ist das umfangreichere, das
-belegtere (216 gegen 4 Dateien) und das einzige, das `vertraulichkeit`, `ablageort` und `datum`
+belegtere (218 gegen 4 Dateien) und das einzige, das `vertraulichkeit`, `ablageort` und `datum`
 mitbringt, also genau die drei Felder, an denen Rechte, Ablage und Aktualität hängen. Die
 projektspezifischen Felder kommen **zusätzlich** dazu, wenn `dokumenttyp` ein Projektdokument
 ist:
@@ -484,26 +482,32 @@ landen `doc_id` und `vertraulichkeit` als durchsuchbarer Inhalt in der Wissensba
 
 | Aus `PLAN.md` | Stand |
 |---|---|
-| §3 Wissensbasis als RAG-System | **teilweise** — Retrieval existiert, aber als Wortabgleich statt Embeddings |
-| §3 Realistischer Korpus mit Widersprüchen und Zeitbezug | **vorhanden** als `corpus/` (216 Dok., 2011–2025), **noch nicht** an die Anwendung angebunden |
-| §3 Rückführung neuen Wissens (*Retrieve → … → Store → Reuse*) | **offen** — der Upload-Weg ist die Vorstufe dazu |
-| §4 Zugriffsrechte, Informationsklassifikation, Herkunft | **im Schema angelegt** (`vertraulichkeit`, `verfasser`, `informationsdomaene`), **nicht durchgesetzt** — Paket 1 |
-| §5 Orchestrator-Agent | **offen** |
-| §6 Vier Experten-Agenten | **eine Rolle** liegt als Dokument vor: `bewertungen/cfo-bewertung-projektportfolio.md`; keine Agenten im Code |
-| §8 Output-Schema | **uneinheitlich, siehe unten** |
+| §3 Wissensbasis als RAG-System | **teilweise** — die Wortsuche der App ist am 06.09.2026 entfernt; die einzige Suche ist die Embedding-Suche im Teilprojekt `qmd/` (siehe [Wissensspeicher qmd](wissensspeicher-qmd.md)) über `corpus/`, noch nicht an die App und an `pages/` angebunden |
+| §3 Realistischer Korpus mit Widersprüchen und Zeitbezug | **vorhanden** als `corpus/` (218 Dok., 2011–2025), seit dem 06.09.2026 über den Orchestrator (Phase 4) und Import, Reset und Wissens-Upload (Phase 5) an die Anwendung angebunden; Wiki-Seiten unter `pages/` weiter nicht indiziert |
+| §3 Rückführung neuen Wissens (*Retrieve → … → Store → Reuse*) | **teilweise** — Anwender laden Wissen über `/wissen/upload` nach `corpus/erweiterung/` und in den Index (Phase 5); die Rückführung aus Agentenläufen (FR-12) bleibt offen, der Web-Skill fehlt |
+| §2 Completeness Check | **gebaut**: `qmd/agenten/gate.py` prüft die fünfzehn Mindestangaben; fällt ein Antrag durch, zeigt das Wiki die Informationsanforderung statt eine Bewertung zu starten |
+| §4 Zugriffsrechte, Informationsklassifikation, Herkunft | **durchgesetzt**: im Wiki über `access.decide` und die Ordner-Schranke (Paket 1 und 9), für Agenten über Collections je Rolle (`qmd/ingest/rollen.py`, AE-03) |
+| §5 Orchestrator-Agent | **gebaut** als geskripteter Orchestrator unter `qmd/agenten/` (Gate, vier Rollen nacheinander, Kapitel 16); das Wiki startet ihn je Antrag über „Projektbewertung" und zeigt Fortschritt und Ergebnis (`app/bewertung.py`) |
+| §6 Vier Experten-Agenten | **generischer Treiber** je Rolle in `qmd/agenten/treiber.py` mit Personas aus `persona/`; Ende-zu-Ende belegt bisher nur für den CFO (`qmd/eval/cfo_e2e.py`), vier Rollen im Lauf T5 ausstehend; die Wiki-App zeigt je Rolle das Kapitel-17-Objekt |
+| §8 Output-Schema | **entschieden**: ein Score 0–10, Kapitel 17 |
 | Externe Recherche / Web-Skill | **offen** |
 
-**Ein offener Widerspruch, der geklärt gehört:** `PLAN.md` §8 verlangt pro Agent *drei* Scores
-(`value_score`, `risk_score`, `strategy_score`) auf einer Skala 0–100 im Format JSONL.
-`Bewertungslogik_Experten-Agent_MVP.md` verlangt *einen* Score auf einer Skala 0–10 und verbietet
-ausdrücklich jede Bewertung bei fehlenden Informationen. Die bereits erstellte CFO-Bewertung folgt
-der zweiten Variante. Solange das nicht entschieden ist, kann der Orchestrator die vier
-Stellungnahmen nicht zusammenführen — das trifft Paket 4 und die späteren Agenten-Pakete.
+**Das Output-Schema ist entschieden:** *ein* Score je Rolle auf einer Skala 0 bis 10, dazu
+`status`, `begruendung` und `fehlende_informationen`; bei fehlenden Informationen ist der Score
+`null` und kein Ersatzwert erlaubt. Verbindlich ist Kapitel 17 in
+`Bewertungslogik_Experten-Agent.md`; `PLAN.md` §8 und `.plans/anforderungen/02_...md` FR-16
+folgen dem.
 
-**Zweiter Punkt:** Der Korpus beschreibt die Lahnberg Thermotechnik GmbH, die Projektvorschläge
-unter `project_proposals/` betreffen ein anderes fiktives Unternehmen („Company 1" / „Company 2").
-Die CFO-Bewertung hat den Korpus deshalb bewusst ausgeklammert. Für die Demo heißt das: Vorschlag
-und Wissensbasis passen inhaltlich (noch) nicht zusammen.
+**Zweiter Punkt:** Der Korpus beschreibt die Lahnberg Thermotechnik GmbH; die vier älteren
+Projektvorschläge unter `project_proposals/` betreffen ein anderes fiktives Unternehmen („Company 1"
+/ „Company 2") und dienen als Testdaten für das Completeness Gate. Seit dem 06.09.2026 gibt es
+zwei Anträge in der Korpuswelt: die Abwärmenutzung Gießerei Eisenach unter `project_proposals/` und
+die KI-Stammdaten-Standardisierung unter `test/stammdaten-ki/`, jeweils mit Golden Dataset.
+
+**Phase 5 im Wiki:** „Wissen erweitern" (`/wissen/upload`) konvertiert hochgeladene Dateien,
+schreibt sie mit Kopfdaten nach `corpus/erweiterung/` und importiert sie mit Fortschritt in den
+Index; das Admin-Dashboard setzt Unternehmenswissen und Projektanträge getrennt zurück und
+importiert den Korpus neu, jeweils mit Fortschrittsanzeige.
 
 ---
 

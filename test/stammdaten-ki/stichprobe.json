@@ -1,0 +1,265 @@
+{
+  "zeitpunkt": "2026-09-06T05:58:35",
+  "n": 8,
+  "rollen": {
+    "betriebsrat": {
+      "frage": "Gab es schon einmal ein Berichtswerkzeug, dessen Pflegekennzahlen sich auf einzelne Beschäftigte zurückführen ließen, und was hat das Gremium daraus verlangt?",
+      "collections": [
+        "intern",
+        "br"
+      ],
+      "exit": 0,
+      "dauer_s": 21,
+      "treffer": 8,
+      "golden_getroffen": 2,
+      "golden_gesamt": 7,
+      "kern_getroffen": 1,
+      "kern_gesamt": 2,
+      "pfade": [
+        {
+          "pfad": "br_ablage/betriebsrat-und-das-projekt-dashbo/2024/2024-12-01-auswertbarkeit-der-dashboard-daten-pruefen.md",
+          "score": 0.88,
+          "golden": true
+        },
+        {
+          "pfad": "projektlaufwerk/operativer-start-von-one-ltt-mit-g/2023/2023-02-18-prozessworkshops-mit-key-usern-protokollieren.md",
+          "score": 0.5,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_hr/betriebsrat-und-personenbezogene-l/2023/2023-08-08-verhandlung-zu-leistungsdaten-protokollieren.md",
+          "score": 0.38,
+          "golden": true
+        },
+        {
+          "pfad": "br_ablage/betriebsrat-und-personenbezogene-l/2023/2023-07-10-beteiligungsbedarf-beim-crm-anmelden.md",
+          "score": 0.35,
+          "golden": false
+        },
+        {
+          "pfad": "qm_lenkung/pmo-wird-project-excellence-office/2024/2024-08-12-reduzierten-statusbericht-festlegen.md",
+          "score": 0.34,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/das-wissensmanagementproblem-2025/2025/2025-07-11-informationslage-im-projektgeschaeft-beschreiben.md",
+          "score": 0.33,
+          "golden": false
+        },
+        {
+          "pfad": "qm_lenkung/pmo-gruendung-und-ruecknahme-von-p/2016/2016-08-20-projektstruktur-meilensteine-und-statusbericht-festl.md",
+          "score": 0.33,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/excel-amnesty/2025/2025-01-16-erhebung-geschaeftskritischer-tabellen-beauftragen.md",
+          "score": 0.33,
+          "golden": false
+        }
+      ],
+      "stderr_tail": [
+        "Reranking 40 chunks...Reranker unavailable — skipping reranking (A context size of 4096 is too large for the available VRAM). Use --no-rerank to silence this warning.",
+        " (3.6s)"
+      ]
+    },
+    "cfo": {
+      "frage": "Welche Vorlage hat die organisatorische Umsetzbarkeit als gegeben unterstellt statt sie zu bepreisen, und was hat das Prüfgremium daraus gefordert?",
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "exit": 0,
+      "dauer_s": 26,
+      "treffer": 8,
+      "golden_getroffen": 2,
+      "golden_gesamt": 7,
+      "kern_getroffen": 1,
+      "kern_gesamt": 2,
+      "pfade": [
+        {
+          "pfad": "sharepoint_gf/project-atlas-review/2024/2024-05-16-ergebnisse-des-unabhaengigen-reviews-vorlegen.md",
+          "score": 0.88,
+          "golden": true
+        },
+        {
+          "pfad": "it_doku/project-atlas-review/2024/2024-06-15-technische-bewertung-des-reviewbefunds-darstellen.md",
+          "score": 0.5,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/project-atlas-review/2024/2024-05-28-beratung-des-reviewergebnisses-im-beirat-protokollie.md",
+          "score": 0.38,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-05-12-beiratsbeschluss-zum-neuschnitt-protokollieren.md",
+          "score": 0.35,
+          "golden": true
+        },
+        {
+          "pfad": "sharepoint_gf/bewertungsdivergenz-zum-transforma/2025/2025-10-18-nutzen-des-crm-aus-vertriebssicht-bewerten.md",
+          "score": 0.34,
+          "golden": false
+        },
+        {
+          "pfad": "projektlaufwerk/operativer-start-von-one-ltt-mit-g/2023/2023-01-10-umsetzungsphase-des-programms-beauftragen.md",
+          "score": 0.33,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/beschluss-des-programms-one-ltt/2022/2022-12-08-ausgangslage-der-systemlandschaft-beschreiben.md",
+          "score": 0.33,
+          "golden": false
+        },
+        {
+          "pfad": "projektlaufwerk/operativer-start-von-one-ltt-mit-g/2023/2023-01-19-greenfield-ansatz-und-adopt-before-adapt-festlegen.md",
+          "score": 0.33,
+          "golden": false
+        }
+      ],
+      "stderr_tail": [
+        "Reranking 40 chunks...Reranker unavailable — skipping reranking (A context size of 4096 is too large for the available VRAM). Use --no-rerank to silence this warning.",
+        " (3.8s)"
+      ]
+    },
+    "it": {
+      "frage": "Woran ist die Bereinigung der Materialstämme gescheitert, und welche Voraussetzung gilt für eine Kopplung von Konstruktionssystem und kaufmännischem System?",
+      "collections": [
+        "intern"
+      ],
+      "exit": 0,
+      "dauer_s": 21,
+      "treffer": 8,
+      "golden_getroffen": 2,
+      "golden_gesamt": 7,
+      "kern_getroffen": 2,
+      "kern_gesamt": 2,
+      "pfade": [
+        {
+          "pfad": "it_doku/bilanz-der-softwarelandschaft-ende/2025/2025-11-13-weiteres-vorgehen-bei-der-plm-erp-kopplung-festlegen.md",
+          "score": 1,
+          "golden": true
+        },
+        {
+          "pfad": "projektlaufwerk/fehlende-voraussetzungen-fuer-den-/2023/2023-12-08-stand-der-vorbereitungen-protokollieren.md",
+          "score": 0.63,
+          "golden": false
+        },
+        {
+          "pfad": "projektlaufwerk/master-data-projekt-und-zweifache-/2023/2023-02-06-zwischenstand-und-zielabsenkung-darstellen.md",
+          "score": 0.62,
+          "golden": true
+        },
+        {
+          "pfad": "projektlaufwerk/bewertungsdivergenz-zum-transforma/2025/2025-11-17-nicht-erreichte-verbesserungen-im-engineering-festha.md",
+          "score": 0.61,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/operativer-start-von-one-ltt-mit-g/2023/2023-03-07-systemseitige-voraussetzungen-der-umstellung-beschre.md",
+          "score": 0.61,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/project-atlas-review/2024/2024-06-15-technische-bewertung-des-reviewbefunds-darstellen.md",
+          "score": 0.61,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/plm-einfuehrung-und-die-dreiteilun/2014/2014-04-26-abgrenzung-von-plm-und-erp-festlegen.md",
+          "score": 0.56,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/ebom-mbom-konflikt-und-der-streit-/2023/2023-06-10-auswirkungen-auf-die-fertigung-darstellen.md",
+          "score": 0.54,
+          "golden": false
+        }
+      ],
+      "stderr_tail": [
+        "Embedding 4 queries... (3.8s)",
+        "Reranking 40 chunks... (10.3s)"
+      ]
+    },
+    "ceo": {
+      "frage": "Warum wurde die Integration des Engineering-Systems zurückgestellt, und welche Bedingung gilt für einen Neustart?",
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "exit": 0,
+      "dauer_s": 19,
+      "treffer": 8,
+      "golden_getroffen": 3,
+      "golden_gesamt": 7,
+      "kern_getroffen": 1,
+      "kern_gesamt": 2,
+      "pfade": [
+        {
+          "pfad": "projektlaufwerk/bewertungsdivergenz-zum-transforma/2025/2025-11-17-nicht-erreichte-verbesserungen-im-engineering-festha.md",
+          "score": 0.75,
+          "golden": false
+        },
+        {
+          "pfad": "it_doku/bilanz-der-softwarelandschaft-ende/2025/2025-11-13-weiteres-vorgehen-bei-der-plm-erp-kopplung-festlegen.md",
+          "score": 0.38,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-11-neuschnitt-des-programms-vorlegen.md",
+          "score": 0.38,
+          "golden": true
+        },
+        {
+          "pfad": "sharepoint_gf/beschluss-des-programms-one-ltt/2022/2022-10-31-beiratsbeschluss-zum-programm-protokollieren.md",
+          "score": 0.25,
+          "golden": false
+        },
+        {
+          "pfad": "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-05-12-beiratsbeschluss-zum-neuschnitt-protokollieren.md",
+          "score": 0.15,
+          "golden": true
+        },
+        {
+          "pfad": "sharepoint_gf/rothenberg-uebernahme-und-der-aufs/2018/2018-04-20-integrationsgrundsatz-erst-geschaeft-dann-it-erlaeut.md",
+          "score": 0.12,
+          "golden": true
+        },
+        {
+          "pfad": "projektlaufwerk/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-19-erfahrungen-aus-der-programmphase-festhalten.md",
+          "score": 0.1,
+          "golden": false
+        },
+        {
+          "pfad": "qm_lenkung/crm-einfuehrung-als-70-prozent-erf/2023/2023-05-16-pflege-der-opportunity-daten-regeln.md",
+          "score": 0.09,
+          "golden": false
+        }
+      ],
+      "stderr_tail": [
+        "Embedding 4 queries... (6.4s)",
+        "Reranking 40 chunks... (11.3s)"
+      ],
+      "hinweis": "zweiter Versuch nach CUDA-Absturz des Rerankers im ersten"
+    },
+    "ceo_versuch_1": {
+      "frage": "Warum wurde die Integration des Engineering-Systems zurückgestellt, und welche Bedingung gilt für einen Neustart?",
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "exit": 3221226505,
+      "dauer_s": 14,
+      "treffer": 0,
+      "golden_getroffen": 0,
+      "golden_gesamt": 7,
+      "kern_getroffen": 0,
+      "kern_gesamt": 2,
+      "pfade": [],
+      "stderr_tail": [
+        "Embedding 4 queries... (3.8s)",
+        "Reranking 40 chunks...D:\\a\\node-llama-cpp\\node-llama-cpp\\llama\\llama.cpp\\ggml\\src\\ggml-cuda\\ggml-cuda.cu:106: CUDA error"
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 ---
 project_id: BC-2026-0412.1
-project_name: "M:INVOICE – CONI (Consolidated Invoices)"
+project_name: "INVOICE – CONI (Consolidated Invoices)"
 program: "Company 2 – Digital Customer Experience"
 status: proposal
 start_fy: 2026
@@ -9,8 +9,8 @@ project_manager: "Invoice Product Lead"
 project_sponsor: "VP Finance & Customer Services"
 affected_countries: [BE, CORP, DE, ES, FR, HR, HU, IT, NL, PL, PT]
 source_documents:
-  - "test project data/__Project_Charter_M-Invoice_Company2.docx"
-  - "test project data/__Business_Case_M-Invoice_CONI_Company2.xlsx"
+  - "test project data/Project_Charter_Project_4_Product_2_TESTDATA.docx"
+  - "test project data/Business_Case_Project_4_Product_2_TESTDATA_.xlsx"
 classification: internal
 ---
 
@@ -22,7 +22,7 @@ Angabe vorliegt oder eine Informationslücke besteht.
 
 ## Projektname
 
-M:INVOICE – CONI (Consolidated Invoices) — Company 2
+INVOICE – CONI (Consolidated Invoices) — Company 2
 
 ## Beschreibung des vorgeschlagenen Vorhabens
 

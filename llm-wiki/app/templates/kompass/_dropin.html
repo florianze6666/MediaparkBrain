@@ -1,0 +1,37 @@
+{# Drop-In (3 Modalitäten) + animiertes Befüllen. Wird in upload.html und proposal_detail.html (mode=new) eingebunden.
+   Erwartet: fill_fields [{key,label}] und fill_endpoint (POST, multipart oder JSON {text|url}) -> JSON {status, fields:{key:value}} #}
+<div class="kp-drop-row">
+  <label class="kp-drop is-files" id="kp-drop-files"><span style="font-size:18px;color:var(--muted)">↑</span>Dateien ablegen<small>PDF · Word · Excel · MD</small><input type="file" name="files" multiple hidden onchange="kpIngest({files:this.files})"></label>
+  <div class="kp-drop" onclick="kpPaste()"><span style="font-size:18px;color:var(--muted)">⌘V</span>Link oder Text</div>
+  <div class="kp-drop" onclick="kpDictate()"><span class="kp-mic"></span>Diktieren</div>
+</div>
+<div class="kp-fill" id="kp-fill" hidden>
+  <div class="kp-fill-status" id="kp-fill-status"><i class="kp-dot is-pulse"></i><span>Wird gelesen …</span></div>
+  <div class="kp-fill-grid">
+    {% for f in fill_fields %}
+    <label class="kp-field"><small>{{ f.label }}</small><div class="kp-value is-empty" data-key="{{ f.key }}"><input name="{{ f.key }}" hidden></div></label>
+    {% endfor %}
+  </div>
+  <div class="kp-bar"><i id="kp-fill-bar" style="width:0%;background:var(--accent);transition:width .6s"></i></div>
+</div>
+<script>
+const KP_FILL_ENDPOINT = "{{ fill_endpoint }}";
+const drop=document.getElementById('kp-drop-files');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('is-over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('is-over');}));
+drop.addEventListener('drop',ev=>kpIngest({files:ev.dataTransfer.files}));
+async function kpPaste(){const t=prompt('Link oder Text einfügen');if(t)kpIngest({text:t});}
+function kpDictate(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Diktat im Browser nicht verfügbar');const r=new R();r.lang='de-DE';r.onresult=e=>kpIngest({text:e.results[0][0].transcript});r.start();}
+async function kpIngest(src){
+  const box=document.getElementById('kp-fill'),st=document.getElementById('kp-fill-status'),bar=document.getElementById('kp-fill-bar');
+  box.hidden=false;st.classList.remove('is-done');st.innerHTML='<i class="kp-dot is-pulse"></i><span>Wird gelesen …</span>';
+  let body,headers={};if(src.files){body=new FormData();[...src.files].forEach(f=>body.append('files',f));}else{body=JSON.stringify({text:src.text});headers['Content-Type']='application/json';}
+  const res=await fetch(KP_FILL_ENDPOINT,{method:'POST',body,headers}).then(r=>r.json());
+  const cells=[...document.querySelectorAll('.kp-value')];
+  for(let i=0;i<cells.length;i++){const c=cells[i],k=c.dataset.key,v=res.fields[k];c.classList.remove('is-empty');c.classList.add('is-active');await new Promise(r=>setTimeout(r,600));c.classList.remove('is-active');
+    if(v!=null){c.classList.add('is-filled');c.innerHTML='<span></span><input name="'+k+'" hidden>';c.firstChild.textContent=v;c.lastChild.value=v;c.onclick=()=>{c.innerHTML='';const inp=document.createElement('input');inp.name=k;inp.value=v;c.appendChild(inp);inp.focus();};}
+    bar.style.width=Math.round(((i+1)/cells.length)*100)+'%';}
+  bar.style.background='var(--ok)';st.classList.add('is-done');st.innerHTML='<i class="kp-dot is-ok"></i><span>Fertig — prüfen und speichern</span>';
+  document.dispatchEvent(new CustomEvent('kp:filled',{detail:res}));
+}
+</script>

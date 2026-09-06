@@ -65,6 +65,12 @@ def pages_env(tmp_path, monkeypatch):
     uploads.mkdir()
     monkeypatch.setenv("MPB_UPLOADS_DIR", str(uploads))
     monkeypatch.setenv("MPB_SECRET", TEST_SECRET)
+    # Phase 5: nichts darf den echten Korpus oder qmd-Index beruehren.
+    monkeypatch.setenv("MPB_CORPUS_DIR", str(tmp_path / "corpus"))
+    monkeypatch.setenv("MPB_JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("MPB_INDEX_ANTRAEGE", "0")
+    # Suchbruecke nicht laden: kein Modell, keine Grafikkarte, keine 4,4 s je Test.
+    monkeypatch.setenv("MPB_SUCHE_BRUECKE", "0")
 
     import app.access as access
     import app.wiki as wiki

@@ -1,7 +1,8 @@
 """PDF-Einlesen (Arbeitspaket 8).
 
 Holt den Textlayer aus einem PDF und giesst ihn so in Markdown, dass die
-Wortsuche in `wiki.search_snippets` damit etwas anfangen kann.
+Seite als Wissensbasis taugt (gesucht wird ueber die Embedding-Suche im
+Teilprojekt qmd/, siehe docs/wissensspeicher-qmd.md).
 
 Bewusst **kein OCR**: Digital erzeugte PDFs - Exporte aus Word, Excel oder
 PowerPoint, also praktisch alle Projektunterlagen - enthalten den Text bereits

@@ -1,0 +1,30 @@
+# Zuordnung: Ablageort im Korpus -> Domaene im Rechtemodell.
+#
+# Quelle ist permissions.yaml, Abschnitt "domaenen" (Zeilen 22 bis 31). Dort steht
+# die Zuordnung bisher NUR als Zeilenkommentar hinter der jeweiligen Domaene, also
+# als Prosa. Hier wird sie zu auswertbaren Daten, damit build_view.py sie pruefen
+# kann und nicht geraten werden muss.
+#
+# Die Zuordnung ist vollstaendig: jeder Ablageort in corpus/ hat genau eine
+# Domaene. "allgemein" nimmt zusaetzlich alles auf, was keinen Ablageort hat,
+# und seit Phase 5 den Ablageort "erweiterung" (Anwender-Upload, UC-03).
+
+ablageorte:
+  qm_lenkung:         allgemein   # permissions.yaml: "qm_lenkung, Wiki-Seiten ohne Zuordnung"
+  projektlaufwerk:    projekt     # permissions.yaml: "projektlaufwerk"
+  sharepoint_finance: finance     # permissions.yaml: "sharepoint_finance"
+  einkauf_scm:        einkauf     # permissions.yaml: "einkauf_scm"
+  sharepoint_hr:      hr          # permissions.yaml: "sharepoint_hr"
+  it_doku:            it          # permissions.yaml: "it_doku"
+  br_ablage:          br          # permissions.yaml: "br_ablage - auch die Leitung liest hier NICHT"
+  sharepoint_gf:      gf          # permissions.yaml: "sharepoint_gf - nur Geschaeftsfuehrung"
+  mailarchiv:         mail        # permissions.yaml: "mailarchiv - nur Geschaeftsfuehrung"
+  erweiterung:        allgemein   # UC-03 (Phase 5): von Anwendern hochgeladenes Wissen,
+                                  # corpus/erweiterung/; Klasse kommt aus dem Frontmatter
+
+# Dateien, die direkt in corpus/ liegen und damit keinen Ablageort haben.
+# Entspricht wiki.migrate_flat_pages: ohne erkennbare Zuordnung nach allgemein.
+fallback_domaene: allgemein
+
+# Dateiendungen, die uebernommen werden. QMD indiziert Markdown.
+endungen: [".md", ".markdown"]

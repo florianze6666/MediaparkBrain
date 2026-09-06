@@ -1,0 +1,169 @@
+{
+  "zweck": "Golden Dataset fuer den Testfall IP-2026-09 KI-gestuetzte Stammdaten-Standardisierung. Je Rolle die Erinnerungsspur aus der Persona, die der Antrag anspricht, der fruehere Fall, den ein guter Agent benennen sollte, die Falle im Antrag, und die Korpusdokumente, die ein aktiv fragender Agent finden muss.",
+  "erstellt": "2026-09-06",
+  "antrag": [
+    "test/stammdaten-ki/ki-stammdaten-standardisierung-charter.md",
+    "test/stammdaten-ki/ki-stammdaten-standardisierung-businesscase.md"
+  ],
+  "korpusstand": {
+    "dokumente_im_index": 218,
+    "vektoren": 992,
+    "embedding": "nvidia/Nemotron-3-Embed-1B, GGUF Q8_0",
+    "collections": {
+      "intern": 182,
+      "br": 13,
+      "clevel": 23
+    },
+    "quelle": "qmd status vom 2026-09-06"
+  },
+  "regeln": {
+    "pfade": "relativ zu corpus/, wie GOLDEN in qmd/eval/cfo_e2e.py; im Index als qmd://<collection>/<pfad>",
+    "sichtbarkeit": "jeder Golden-Pfad liegt in einer Collection, die die Rolle nach qmd/ingest/rollen.py durchsuchen darf; geprueft gegen qmd/view/_manifest.json",
+    "kollisionspruefung": "test/stammdaten-ki/kollisionspruefung.py prueft, dass Antrag und Golden-Dokumente kein seltenes Token teilen (Lehre aus der 420-Grad-Kollision des Eisenach-Falls); Ergebnis siehe README.md",
+    "erwartete_richtung": "nur Status und Tendenz, keine Scorezahl; die Kalibrierung ist Menschensache (Fit-Gap A-4)",
+    "mindest": "so viele Golden-Dokumente muss ein Lauf im Kontext haben, damit die Pruefung 'Golden abgedeckt' besteht; 'kern' nennt die Dokumente, die die Spur selbst tragen"
+  },
+  "rollen": {
+    "betriebsrat": {
+      "collections": [
+        "intern",
+        "br"
+      ],
+      "erinnerungsspur": "Ob ein Pflichtfeld ausgefüllt ist, hängt an einer Person.",
+      "erinnerungsspur_quelle": "persona/betriebsrats_persona.md, Abschnitt Haltung, Absatz 'Gemessen wird am Ende die Person'",
+      "nebenspur": "Was technisch nicht erzwungen ist, gilt als nicht umgesetzt.",
+      "praezedenz": "Projekt-Dashboard November 2024: Pflegekennzahlen ueber die Projektleiterzuordnung personenbeziehbar, Teilvereinbarung nach BV-2023-01 verlangt, Freischaltung begrenzt, spaeter BV-2025-01. Davor CRM 2023 mit BV-2023-02 (Auswertung nur auf Team und Region) und die Teilvereinbarung ueber personenbezogene Leistungsdaten vom 19.08.2023 (GBR-2023-14), die Pflege- und Vollstaendigkeitsstaende ausdruecklich als Leistungsdaten fuehrt.",
+      "falle": "Das Datenqualitaets-Cockpit fuehrt Vollstaendigkeit, Durchlaufzeit und Rueckstand je Bearbeiter, mit Filter nach Bearbeiter, Export in das Berichtswesen und unbegrenzter Historisierung. Der Antrag sieht keine Mitbestimmungspflicht, sichert die Team-Ebene nur organisatorisch zu, unterrichtet den Gesamtbetriebsrat erst vor der Produktivsetzung und erstellt die Systembeschreibung erst waehrend der Einfuehrung. In Eisenach sind zwei Bearbeiter betroffen, also weit unter der Aggregationsschwelle von fuenf. Sechs Data Stewards arbeiten mit 20 Prozent neben ihrer Taetigkeit ohne Freistellung und Vertretung. Zugleich behauptet die Charter, es wuerden keine personenbezogenen Daten verarbeitet.",
+      "golden": [
+        "br_ablage/betriebsrat-und-das-projekt-dashbo/2024/2024-12-01-auswertbarkeit-der-dashboard-daten-pruefen.md",
+        "br_ablage/betriebsrat-und-das-projekt-dashbo/2024/2024-10-28-pruefung-des-dashboards-ankuendigen.md",
+        "projektlaufwerk/das-dashboard-paradox/2024/2024-10-30-einfuehrung-des-dashboards-protokollieren.md",
+        "br_ablage/betriebsrat-und-personenbezogene-l/2023/2023-08-19-umgang-mit-personenbezogenen-leistungsdaten-regeln.md",
+        "br_ablage/betriebsrat-und-personenbezogene-l/2023/2023-07-20-auswertbarkeit-der-opportunity-daten-pruefen.md",
+        "sharepoint_hr/betriebsrat-und-personenbezogene-l/2023/2023-08-08-verhandlung-zu-leistungsdaten-protokollieren.md",
+        "br_ablage/excel-amnesty/2025/2025-03-11-belastung-durch-schattenanwendungen-bewerten.md"
+      ],
+      "kern": [
+        "br_ablage/betriebsrat-und-das-projekt-dashbo/2024/2024-12-01-auswertbarkeit-der-dashboard-daten-pruefen.md",
+        "br_ablage/betriebsrat-und-personenbezogene-l/2023/2023-08-19-umgang-mit-personenbezogenen-leistungsdaten-regeln.md"
+      ],
+      "mindest": 4,
+      "erwartete_richtung": {
+        "status": "BEWERTET",
+        "tendenz": "deutlich kritisch: mitbestimmungspflichtiger Eingriff, Verfahren nach BV-2023-01 nicht angestossen, Auswertbarkeit ueber Filter und Export offen, Zweckbindung nur organisatorisch. Entscheidungsrelevanter Hinweis verpflichtend, weil personenbezogene Daten entstehen, eine Teilvereinbarung aussteht und Eisenach unter der Schwelle liegt.",
+        "fehlersignal": "ein Score ueber 5, oder ein Urteil ohne Bezug auf BV-2023-01 oder die Teilvereinbarung vom 19.08.2023"
+      }
+    },
+    "cfo": {
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "erinnerungsspur": "Fortschreiben ist nicht schätzen, Vorausgesetztes ist nicht bepreist.",
+      "erinnerungsspur_quelle": "persona/cfo_persona.md, Abschnitt Haltung",
+      "nebenspur": "Nutzen braucht einen Namen.",
+      "praezedenz": "Programmvorlage ONE LTT vom November 2022 (IP-2022-03): Betriebskosten nicht ueber fuenf Jahre ausgewiesen, Nutzen ohne Verantwortlichen, organisatorische Umsetzbarkeit vorausgesetzt statt bepreist (Bericht des Audit Committee vom 16.05.2024). Nachtrag Februar 2024: ohne Gesamtkostenbetrachtung nach POL-FIN-002 v1.1 nicht eingereicht. Programmbilanz Oktober 2025: rund 1,4 Mio EUR jaehrlich dauerhaft, in der Vorlage von 2022 nicht ausgewiesen; Key User ohne Ersatz freigestellt.",
+      "falle": "Der Antrag verneint die Vorlagepflicht wegen eines Investitionsvolumens unter 2 Mio EUR, obwohl nach Abschnitt 3 der Investitionsrichtlinie das Gesamtvolumen ueber die Laufzeit massgeblich ist und Investition plus fuenf Jahre Subskription darueber liegen. Die Charter nennt rund 20 Monate Amortisation auf den Bruttonutzen; zahlungswirksam sind es 6,6 Jahre bei fuenf Jahren Nutzungsdauer. Der Nutzen stammt aus einer Bereichsauswertung und einem Anbieter-Erfahrungswert ohne eigenes Mengengeruest und ohne budgetverantwortliche Fuehrungskraft. Die Subskription ist volumen- und indexabhaengig, aber konstant angesetzt. Data Stewards und Key User sind unterstellt, nicht bepreist und von den Fachbereichen nicht bestaetigt. Die Deckung fehlt teilweise, die Nachschau misst ueber die Kennzahl der Plattform selbst, das Controlling hat nicht geprueft.",
+      "golden": [
+        "sharepoint_finance/policies/2022/2022-12-06-richtlinie-investitionsvorlagen.md",
+        "sharepoint_gf/project-atlas-review/2024/2024-05-16-ergebnisse-des-unabhaengigen-reviews-vorlegen.md",
+        "sharepoint_finance/bewertungsdivergenz-zum-transforma/2025/2025-10-12-wirtschaftliche-bilanz-des-programms-ziehen.md",
+        "sharepoint_finance/verschiebung-des-erp-go-live-und-a/2024/2024-02-15-aufwandserhoehung-darstellen.md",
+        "sharepoint_finance/beschluss-des-programms-one-ltt/2022/2022-10-24-programmbudget-beantragen.md",
+        "sharepoint_gf/beschluss-des-programms-one-ltt/2022/2022-10-31-beiratsbeschluss-zum-programm-protokollieren.md",
+        "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-05-12-beiratsbeschluss-zum-neuschnitt-protokollieren.md"
+      ],
+      "kern": [
+        "sharepoint_gf/project-atlas-review/2024/2024-05-16-ergebnisse-des-unabhaengigen-reviews-vorlegen.md",
+        "sharepoint_finance/policies/2022/2022-12-06-richtlinie-investitionsvorlagen.md"
+      ],
+      "mindest": 4,
+      "erwartete_richtung": {
+        "status": "BEWERTET oder INFORMATION FEHLT",
+        "tendenz": "bei BEWERTET sehr kritisch bis deutlich kritisch: Amortisation jenseits der Nutzungsdauer, keine vollstaendige Deckung, Nutzen ohne Namen, Bindung ohne Preispfad. INFORMATION FEHLT ist vertretbar, wenn der Agent die fehlende Bestaetigung der Fachbereiche nach Abschnitt 5 Nummer 8 der Richtlinie als Pflichtinhalt wertet. Entscheidungsrelevanter Hinweis verpflichtend, weil die Subskription dauerhaft bindet und die Deckung fehlt.",
+        "fehlersignal": "ein Score ueber 4, oder ein Urteil, das die Vorlagepflicht nach dem Investitionsvolumen statt nach dem Gesamtvolumen beurteilt"
+      }
+    },
+    "it": {
+      "collections": [
+        "intern"
+      ],
+      "erinnerungsspur": "Die Stammdatenrichtlinie POL-IT-006 gilt seit April 2023 und regelt den Pflegeprozess — nicht, wer im Zweifel entscheidet.",
+      "erinnerungsspur_quelle": "persona/it_persona.md, Abschnitt Haltung, Absatz 'Beschrieben ist nicht wirksam'",
+      "nebenspur": "Wer „an das ERP\" anbindet, muss sagen, an welches.",
+      "praezedenz": "Master-Data-Projekt PRJ-MDM-2023: Reduktionsziel von 40 auf 25 Prozent gesenkt, die maschinelle Dublettenerkennung bestaetigte sich nur in gut der Haelfte der Stichprobe, die Fachbereichskapazitaet war nicht zugesagt, Eisenach hing an wenigen Personen. Architekturentscheidung AE-2018-03: zwei ERP-Landschaften, doppelt gepflegte Artikelstaemme, Uebergangszustand ohne Enddatum wird zur Dauerloesung. AE-IT-2025-04: Start der PLM-ERP-Kopplung an die Benennung der Datenverantwortung je Materialklasse nach POL-IT-006 gebunden, sonst schreibt die Schnittstelle Dubletten schneller fort.",
+      "falle": "Der Antrag bindet an 'das fuehrende ERP-System' an, ohne bei drei Landschaften zu sagen, an welches. Die Datenverantwortung je Objekt wird 'im Projekt festgelegt', waehrend die Plattform ab 95 Prozent Konfidenz automatisch freigibt und in die Quellsysteme zurueckschreibt. SaaS mit Beurteilung nach POL-IT-003 erst nach Vergabe, Datenrueckgabe nur im Anbieterformat, Modelle und Regelwerk beim Anbieter, eigene Benutzerverwaltung statt SYS-IAM, Fernzugang des Anbieters, keine Wiederanlaufvorsorge trotz Rueckschreibung, Betreuung mit 0,3 VZAe geschaetzt. Die Charter verneint personenbezogene Daten, obwohl das Cockpit Kennzahlen je Bearbeiter fuehrt. Die PLM-Kopplung in Stufe 2 ueberschneidet sich mit AE-IT-2025-04.",
+      "golden": [
+        "projektlaufwerk/master-data-projekt-und-zweifache-/2023/2023-01-24-bereinigung-der-materialstaemme-beauftragen.md",
+        "projektlaufwerk/master-data-projekt-und-zweifache-/2023/2023-02-06-zwischenstand-und-zielabsenkung-darstellen.md",
+        "it_doku/rothenberg-uebernahme-und-der-aufs/2018/2018-07-11-weiterbetrieb-der-beiden-erp-landschaften-festlegen.md",
+        "it_doku/bilanz-der-softwarelandschaft-ende/2025/2025-11-13-weiteres-vorgehen-bei-der-plm-erp-kopplung-festlegen.md",
+        "it_doku/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-04-vertagte-umfaenge-und-ihre-folgen-beschreiben.md",
+        "it_doku/architektur/2025/2025-11-12-softwareportfolio-der-ltt-gruppe.md",
+        "it_doku/betriebsrat-und-personenbezogene-l/2023/2023-08-29-technische-umsetzung-der-auswertungsbeschraenkung-be.md"
+      ],
+      "kern": [
+        "projektlaufwerk/master-data-projekt-und-zweifache-/2023/2023-02-06-zwischenstand-und-zielabsenkung-darstellen.md",
+        "it_doku/bilanz-der-softwarelandschaft-ende/2025/2025-11-13-weiteres-vorgehen-bei-der-plm-erp-kopplung-festlegen.md"
+      ],
+      "mindest": 4,
+      "erwartete_richtung": {
+        "status": "INFORMATION FEHLT oder BEWERTET",
+        "tendenz": "INFORMATION FEHLT ist der erwartete Ausgang: an welches ERP wird angebunden, Exit-Nachweis nach POL-IT-003 v2.0, Rollen- und Berechtigungskonzept, Recovery-Ziele bei Rueckschreibung in die Quellsysteme. Bewertet der Agent trotzdem, dann deutlich kritisch: neue Abhaengigkeit ohne geprueften Exit, Auswertungsfunktion ohne Teilvereinbarung, Datenverantwortung vorausgesetzt statt geklaert. Hinweis verpflichtend, weil Personenbezug entsteht und eine Abhaengigkeit ohne Exit droht.",
+        "fehlersignal": "ein Score ab 5, oder ein Urteil, das die drei ERP-Landschaften nicht kennt"
+      }
+    },
+    "ceo": {
+      "collections": [
+        "intern",
+        "clevel"
+      ],
+      "erinnerungsspur": "eine automatisierte Übergabe ohne geklärte Datenverantwortung nur eine Uneinigkeit automatisiert",
+      "erinnerungsspur_quelle": "persona/ceo_persona.md, Abschnitt Haltung, Absatz 'Vertagt ist nicht gestrichen'",
+      "nebenspur": "Vertagt ist nicht gestrichen — ohne Termin wird daraus ein Zustand.",
+      "praezedenz": "Neuschnitt ONE LTT im Juni 2024: Engineering Backbone vertagt mit der Voraussetzung, dass die Datenverantwortung geklaert und die Prozessvarianten reduziert sind; Beiratsbeschluss B 2024-05/4 mit Wiedervorlage je vertagtem Teil. Project Atlas Review Mai 2024: Datenverantwortung, Entscheidungsrechte und Key-User-Verfuegbarkeit als die bindenden Befunde. POL-ORG-001 und das Portfolio 2025: der Anteil an einem konzernweiten Programm zaehlt, sobald die Business Unit eigene Leute stellt; eine vierte Initiative nur gegen Verzicht; die regulatorische Einordnung trifft die IT mit Recht und Datenschutz, nicht der Bereich.",
+      "falle": "Der Antragsteller stuft das Vorhaben als Querschnittsinitiative ohne Platz nach POL-ORG-001 ein, ohne Abstimmung mit IT, Recht und Datenschutz und ohne zu benennen, welche Initiative zuruecktritt, obwohl dieselben Key User wie im Digital Core gebunden werden. Die Plattform soll die Frage der Datenverantwortung 'regelbasiert' beantworten, also die Uneinigkeit automatisieren. Stufe 3 hat keinen Termin, die Zwischenloesung bis Stufe 2 ist nur grob beziffert. Klassifikationsmodelle und Regelwerk bleiben beim Anbieter, der Nachweis laeuft ueber die Anbieterkennzahl statt ueber ein eigenes Messkonzept. Der Zielbildbezug ist dennoch echt: Wiederholbarkeit, Entlastung des Engpasses Engineering, Wirkung ueber alle Business Units und beide deutschen Standorte.",
+      "golden": [
+        "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-11-neuschnitt-des-programms-vorlegen.md",
+        "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-05-12-beiratsbeschluss-zum-neuschnitt-protokollieren.md",
+        "sharepoint_gf/project-atlas-review/2024/2024-05-16-ergebnisse-des-unabhaengigen-reviews-vorlegen.md",
+        "sharepoint_gf/drei-initiativen-grenze-je-busines/2025/2025-02-22-auswahl-der-top-priority-initiativen-je-business-uni.md",
+        "sharepoint_gf/stabilisieren-vor-transformieren/2025/2025-02-07-parole-stabilisieren-vor-transformieren-ausgeben.md",
+        "it_doku/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-04-vertagte-umfaenge-und-ihre-folgen-beschreiben.md",
+        "sharepoint_gf/rothenberg-uebernahme-und-der-aufs/2018/2018-04-20-integrationsgrundsatz-erst-geschaeft-dann-it-erlaeut.md"
+      ],
+      "kern": [
+        "sharepoint_gf/scope-schnitt-big-bang-gestoppt-pr/2024/2024-06-11-neuschnitt-des-programms-vorlegen.md",
+        "sharepoint_gf/drei-initiativen-grenze-je-busines/2025/2025-02-22-auswahl-der-top-priority-initiativen-je-business-uni.md"
+      ],
+      "mindest": 4,
+      "erwartete_richtung": {
+        "status": "BEWERTET",
+        "tendenz": "Mittelfeld bis ueberwiegend positiv: klarer Zielbildbezug und Engpassentlastung, aber Portfoliolast ungedeckt, Datenverantwortung automatisiert statt geklaert, Faehigkeit beim Anbieter. Entscheidungsrelevanter Hinweis verpflichtend, weil das Vorhaben unter POL-ORG-001 zaehlt, eine Bindung an einen Dritten erzeugt und einen vertagten Programmteil beruehrt.",
+        "fehlersignal": "ein Score unter 3 oder ueber 8, oder ein Urteil ohne die Frage, welche Initiative zuruecktritt"
+      }
+    }
+  },
+  "personas_stand": {
+    "geprueft": "2026-09-06 06:02:19",
+    "regel": "Spur und Nebenspur je Rolle stehen woertlich in der Persona, Zeilenumbrueche ausgenommen",
+    "dateien": {
+      "persona/betriebsrats_persona.md": {
+        "mtime": "2026-09-06 05:51:24",
+        "zitate_woertlich": true
+      },
+      "persona/cfo_persona.md": {
+        "mtime": "2026-09-05 23:31:51",
+        "zitate_woertlich": true
+      },
+      "persona/it_persona.md": {
+        "mtime": "2026-09-06 05:51:24",
+        "zitate_woertlich": true
+      },
+      "persona/ceo_persona.md": {
+        "mtime": "2026-09-05 23:35:19",
+        "zitate_woertlich": true
+      }
+    }
+  }
+}

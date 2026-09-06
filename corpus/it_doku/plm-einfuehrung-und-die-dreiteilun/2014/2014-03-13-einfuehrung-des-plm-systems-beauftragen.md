@@ -1,6 +1,6 @@
 ---
 doc_id: LTT-20140313-GF-00
-titel: Projektauftrag: Einführung des PLM-Systems
+titel: "Projektauftrag: Einführung des PLM-Systems"
 dokumenttyp: Projektauftrag
 datum: 2014-03-13
 verfasser: Dr. Jens Mahlberg

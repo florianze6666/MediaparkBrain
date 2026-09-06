@@ -23,7 +23,7 @@ bewusst eine Simulation für den Demonstrator.
 | US-4 | Autor | beim Anlegen und Bearbeiten die Vertraulichkeit festlegen (öffentlich, intern, vertraulich) | sensible Inhalte nicht jeder sieht | Auswahl im Formular, Standard „intern" |
 | US-5 | Autor | die Seite einer Informationsdomäne zuordnen (Domänen folgen den Ablageorten des Korpus) | Rechte über die Domäne geregelt werden können | Auswahl im Formular, Standard „allgemein" |
 | US-6 | Leser | in der Seitenliste nur Seiten sehen, die ich sehen darf | ich nicht erfahre, was es an verbotenen Inhalten gibt | Seiten anderer Domänen fehlen in der Liste komplett |
-| US-7 | Fragender | bei „Frag das Wiki" nur Quellen aus erlaubten Seiten bekommen | das Sprachmodell nichts verrät, was ich nicht lesen dürfte | Vorfilter vor der Trefferauswahl; Test beweist, dass kein verbotener Text im Kontext landet |
+| US-7 | Fragender | bei einer Abfrage der Embedding-Suche in `qmd/` nur Quellen aus erlaubten Collections bekommen | das Sprachmodell nichts verrät, was ich nicht lesen dürfte | Vorfilter vor der Trefferauswahl; Test beweist, dass kein verbotener Text im Kontext landet |
 | US-8 | Leser | beim direkten Aufruf einer verbotenen URL eine 404 bekommen | ich nicht einmal die Existenz der Seite erkenne | `/wiki/<slug>` liefert 404 statt Umleitung; Bearbeiten und Löschen ebenso |
 | US-9 | Leser | bei bearbeiteten Seiten zusätzlich sehen, wer zuletzt geändert hat und wann | Herkunft auch nach Änderungen nachvollziehbar bleibt | „Zuletzt geändert von … am …" erscheint nur, wenn es eine Änderung gab |
 
@@ -134,7 +134,7 @@ derselben Domäne. Der Ersteller sieht seine vertrauliche Seite, solange er die 
 | `/wiki/<slug>` | 404 |
 | `/wiki/<slug>/edit` (GET und POST) | 404 |
 | `/wiki/<slug>/delete` | 404 |
-| Suche und „Frag das Wiki" | Seite wird **vor** der Trefferauswahl ausgeschlossen, nicht danach |
+| Embedding-Suche in `qmd/` | Seite wird **vor** der Trefferauswahl ausgeschlossen, nicht danach |
 
 ## Schnittstellen für andere Pakete
 
@@ -143,7 +143,7 @@ derselben Domäne. Der Ersteller sieht seine vertrauliche Seite, solange er die 
 - **Paket 7 (Ablage):** `meta.ablageort` ist vorgesehen und wird angezeigt, sobald befüllt. Zuordnung
   Ablageort → Domäne steht als Kommentar in `permissions.yaml` (z. B. `sharepoint_hr/…` → `hr`).
 - **Paket 6 (Statistik):** `wiki.list_pages(user=None)` liefert ungefiltert alle Seiten mit Metadaten.
-- **Paket 4 (Bewertung):** Abgleich nur über `wiki.search_snippets(query, user)`, nie über den Rohbestand.
+- **Paket 4 (Bewertung):** Abgleich nur über die rechtegefilterte Embedding-Suche in `qmd/` (Collections je Rechteklasse), nie über den Rohbestand.
 
 ## Nicht in diesem Paket
 

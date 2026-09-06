@@ -344,60 +344,27 @@ Dadurch kann der Orchestrator die unterschiedlichen Bewertungen später zusammen
 
 ## 8. Einheitliches Output-Schema
 
-Jeder der vier Experten-Agenten erzeugt genau einen strukturierten Datensatz.
+Jeder der vier Experten-Agenten erzeugt genau **ein** JSON-Objekt als letzte Ausgabe. Vier
+Agenten ergeben eine JSONL-Datei mit vier Zeilen.
 
-Das gemeinsame Schema enthält fünf Felder:
+**Die Skala ist 0 bis 10, ganzzahlig, ein einziger Score je Rolle.**
 
 ```json
-{
-  "role": "IT",
-  "value_score": 0,
-  "risk_score": 0,
-  "strategy_score": 0,
-  "assessment": "Freitextliche Begründung der Bewertung."
-}
+{"rolle":"it","status":"BEWERTET","score":6,"begruendung":"…","fehlende_informationen":[],"praezedenz":null,"entscheidungsrelevanter_hinweis":null,"quellen":[]}
 ```
 
-Die drei Kennzahlen sind:
+Pflichtfelder sind `rolle`, `status` (`BEWERTET` oder `INFORMATION FEHLT`), `score`,
+`begruendung` und `fehlende_informationen`. Optional sind `praezedenz`,
+`entscheidungsrelevanter_hinweis` und `quellen`.
 
-### Value Score
+Zwei bindende Regeln: bei `INFORMATION FEHLT` ist `score` **immer** `null`, ein Ersatzwert
+ist verboten. Die `0` ist dagegen ein gültiger Score und bedeutet „vollständig negativ".
 
-Bewertung des erwarteten Nutzens bzw. Wertbeitrags des Projekts.
+Der Score misst die Priorisierungsempfehlung aus der Sicht der jeweiligen Rolle, nicht
+Nutzen und Risiko getrennt. Was in die Bewertung eingeht und wie die Skala kalibriert ist,
+steht je Rolle in `persona/*_kriterienkalibrierung.md`.
 
-### Risk Score
-
-Bewertung des mit dem Projekt verbundenen Risikos.
-
-Hier muss für alle Agenten eindeutig dieselbe Skalenrichtung gelten, beispielsweise:
-
-*hoher Wert = hohes Risiko*
-
-### Strategy Score
-
-Bewertung der strategischen Bedeutung bzw. des strategischen Fits des Projekts.
-
-Für den Hackathon sollte eine einheitliche Skala festgelegt werden, beispielsweise:
-
-*0–100*
-
-Damit ergibt sich beispielsweise:
-
-- 0 = sehr gering
-- 50 = mittel
-- 100 = sehr hoch
-
-Beim Risk Score bedeutet entsprechend 100 ein sehr hohes Risiko.
-
-Der Freitext assessment begründet die Kennzahlen und enthält insbesondere:
-
-- wesentliche positive Argumente
-- wesentliche negative Argumente
-- kritische Risiken
-- Annahmen
-- verbleibende Informationslücken
-- gegebenenfalls Empfehlungen oder Bedingungen
-
-Das technische Austauschformat ist *JSONL*, sodass die vier Bewertungen als vier einzelne JSON-Objekte abgelegt bzw. weiterverarbeitet werden können.
+Verbindlich und vollständig ist Kapitel 17 in `Bewertungslogik_Experten-Agent.md`.
 
 ---
 
@@ -405,24 +372,27 @@ Das technische Austauschformat ist *JSONL*, sodass die vier Bewertungen als vier
 
 Nach Abschluss aller vier Bewertungen prüft der Orchestrator zunächst deren formale Vollständigkeit.
 
-Für jede Rolle müssen vorliegen:
+Für jede Rolle müssen vorliegen (Kapitel 17.1 und 17.5 der Bewertungslogik):
 
-- Rollenname
-- Value Score
-- Risk Score
-- Strategy Score
-- Assessment
+- `rolle`
+- `status`, `BEWERTET` oder `INFORMATION FEHLT`
+- `score`, ganzzahlig 0 bis 10, bei `INFORMATION FEHLT` `null`
+- `begruendung`
+- `fehlende_informationen`
 
 Anschließend können die Ergebnisse gemeinsam dargestellt werden.
 
 Beispielsweise:
 
-| Rolle | Value | Risk | Strategy |
-|---|---:|---:|---:|
-| Betriebsrat | 65 | 75 | 50 |
-| CFO / Controlling | 80 | 55 | 70 |
-| IT / Security | 70 | 40 | 75 |
-| CEO / Strategy | 90 | 45 | 95 |
+| Rolle | Status | Score |
+|---|---|---:|
+| Betriebsrat | BEWERTET | 4 |
+| CFO / Controlling | BEWERTET | 3 |
+| IT / Security | INFORMATION FEHLT | – |
+| CEO / Strategie | BEWERTET | 7 |
+
+Der Gesamtscore nach Kapitel 16 ist der Durchschnitt der gültigen Scores, hier 4,7 über drei
+Rollen. Ein Agent ohne Score geht nicht ein; `KEIN SCORE` ist nicht 0.
 
 Wichtig ist dabei, die unterschiedlichen Perspektiven zunächst *nicht künstlich auf einen Konsens zu reduzieren*.
 
@@ -446,7 +416,7 @@ Am Ende steht daher zunächst kein automatisch gefällter Managementbeschluss, s
 Das System liefert:
 
 - vier nachvollziehbare Stakeholder-Bewertungen
-- drei vergleichbare Kennzahlen pro Stakeholder
+- einen vergleichbaren Score je Stakeholder auf der Skala 0 bis 10, dazu den Gesamtscore nach Kapitel 16
 - vier qualitative Stellungnahmen
 - die wesentlichen Informationsquellen
 - verbleibende Informationslücken

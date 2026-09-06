@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+from contextlib import asynccontextmanager
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -9,21 +11,42 @@ from urllib.parse import quote
 import markdown as md
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # access.py liest MPB_SECRET beim Modulimport (siehe access._load_secret) -
 # load_dotenv() muss deshalb VOR diesem Import laufen, sonst gilt .env nie.
-from . import access, evaluation, extractors, llm, llm_metadata, proposals, stats, wiki  # noqa: E402
+from . import (  # noqa: E402
+    access, bewertung, extractors, kompass, llm_metadata,
+    proposals, stats, wiki, wissen, wissenssuche,
+)
 from .access import PageMeta  # noqa: E402
+from .konnektoren import openai_kompatibel as konnektor  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
 
-app = FastAPI(title="MediaparkBrain LLM-Wiki")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Suchbrücke einmal beim Start laden und bis zum Ende halten.
+
+    Kostet rund 4,4 Sekunden Startzeit und dauerhaft 1,2 GB Grafikspeicher,
+    spart dafür bei jeder Suche das Laden des Modells. `starte()` wirft nie:
+    schlägt das Laden fehl, läuft die Anwendung ohne Suche weiter, Bewertung
+    und Wissensupload sind davon nicht berührt.
+    """
+    grund = wissenssuche.starte()
+    if grund:
+        log.warning("Semantische Suche nicht verfuegbar: %s", grund)
+    yield
+    wissenssuche.schliesse()
+
+
+app = FastAPI(title="MediaparkBrain LLM-Wiki", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -44,7 +67,8 @@ def format_ts(value: str) -> str:
 
 templates.env.filters["ts"] = format_ts
 templates.env.filters["user_name"] = access.user_name
-templates.env.filters["risk_class"] = evaluation.risk_class
+templates.env.filters["risk_class"] = bewertung.risk_class
+templates.env.filters["dezimal"] = bewertung.dezimal
 
 
 def now_iso() -> str:
@@ -180,6 +204,48 @@ def ctx(request: Request, **extra) -> dict:
 
 
 
+# ---------------------------------------------------------------------------
+# Kompass-Shell (templates/kompass/). Eigener Kontext neben `ctx`, damit die
+# alten Seiten unveraendert weiterlaufen: sie brauchen `pages`/`users`, die
+# Kompass-Shell braucht `current_user`/`visible_domains`/`active`/`collapsed`.
+# Rechte kommen in beiden Faellen aus denselben Funktionen in access.py.
+# ---------------------------------------------------------------------------
+
+
+def kctx(request: Request, active: str, **extra) -> dict:
+    user = access.current_user(request)
+    base = {
+        "current_user": kompass.current_user_vm(user),
+        "visible_domains": access.readable_domains(user),
+        "active": active,
+        # Sidebar-Zustand kommt aus dem Cookie, das kpToggleSidebar() setzt.
+        "collapsed": request.cookies.get("kp_collapsed") == "1",
+        "q": request.query_params.get("q", ""),
+    }
+    base.update(extra)
+    return base
+
+
+def _form_value(form, key: str) -> str:
+    """Erster nicht-leerer Wert eines Feldes.
+
+    Das Drop-In und die Vollstaendigkeits-Sektion schicken teils denselben
+    Feldnamen zweimal (einmal befuellt, einmal leer). Der befuellte gewinnt.
+    """
+    for value in form.getlist(key):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _felder_from_form(form) -> dict[str, str]:
+    return {
+        key: _form_value(form, key)
+        for key, _ in kompass.PFLICHTFELDER
+        if _form_value(form, key)
+    }
+
+
 def require_page(slug: str, user: str) -> wiki.Page:
     """Seite aus Nutzersicht; fehlend und verboten sind nicht unterscheidbar (404)."""
     page = wiki.get_page_for(slug, user)
@@ -292,12 +358,25 @@ def logout(next: str = Form("/")):
 
 
 @app.get("/")
-def index(request: Request):
+def index(request: Request, sort: str = ""):
+    """Startseite ist jetzt das Kompass-Dashboard.
+
+    Die alte Startseite (Wiki-Seite "start" in der alten Shell) bleibt ueber
+    /wiki/start erreichbar - dieselbe Route wie jede andere Wiki-Seite.
+    """
     user = access.current_user(request)
-    start = wiki.get_page_for("start", user)
-    html = render_markdown(start.content) if start else ""
+    rows = kompass.dashboard_rows(user, sort or "submitted")
     return templates.TemplateResponse(
-        request, "index.html", ctx(request, content_html=html, page=start)
+        request,
+        "kompass/dashboard.html",
+        kctx(
+            request,
+            "dashboard",
+            proposals=rows,
+            kpi=kompass.kpi(user, rows),
+            knowledge_count=len(wiki.list_pages(user)),
+            show_kpis=True,
+        ),
     )
 
 
@@ -460,34 +539,71 @@ async def extract_document_api(
     }
 
 
-@app.get("/upload")
-def upload_form(request: Request):
-    user = access.current_user(request)
-    conf_levels = access.list_confidentiality_levels()
-    default_conf = access.default_confidentiality_for_user(user)
-    domains = access.readable_domains(user)
+KNOWLEDGE_FILL_FIELDS = [
+    {"key": key, "label": label} for key, label in kompass.KNOWLEDGE_FIELDS
+]
+
+
+def _kompass_upload(request: Request, user: str, saved: bool = False):
+    default_domain = (access.readable_domains(user) or [wiki.DEFAULT_DOMAIN])[0]
     return templates.TemplateResponse(
         request,
-        "upload.html",
-        ctx(
+        "kompass/upload.html",
+        kctx(
             request,
-            confidentiality_levels=conf_levels,
-            default_confidentiality=default_conf,
-            domains=domains,
-            error=None,
+            "upload",
+            target="knowledge",
+            fill_fields=KNOWLEDGE_FILL_FIELDS,
+            fill_endpoint="/api/prefill?target=knowledge",
+            readers=kompass._readers_text(default_domain),
+            saved=saved,
         ),
     )
+
+
+@app.get("/upload")
+def upload_form(request: Request, target: str = "", classic: int = 0):
+    """Kompass-Upload. Die alte Maske bleibt unter /upload?classic=1 erreichbar."""
+    user = access.current_user(request)
+    if classic:
+        conf_levels = access.list_confidentiality_levels()
+        default_conf = access.default_confidentiality_for_user(user)
+        domains = access.readable_domains(user)
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            ctx(
+                request,
+                confidentiality_levels=conf_levels,
+                default_confidentiality=default_conf,
+                domains=domains,
+                error=None,
+            ),
+        )
+    return _kompass_upload(request, user)
 
 
 @app.post("/upload")
 async def upload_submit(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    files: list[UploadFile] = File(default=[]),
+    target: str = Form(""),
     vertraulichkeit: str = Form("intern"),
     domaene: str = Form("projekt"),
+    titel: str = Form(""),
+    dokumenttyp: str = Form(""),
+    datum: str = Form(""),
+    verfasser: str = Form(""),
 ):
     user = require_author(request)
-    if not file.filename:
+    if target:
+        # Kompass-Weg: mehrere Dateien, Metadaten kommen aus dem Drop-In.
+        return await _upload_kompass(
+            request, user, files, titel, domaene, vertraulichkeit,
+            dokumenttyp, datum, verfasser,
+        )
+    if file is None or not file.filename:
         return templates.TemplateResponse(
             request,
             "upload.html",
@@ -551,6 +667,57 @@ async def upload_submit(
     return RedirectResponse(f"/wiki/{slug}?uploaded=1", status_code=303)
 
 
+@app.get("/wissen/upload")
+def wissen_upload_form(request: Request):
+    return _wissen_upload_seite(request, access.current_user(request), None)
+
+
+
+
+@app.post("/wissen/upload")
+async def wissen_upload_submit(request: Request, files: list[UploadFile] = File(default=[])):
+    user = require_author(request)
+    eingaben = [(f.filename, await f.read()) for f in files if f.filename]
+    if not eingaben:
+        return _wissen_upload_seite(request, user, "Bitte mindestens eine Datei auswählen.", 400)
+    if wissen.aktiver_job():
+        return _wissen_upload_seite(
+            request, user, "Es läuft gerade ein Import oder Reset. Bitte kurz warten.", 409)
+    angelegt: list[str] = []
+    try:
+        for name, data in eingaben:
+            pfad, _titel = wissen.dokument_anlegen(name, data, user)
+            angelegt.append(pfad.name)
+    except wissen.Uploadfehler as e:
+        return _wissen_upload_seite(request, user, str(e), 400)
+    try:
+        job = wissen.starte_import_erweiterung(user, angelegt)
+    except wissen.JobAktiv:
+        return _wissen_upload_seite(
+            request, user, "Es läuft gerade ein Import oder Reset. Bitte kurz warten.", 409)
+    return RedirectResponse(f"/wissen/jobs/{job.job_id}", status_code=303)
+
+
+
+
+@app.get("/wissen/jobs/{job_id}")
+def wissen_job(request: Request, job_id: str):
+    """Fortschritt oder Ergebnis eines Import- oder Reset-Jobs; fremde Jobs 404."""
+    user = access.current_user(request)
+    job = wissen.job_fuer(job_id)
+    if job is None or not wissen.darf_sehen(job, user):
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    return templates.TemplateResponse(request, "wissen_job.html", ctx(request, job=job))
+
+
+# ---------------------------------------------------------------------------
+# Projektvorschläge
+# ---------------------------------------------------------------------------
+
+
+
+
+
 # ---------------------------------------------------------------------------
 # Projektvorschläge
 # ---------------------------------------------------------------------------
@@ -558,13 +725,21 @@ async def upload_submit(
 
 
 @app.get("/proposals")
-def proposal_list(request: Request):
+def proposal_list(request: Request, sort: str = ""):
     user = access.current_user(request)
     # US-12: Liste gefiltert ueber decide, wie die Seitenliste.
+    rows = kompass.dashboard_rows(user, sort or "submitted")
     return templates.TemplateResponse(
         request,
-        "proposal_list.html",
-        ctx(request, proposals=proposals.list_proposals(user)),
+        "kompass/dashboard.html",
+        kctx(
+            request,
+            "proposals",
+            proposals=rows,
+            kpi=kompass.kpi(user, rows),
+            knowledge_count=len(wiki.list_pages(user)),
+            show_kpis=False,
+        ),
     )
 
 
@@ -583,10 +758,32 @@ def _proposal_form(request: Request, status: int = 200, **fields):
     )
 
 
+PROPOSAL_FILL_FIELDS = [
+    {"key": key, "label": label}
+    for key, label in (list(kompass.BASE_FIELDS) + list(kompass.PFLICHTFELDER))
+]
+
+
 @app.get("/proposals/new")
 def proposal_new_form(request: Request):
-    require_author(request)  # Gast darf nicht einreichen (403, US-12)
-    return _proposal_form(request)
+    user = require_author(request)  # Gast darf nicht einreichen (403, US-12)
+    return templates.TemplateResponse(
+        request,
+        "kompass/proposal_detail.html",
+        kctx(
+            request,
+            "proposals",
+            mode="new",
+            p=kompass.proposal_vm(None, user, "new"),
+            can_edit=True,
+            domains=access.readable_domains(user),
+            default_domain=proposals.DEFAULT_DOMAIN,
+            confidentiality_levels=access.list_confidentiality_levels(),
+            default_confidentiality=access.default_confidentiality_for_user(user),
+            fill_fields=PROPOSAL_FILL_FIELDS,
+            fill_endpoint="/api/prefill?target=proposal",
+        ),
+    )
 
 
 @app.post("/proposals/new")
@@ -657,6 +854,12 @@ async def proposal_new_save(
     proposal = proposals.save_proposal(
         project_name, description, uploaded_files, meta, rolle=access.user_name(user)
     )
+    # Phase 5 (I-3): Antrag zusaetzlich in die Index-Collection antraege, im
+    # Hintergrund. Der Index darf das Einreichen nie blockieren oder scheitern lassen.
+    try:
+        wissen.starte_import_antraege(user)
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Antrags-Import nach dem Einreichen nicht gestartet")
     return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
 
 
@@ -668,21 +871,29 @@ def require_proposal(slug: str, user: str) -> proposals.Proposal:
     return proposal
 
 
+# ---------------------------------------------------------------------------
+# Projektbewertung (Phase 4, UC-04/UC-05, AE-04): das Wiki startet je Antrag den
+# Orchestrator aus qmd/agenten/ und zeigt Fortschritt und Ergebnis (app/bewertung.py).
+# ---------------------------------------------------------------------------
+
+
 # Hinweis: muss VOR "/proposals/{slug}" registriert werden, sonst faengt die
 # Slug-Route "evaluate" faelschlich als Slug ab (Starlette matcht Routen in
 # Registrierungsreihenfolge).
 @app.get("/proposals/evaluate")
-def proposal_evaluate(request: Request):
-    """Bewertet die zuletzt eingereichten Projektvorschlaege in allen vier
-    Experten-Dimensionen gemaess Bewertungslogik_Experten-Agent_MVP.md."""
-    recent = proposals.list_proposals()[:3]  # bereits nach submitted_at absteigend sortiert
-    results = [
-        {"proposal": p, "data": evaluation.evaluate_proposal(p)} for p in recent
-    ]
+def proposal_evaluate_overview(request: Request):
+    """Uebersicht: alle lesbaren Antraege mit ihrem letzten Bewertungslauf."""
+    user = access.current_user(request)
+    zeilen = []
+    for p in proposals.list_proposals(user):
+        lauf = bewertung.letzter_lauf(p.slug)
+        zeilen.append({"proposal": p, "lauf": lauf,
+                       "gesamt": bewertung.gesamt(lauf) if lauf and lauf.fertig else None})
     return templates.TemplateResponse(
         request,
-        "proposal_evaluation.html",
-        ctx(request, results=results, roles=evaluation.ROLE_CRITERIA),
+        "bewertung_uebersicht.html",
+        ctx(request, zeilen=zeilen, aktiv=bewertung.aktiver_lauf(),
+            fehler=request.query_params.get("fehler")),
     )
 
 
@@ -690,11 +901,19 @@ def proposal_evaluate(request: Request):
 def proposal_view(request: Request, slug: str):
     user = access.current_user(request)
     proposal = require_proposal(slug, user)
-    description_html = render_markdown(proposal.description)
     return templates.TemplateResponse(
         request,
-        "proposal_view.html",
-        ctx(request, proposal=proposal, description_html=description_html),
+        "kompass/proposal_detail.html",
+        kctx(
+            request,
+            "proposals",
+            mode="view",
+            p=kompass.proposal_vm(proposal, user),
+            # Felder speichern darf nur, wer in dieser Domaene schreiben darf.
+            can_edit=access.can_write(user, proposal.meta),
+            fill_fields=PROPOSAL_FILL_FIELDS,
+            fill_endpoint="/api/prefill?target=proposal",
+        ),
     )
 
 
@@ -730,51 +949,50 @@ def dashboard_proposals(request: Request):
         "dashboard_proposals.html",
         ctx(request, proposal_stats=proposal_stats),
     )
+# --- Helfer aus der Phase-4/5-Fassung (Bewertung, Wissensupload, Admin) -----
 
-
-# ---------------------------------------------------------------------------
-# Frag das Wiki
-# ---------------------------------------------------------------------------
-
-
-@app.get("/ask")
-def ask_form(request: Request):
+def _wissen_upload_seite(request: Request, user: str, error: str | None, status: int = 200):
     return templates.TemplateResponse(
         request,
-        "ask.html",
-        ctx(
-            request,
-            question="",
-            answer=None,
-            snippets=[],
-            llm_configured=llm.is_configured(),
-        ),
+        "wissen_upload.html",
+        ctx(request, stufe=wissen.stufe_fuer(user), error=error, job_aktiv=wissen.aktiver_job()),
+        status_code=status,
     )
 
+def _admin_redirect(code: str) -> RedirectResponse:
+    return RedirectResponse(f"/admin?meldung={quote(code)}", status_code=303)
 
-@app.post("/ask")
-def ask_submit(request: Request, question: str = Form(...)):
-    user = access.current_user(request)
-    # US-7: Rechte-Filter VOR der Trefferauswahl, das LLM sieht nur Erlaubtes.
-    snippets = wiki.search_snippets(question, user)
-    answer = llm.ask_llm(question, snippets)
-    return templates.TemplateResponse(
-        request,
-        "ask.html",
-        ctx(
-            request,
-            question=question,
-            answer=answer,
-            snippets=snippets,
-            llm_configured=llm.is_configured(),
-        ),
-    )
+def _valid_id(value: str) -> bool:
+    return bool(access.ID_RE.match(value or ""))
 
+def _fmt_list(values: list[str]) -> str:
+    return "[" + ", ".join(values) + "]"
 
-# ---------------------------------------------------------------------------
-# Admin-Dashboard (Stufe 2, US-13 bis US-16). Nur Gruppe admin, sonst 404.
-# Jede Aenderung geht ueber access.save_permissions -> permissions.yaml + Changelog.
-# ---------------------------------------------------------------------------
+def _ordered_groups(selected: list[str], all_groups: list[str]) -> list[str]:
+    """Gewaehlte Gruppen in der Reihenfolge der Gruppenliste (stabile Protokollzeilen)."""
+    chosen = set(selected)
+    return [g for g in all_groups if g in chosen]
+
+def _copy_permissions() -> dict:
+    data = access.load_permissions()
+    return {
+        "gruppen": list(data["gruppen"]),
+        "nutzer": {uid: {"name": u.get("name", uid), "gruppen": list(u.get("gruppen") or [])}
+                   for uid, u in data["nutzer"].items()},
+        "domaenen": {dom: {"lesen": list((spec or {}).get("lesen") or [])}
+                     for dom, spec in data["domaenen"].items()},
+    }
+
+RESET_WORT = "RESET"
+
+def _job_start(request: Request, aktion) -> RedirectResponse:
+    admin = require_admin(request)
+    try:
+        job = aktion(admin)
+    except wissen.JobAktiv:
+        return _admin_redirect("job-aktiv")
+    return RedirectResponse(f"/wissen/jobs/{job.job_id}", status_code=303)
+
 
 ADMIN_MESSAGES = {
     "ungueltige-id": "Ungültige Kennung: erlaubt sind 2–40 Zeichen aus a–z, 0–9 und Bindestrich.",
@@ -790,36 +1008,9 @@ ADMIN_MESSAGES = {
     "gruppe-unbekannt": "Mindestens eine gewählte Gruppe existiert nicht.",
     "gespeichert": "Änderung gespeichert und protokolliert.",
     "unveraendert": "Keine Änderung – nichts gespeichert.",
+    "reset-bestaetigung": "Zurücksetzen abgebrochen: das Bestätigungswort RESET fehlt.",
+    "job-aktiv": "Es läuft gerade ein Import oder Reset. Bitte warten, bis er fertig ist.",
 }
-
-
-def _admin_redirect(code: str) -> RedirectResponse:
-    return RedirectResponse(f"/admin?meldung={quote(code)}", status_code=303)
-
-
-def _valid_id(value: str) -> bool:
-    return bool(access.ID_RE.match(value or ""))
-
-
-def _fmt_list(values: list[str]) -> str:
-    return "[" + ", ".join(values) + "]"
-
-
-def _ordered_groups(selected: list[str], all_groups: list[str]) -> list[str]:
-    """Gewaehlte Gruppen in der Reihenfolge der Gruppenliste (stabile Protokollzeilen)."""
-    chosen = set(selected)
-    return [g for g in all_groups if g in chosen]
-
-
-def _copy_permissions() -> dict:
-    data = access.load_permissions()
-    return {
-        "gruppen": list(data["gruppen"]),
-        "nutzer": {uid: {"name": u.get("name", uid), "gruppen": list(u.get("gruppen") or [])}
-                   for uid, u in data["nutzer"].items()},
-        "domaenen": {dom: {"lesen": list((spec or {}).get("lesen") or [])}
-                     for dom, spec in data["domaenen"].items()},
-    }
 
 
 @app.get("/admin")
@@ -842,6 +1033,10 @@ def admin_dashboard(request: Request, meldung: str = ""):
             domaenen={dom: list((spec or {}).get("lesen") or []) for dom, spec in data["domaenen"].items()},
             domain_counts=domain_folders,
             changelog=access.read_changelog(20),
+            jobs=wissen.letzte_jobs(8),
+            job_aktiv=wissen.aktiver_job(),
+            korpus_anzahl=wissen.korpus_anzahl(),
+            antraege_anzahl=len(proposals.list_proposals()),
             meldung=ADMIN_MESSAGES.get(meldung, ""),
             meldung_ist_fehler=bool(meldung) and meldung not in ("gespeichert", "unveraendert"),
         ),
@@ -1003,3 +1198,617 @@ def admin_group_new(request: Request, gruppe: str = Form(...)):
     data["gruppen"].append(gruppe)
     access.save_permissions(data, admin, f"Gruppe {gruppe} angelegt")
     return _admin_redirect("gespeichert")
+
+
+# ---------------------------------------------------------------------------
+# Kompass (Design-Handoff v8). Alle Routen hier rendern templates/kompass/*.
+#
+# Rechte: jede Route holt den Nutzer ueber access.current_user und liest
+# ausschliesslich ueber wiki.list_pages(user), proposals.list_proposals(user),
+# wiki.search_snippets(q, user) bzw. require_page/require_proposal/
+# require_author/require_writable/require_admin. Keine Sonderlogik.
+# ---------------------------------------------------------------------------
+
+
+async def _upload_kompass(
+    request: Request,
+    user: str,
+    files: list[UploadFile],
+    titel: str,
+    domaene: str,
+    vertraulichkeit: str,
+    dokumenttyp: str,
+    datum: str,
+    verfasser: str,
+):
+    """Wissens-Upload aus der Kompass-Maske: je Datei eine Wiki-Seite."""
+    real_files = [f for f in files if f and f.filename]
+    if not real_files:
+        return _kompass_upload(request, user)
+
+    domaene = domaene or wiki.DEFAULT_DOMAIN
+    vertraulichkeit = vertraulichkeit or access.default_confidentiality_for_user(user)
+    # Write ⊆ Read schon vor dem Schreiben der Originaldatei pruefen.
+    require_writable(user, PageMeta(domaene=domaene, vertraulichkeit=vertraulichkeit))
+
+    for f in real_files:
+        content_bytes = await f.read()
+        if not content_bytes:
+            continue
+        saved_path = wiki.save_uploaded_file(f.filename, content_bytes, domaene=domaene)
+        try:
+            text = extractors.extract_text_from_file(saved_path, f.filename)
+        except Exception as exc:  # unlesbare Datei bricht nicht den ganzen Upload ab
+            raise HTTPException(status_code=400, detail=f"Extraktion fehlgeschlagen: {exc}")
+        title = titel.strip() or Path(f.filename).stem
+        meta = PageMeta(
+            erstellt_von=user,
+            erstellt_am=now_iso(),
+            vertraulichkeit=vertraulichkeit,
+            domaene=domaene,
+            dokumenttyp=dokumenttyp,
+            datum=datum,
+            verfasser=verfasser or user,
+            titel=title,
+            quelle="upload",
+            original_datei=f.filename,
+        )
+        require_writable(user, meta)  # nach Normalisierung erneut pruefen
+        wiki.save_page(wiki.slugify(title), title, text.strip(), meta)
+        # Nur die erste Datei liefert den Titel; weitere behalten ihren Dateinamen.
+        titel = ""
+
+    return _kompass_upload(request, user, saved=True)
+
+
+# --- Antraege ---------------------------------------------------------------
+
+
+@app.post("/proposals")
+async def proposal_create(request: Request):
+    """Neuer Antrag aus der Kompass-Maske. Der alte POST /proposals/new bleibt."""
+    user = require_author(request)
+    form = await request.form()
+    name = _form_value(form, "name") or _form_value(form, "projektname")
+    description = _form_value(form, "description") or _form_value(form, "beschreibung")
+    if not name:
+        raise HTTPException(status_code=400, detail="Ohne Projektnamen kein Antrag.")
+
+    felder = _felder_from_form(form)
+    felder.setdefault("projektname", name)
+    if description:
+        felder.setdefault("beschreibung", description)
+    for form_key, field_key in (("cost", "kosten"), ("benefit", "nutzen"),
+                                ("duration", "laufzeit")):
+        value = _form_value(form, form_key)
+        if value:
+            felder[field_key] = value
+
+    meta = PageMeta(
+        erstellt_von=user,
+        erstellt_am=now_iso(),
+        vertraulichkeit=(_form_value(form, "vertraulichkeit")
+                         or access.default_confidentiality_for_user(user)),
+        domaene=_form_value(form, "domaene") or proposals.DEFAULT_DOMAIN,
+        empfaenger=parse_recipients(_form_value(form, "empfaenger")),
+        quelle=proposals.SOURCE,
+    )
+    require_writable(user, meta)  # Write ⊆ Read (403 in fremder Domaene)
+
+    if proposals.already_submitted(name):
+        raise HTTPException(
+            status_code=409,
+            detail=f'Ein Projektvorschlag mit dem Namen "{name}" wurde bereits eingereicht.',
+        )
+
+    uploaded: list[tuple[str, bytes]] = []
+    for f in form.getlist("files"):
+        if isinstance(f, UploadFile) and f.filename:
+            uploaded.append((f.filename, await f.read()))
+    duplicate = proposals.find_duplicate_file(uploaded)
+    if duplicate is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=("Diese Projektdatei wurde bereits eingereicht - als Vorschlag "
+                    f'"{duplicate.project_name}" (Hash identisch).'),
+        )
+
+    proposal = proposals.save_proposal(
+        name, description, uploaded, meta,
+        rolle=access.user_name(user), felder=felder,
+    )
+    # Phase 5 (I-3): Antrag zusaetzlich in die Index-Collection antraege, im
+    # Hintergrund. Der Index darf das Einreichen nie blockieren oder scheitern lassen.
+    try:
+        wissen.starte_import_antraege(user)
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Antrags-Import nach dem Einreichen nicht gestartet")
+    return RedirectResponse(f"/proposals/{proposal.slug}", status_code=303)
+
+
+@app.post("/proposals/{slug}")
+async def proposal_save_fields(request: Request, slug: str):
+    """Pflichtfelder eines Antrags speichern."""
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    require_author(request)
+    require_writable(user, proposal.meta)  # nur wer hier schreiben darf
+    form = await request.form()
+    proposal.felder.update(_felder_from_form(form))
+    proposals.write_proposal(proposal)
+    return RedirectResponse(f"/proposals/{slug}#vollstaendigkeit", status_code=303)
+
+
+@app.post("/proposals/{slug}/evaluate")
+def proposal_evaluate_start(request: Request, slug: str):
+    """Startet den Orchestrator fuer diesen Antrag; ein Lauf zugleich (A-5, Z1)."""
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)   # 404: fehlend und verboten gleich
+    require_author(request)                   # 403: der Gast startet nichts
+    try:
+        lauf = bewertung.starte_lauf(proposal, user)
+    except bewertung.LaufAktiv as e:
+        return RedirectResponse(
+            f"/proposals/{slug}/evaluation?fehler=laeuft&aktiv={quote(e.lauf_id)}",
+            status_code=303,
+        )
+    return RedirectResponse(f"/proposals/{slug}/evaluation?lauf={quote(lauf.lauf_id)}",
+                            status_code=303)
+
+
+
+
+@app.get("/proposals/{slug}/evaluation")
+def proposal_evaluation(request: Request, slug: str, lauf: str | None = None):
+    """Stand oder Ergebnis eines Laufs: je Rolle das Kapitel-17-Objekt, darueber
+    Kapitel 16 (AE-04). Ohne `lauf` der letzte Lauf dieses Antrags."""
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    l = bewertung.lauf_fuer(slug, lauf)
+    if lauf and l is None:
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    ergebnis = bewertung.lade_ergebnis(l) if l is not None and not l.laeuft else None
+    return templates.TemplateResponse(
+        request,
+        "bewertung_lauf.html",
+        ctx(
+            request,
+            proposal=proposal,
+            lauf=l,
+            ergebnis=ergebnis,
+            laeufe=bewertung.laeufe_fuer(slug),
+            aktiv=bewertung.aktiver_lauf(),
+            fehler=request.query_params.get("fehler"),
+            aktiv_fremd=request.query_params.get("aktiv"),
+            darf_starten=user != access.GUEST,
+        ),
+    )
+
+
+def _append_dialog(proposal: proposals.Proposal, user: str, kind: str, text: str) -> None:
+    proposal.dialog.append({
+        "author": user,
+        "kind": kind,
+        "text": text,
+        "zeit": now_iso(),
+    })
+    proposals.write_proposal(proposal)
+
+
+@app.post("/proposals/{slug}/message")
+async def proposal_message(request: Request, slug: str):
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    require_author(request)
+    form = await request.form()
+    kind = _form_value(form, "kind") or "message"
+    if kind not in ("message", "escalation", "internal"):
+        kind = "message"
+    text = _form_value(form, "text") or _form_value(form, "message")
+    if text:
+        _append_dialog(proposal, user, kind, text)
+    return RedirectResponse(f"/proposals/{slug}#dialog", status_code=303)
+
+
+@app.post("/proposals/{slug}/remind")
+def proposal_remind(request: Request, slug: str):
+    """Erinnerung: es wird nichts verschickt (kein Mailversand angebunden),
+    sondern ein sichtbarer Vermerk im Dialog hinterlegt."""
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    require_author(request)
+    _append_dialog(
+        proposal, user, "internal",
+        f"Erinnerung vermerkt für {kompass.owner_name(proposal)}",
+    )
+    return RedirectResponse(f"/proposals/{slug}#dialog", status_code=303)
+
+
+@app.post("/proposals/{slug}/share")
+def proposal_share(request: Request, slug: str):
+    """Statuslink: die Adresse des Antrags, als Vermerk festgehalten. Wer den
+    Link oeffnet, sieht den Antrag nur, wenn er ihn ohnehin sehen darf."""
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    require_author(request)
+    _append_dialog(proposal, user, "internal", f"Statuslink: /proposals/{slug}")
+    return RedirectResponse(f"/proposals/{slug}#dialog", status_code=303)
+
+
+DECISIONS = {"approve": "freigegeben", "defer": "zurueckgestellt", "reject": "abgelehnt"}
+
+
+@app.post("/proposals/{slug}/decide")
+async def proposal_decide(request: Request, slug: str):
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)
+    require_author(request)
+    require_writable(user, proposal.meta)
+    form = await request.form()
+    decision = _form_value(form, "decision")
+    if decision not in DECISIONS:
+        raise HTTPException(status_code=400, detail="Unbekannte Entscheidung.")
+    view = kompass.proposal_vm(proposal, user)
+    if not view["decision_enabled"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Entscheidung erst, wenn alle vier Rollen bewertet haben.",
+        )
+    proposal.status = DECISIONS[decision]
+    name = access.user_name(user)
+    proposal.dialog.append({
+        "author": user,
+        "kind": "internal",
+        "text": f"Entscheidung: {proposal.status} durch {name}",
+        "zeit": now_iso(),
+    })
+    proposals.write_proposal(proposal)
+    return RedirectResponse(f"/proposals/{slug}#entscheidung", status_code=303)
+
+
+@app.post("/proposals/{slug}/escalations/{escalation_id}/approve")
+def proposal_escalation_approve(request: Request, slug: str, escalation_id: str):
+    """Es gibt noch keine Eskalationen (Agenten fragen heute nicht nach) -
+    deshalb gibt es auch keine, die man freigeben koennte: 404."""
+    user = access.current_user(request)
+    require_proposal(slug, user)
+    raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+
+
+@app.get("/proposals/{slug}/files/{name}")
+def proposal_file(request: Request, slug: str, name: str):
+    user = access.current_user(request)
+    proposal = require_proposal(slug, user)  # gleiche Schranke wie der Antrag
+    safe_name = Path(name).name  # keine Traversal ueber den Dateinamen
+    target = proposal.upload_dir / safe_name
+    if safe_name != name or not target.is_file():
+        raise HTTPException(status_code=404, detail="Seite nicht gefunden")
+    return FileResponse(target, filename=safe_name)
+
+
+# --- Wissen -----------------------------------------------------------------
+
+
+@app.get("/knowledge")
+def knowledge(request: Request, sort: str = "title", dir: str = "asc", dept: str = ""):
+    user = access.current_user(request)
+    view = kompass.knowledge_vm(user, sort, dir, dept)
+    return templates.TemplateResponse(
+        request, "kompass/knowledge.html", kctx(request, "knowledge", **view)
+    )
+
+
+@app.get("/knowledge/share")
+def knowledge_share():
+    # Teilen heisst bei uns: Rechte aendern. Das macht der Admin, nicht diese Seite.
+    return RedirectResponse("/knowledge", status_code=303)
+
+
+@app.get("/knowledge/edit")
+def knowledge_edit():
+    return RedirectResponse("/new", status_code=303)
+
+
+@app.get("/knowledge/{slug}")
+def knowledge_page(request: Request, slug: str):
+    user = access.current_user(request)
+    page = require_page(slug, user)
+    meta = page.meta
+    herkunft = [
+        {"label": "Eingebracht von", "value": access.user_name(meta.erstellt_von)},
+        {"label": "Domäne", "value": meta.domaene},
+        {"label": "Vertraulichkeit", "value": meta.vertraulichkeit.replace("oeffentlich", "öffentlich")},
+        {"label": "Zuletzt geändert",
+         "value": format_ts(meta.geaendert_am or meta.erstellt_am) or kompass.MISSING},
+    ]
+    return templates.TemplateResponse(
+        request,
+        "kompass/page.html",
+        kctx(request, "knowledge", page=page,
+             content_html=render_markdown(page.content), herkunft=herkunft),
+    )
+
+
+# --- Vorbefuellung ----------------------------------------------------------
+
+
+PREFILL_PROPOSAL_PROMPT = (
+    "Du fuellst ein Antragsformular aus einem Dokument. Antworte AUSSCHLIESSLICH "
+    "mit JSON, ohne Markdown-Codeblock. Fuelle nur Felder, die im Text belegt "
+    "sind; alles andere ist null. Erfinde nichts.\n"
+    'Struktur: {"name": ..., "description": ..., "cost": ..., "benefit": ..., '
+    '"duration": ..., ' + ", ".join(f'"{k}": ...' for k, _ in kompass.PFLICHTFELDER) + "}"
+)
+
+
+def _prefill_proposal_fallback(text: str, filename: str) -> dict:
+    """Ohne LLM-Key: Name aus Dateiname bzw. erster Zeile, Beschreibung aus den
+    ersten 500 Zeichen, alles andere null. Keine geratenen Felder."""
+    first_line = next((line.strip(" #") for line in text.splitlines() if line.strip()), "")
+    name = Path(filename).stem.replace("_", " ").strip() if filename else first_line[:80]
+    fields: dict[str, str | None] = {key: None for key, _ in kompass.PFLICHTFELDER}
+    fields.update({key: None for key, _ in kompass.BASE_FIELDS})
+    fields["name"] = name or first_line[:80] or None
+    fields["description"] = text[:500].strip() or None
+    return fields
+
+
+@app.post("/api/prefill")
+async def api_prefill(request: Request, target: str = "knowledge"):
+    """Felder aus einer Datei oder einem Text vorschlagen.
+
+    Antwort: {"status": "ok", "fields": {...}, "readers": "..."}. Der Nutzer
+    sieht die Vorschlaege und kann jedes Feld korrigieren, bevor gespeichert
+    wird - vorbefuellen ist kein Speichern.
+    """
+    user = require_author(request)
+    text, filename = "", ""
+    if request.headers.get("content-type", "").startswith("application/json"):
+        payload = await request.json()
+        text = str(payload.get("text") or "")
+    else:
+        form = await request.form()
+        uploads = [f for f in form.getlist("files") if isinstance(f, UploadFile) and f.filename]
+        if uploads:
+            first = uploads[0]
+            filename = first.filename
+            content = await first.read()
+            saved = wiki.save_uploaded_file(filename, content)
+            try:
+                text = extractors.extract_text_from_file(saved, filename)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"Extraktion fehlgeschlagen: {exc}")
+        else:
+            text = _form_value(form, "text")
+
+    if target == "proposal":
+        fields = _prefill_proposal_fallback(text, filename)
+        if konnektor.is_configured() and text.strip():
+            try:
+                raw = konnektor.chat(PREFILL_PROPOSAL_PROMPT, text[:8000], max_tokens=1500).strip()
+                raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    for key in list(fields):
+                        value = parsed.get(key)
+                        fields[key] = str(value).strip() if value not in (None, "") else fields[key]
+            except Exception as exc:
+                # Kein Ergebnis vom Modell: die Fallback-Felder bleiben stehen.
+                log.warning("Prefill (Antrag) ohne LLM-Ergebnis: %s", exc)
+        return {"status": "ok", "fields": fields, "readers": ""}
+
+    # target == knowledge: derselbe Weg wie beim Upload (llm_metadata mit Fallback)
+    _, meta, title = llm_metadata.generate_header(text, filename or "eingabe.txt", user)
+    fields = {
+        "titel": title,
+        "dokumenttyp": meta.dokumenttyp or None,
+        "datum": meta.datum or None,
+        "verfasser": meta.verfasser or user,
+        "domaene": meta.domaene or wiki.DEFAULT_DOMAIN,
+        "vertraulichkeit": meta.vertraulichkeit,
+    }
+    return {
+        "status": "ok",
+        "fields": fields,
+        "readers": kompass._readers_text(fields["domaene"]),
+    }
+
+
+# --- Suche ------------------------------------------------------------------
+
+
+@app.get("/search")
+def search(request: Request, q: str = ""):
+    """Eine Suche, zwei Listen: Wissen aus dem qmd-Index, Projekte aus den Antraegen.
+
+    Gesucht wird seit dem 06.09.2026 semantisch im Korpus (218 Dokumente), nicht
+    mehr per Wortabgleich in den Wiki-Seiten. Der Rechtefilter steckt in
+    `wissenssuche.collections_fuer(user)` und in `list_proposals(user)`; hier
+    wird nichts zusaetzlich gefiltert.
+
+    Eine Abfrage dauert rund zwoelf Sekunden, weil jeder Aufruf einen eigenen
+    Prozess startet und das Einbettungsmodell laedt. Die Vorlage zeigt das an.
+    """
+    user = access.current_user(request)
+    treffer: list = []
+    such_fehler = ""
+    if q.strip():
+        try:
+            treffer = wissenssuche.suche(q, user)
+        except wissenssuche.SucheNichtVerfuegbar as exc:
+            # Gast, unbekannte Rolle oder Index nicht erreichbar: leere, erklaerte
+            # Liste statt Absturz.
+            such_fehler = str(exc)
+            log.warning("Wissenssuche nicht verfuegbar: %s", exc)
+    needle = q.strip().lower()
+    hits = []
+    if needle:
+        for p in proposals.list_proposals(user):
+            haystack = f"{p.project_name}\n{p.description}".lower()
+            if needle in haystack:
+                hits.append({
+                    "slug": p.slug,
+                    "name": p.project_name,
+                    "owner": kompass.owner_name(p),
+                    "excerpt": (p.description or "").strip()[:220],
+                })
+    return templates.TemplateResponse(
+        request, "kompass/search.html",
+        kctx(request, "", q=q, treffer=treffer, such_fehler=such_fehler, hits=hits),
+    )
+
+
+# --- Grundsaetze, Protokoll, Einstellungen ----------------------------------
+
+
+@app.get("/principles")
+def principles(request: Request):
+    user = access.current_user(request)
+    return templates.TemplateResponse(
+        request, "kompass/principles.html",
+        kctx(request, "principles", stats=kompass.principles_stats(user)),
+    )
+
+
+@app.get("/admin/log")
+def admin_log(request: Request):
+    require_admin(request)  # Nicht-Admins: 404, wie das uebrige Admin-Backend
+    return templates.TemplateResponse(
+        request, "kompass/log.html",
+        kctx(request, "principles", changelog=kompass._changelog_vm(50)),
+    )
+
+
+@app.get("/settings")
+def settings(request: Request):
+    return templates.TemplateResponse(
+        request, "kompass/settings.html",
+        kctx(
+            request, "settings",
+            users=[{"key": u["id"], "display_name": u["name"]} for u in access.list_users()],
+            mail_reminders=request.cookies.get("kp_mail") == "1",
+        ),
+    )
+
+
+@app.post("/switch-user")
+def switch_user(user: str = Form(...)):
+    """Rollenwechsel wie POST /login - derselbe signierte Cookie, kein Sonderweg."""
+    uid = access.get_user(user)["id"]
+    resp = RedirectResponse("/settings", status_code=303)
+    resp.set_cookie(
+        access.COOKIE_NAME, access.sign_user(uid),
+        httponly=True, samesite="lax", secure=False,
+    )
+    return resp
+
+
+@app.post("/settings/mail")
+def settings_mail(request: Request):
+    """Schalter fuer Mail-Erinnerungen. Es wird nichts verschickt (kein
+    Mailversand angebunden); der Zustand steht im Cookie."""
+    on = request.cookies.get("kp_mail") == "1"
+    resp = Response(status_code=204)
+    resp.set_cookie("kp_mail", "0" if on else "1", samesite="lax", secure=False)
+    return resp
+
+
+# --- Berechtigungen (Kompass-Oberflaeche auf dasselbe Backend) --------------
+
+
+@app.get("/admin/permissions")
+def admin_permissions(request: Request):
+    require_admin(request)
+    return templates.TemplateResponse(
+        request, "kompass/admin_permissions.html",
+        kctx(request, "settings", **kompass.permissions_matrix()),
+    )
+
+
+@app.post("/admin/permissions")
+async def admin_permissions_save(request: Request, changes: str = Form("[]")):
+    """changes = JSON {"gruppe/domaene": ""|"r"|"rw"}.
+
+    Unser Modell kennt nur Lesegruppen je Domaene (Schreiben ist daran
+    gebunden, Write ⊆ Read), deshalb wird 'r' wie 'rw' behandelt: die Gruppe
+    steht in `lesen` oder nicht. Geschrieben wird ueber access.save_permissions,
+    also mit Protokollzeile je Aenderung.
+    """
+    admin = require_admin(request)
+    try:
+        payload = json.loads(changes or "{}")
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    data = _copy_permissions()
+    notes = []
+    for key, value in payload.items():
+        if "/" not in str(key):
+            continue
+        group, domain = str(key).split("/", 1)
+        if group not in data["gruppen"] or domain not in data["domaenen"]:
+            continue
+        readers = data["domaenen"][domain]["lesen"]
+        wanted = str(value) in ("r", "rw")
+        if wanted and group not in readers:
+            data["domaenen"][domain]["lesen"] = _ordered_groups(
+                readers + [group], data["gruppen"]
+            )
+            notes.append(f"Domäne {domain}: Gruppe {group} darf jetzt lesen")
+        elif not wanted and group in readers:
+            data["domaenen"][domain]["lesen"] = [g for g in readers if g != group]
+            notes.append(f"Domäne {domain}: Gruppe {group} liest nicht mehr")
+
+    for note in notes:
+        access.save_permissions(data, admin, note)
+    return RedirectResponse("/admin/permissions", status_code=303)
+
+
+@app.get("/admin/roles/new")
+def admin_roles_new():
+    # Nutzerverwaltung bleibt das alte Admin-Dashboard (dort steht die Wahrheit).
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.get("/admin/roles/{key}")
+def admin_roles_edit(key: str):
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/admin/reset/wissen")
+def admin_reset_wissen(request: Request, bestaetigung: str = Form("")):
+    require_admin(request)
+    if bestaetigung.strip() != RESET_WORT:
+        return _admin_redirect("reset-bestaetigung")
+
+    def aktion(admin: str):
+        job = wissen.reset_wissen(admin)
+        access.append_changelog(admin, "Unternehmenswissen zurückgesetzt (Index intern, br, clevel)")
+        return job
+
+    return _job_start(request, aktion)
+
+
+
+
+@app.post("/admin/reset/antraege")
+def admin_reset_antraege(request: Request, bestaetigung: str = Form("")):
+    require_admin(request)
+    if bestaetigung.strip() != RESET_WORT:
+        return _admin_redirect("reset-bestaetigung")
+
+    def aktion(admin: str):
+        job = wissen.reset_antraege(admin)
+        access.append_changelog(admin, "Projektanträge zurückgesetzt (Dateien, Uploads, Läufe, Index antraege)")
+        return job
+
+    return _job_start(request, aktion)
+
+
+
+
+@app.post("/admin/import/corpus")
+def admin_import_corpus(request: Request):
+    return _job_start(request, wissen.starte_import_corpus)

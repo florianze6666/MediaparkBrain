@@ -40,6 +40,17 @@ def uploads_dir() -> Path:
 
 DEFAULT_STATUS = "Eingereicht"
 
+# Die 15 Pflichtfelder aus PLAN.md Sec. 2. Reihenfolge = Reihenfolge im Plan.
+PFLICHTFELDER = (
+    "projektname", "beschreibung", "zielsetzung", "nutzen", "geschaeftsprozesse",
+    "organisationseinheiten", "business_case", "kosten", "wirtschaftlicher_nutzen",
+    "laufzeit", "technische_abhaengigkeiten", "organisatorische_abhaengigkeiten",
+    "risikoanalyse", "begruendung", "anbieterinformationen",
+)
+
+# Entschiedene Zustaende (POST /proposals/{slug}/decide setzt sie).
+DECIDED_STATUS = ("freigegeben", "zurueckgestellt", "abgelehnt")
+
 
 @dataclass
 class Proposal:
@@ -52,6 +63,11 @@ class Proposal:
     files: list[str] = field(default_factory=list)
     meta: PageMeta = field(default_factory=lambda: _default_meta())
     rolle: str = UNKNOWN_CREATOR
+    # Pflichtfelder aus PLAN.md Sec. 2, im Kopf abgelegt (Kompass-Umbau).
+    # Optional: Altbestand und Vorschlaege von Marc haben sie nicht.
+    felder: dict[str, str] = field(default_factory=dict)
+    # Dialogeintraege [{author, kind, text, zeit}] - Rueckfragen, Vermerke, Entscheidungen.
+    dialog: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def path(self) -> Path:
@@ -91,17 +107,30 @@ def _meta_from_head(head: dict[str, Any] | None) -> tuple[PageMeta, str]:
     return meta, rolle
 
 
-def _render_head(meta: PageMeta, rolle: str) -> str:
+def _render_head(
+    meta: PageMeta,
+    rolle: str,
+    felder: dict[str, str] | None = None,
+    dialog: list[dict[str, str]] | None = None,
+) -> str:
+    """Kopf eines Vorschlags. Pflichtfelder und Dialog werden nur geschrieben,
+    wenn es sie gibt - der Kopf eines alten Vorschlags bleibt damit unveraendert."""
+    head: dict[str, Any] = {
+        "eingereicht_von": meta.erstellt_von,
+        "rolle": rolle,
+        "eingereicht_am": meta.erstellt_am,
+        "vertraulichkeit": meta.vertraulichkeit,
+        "domaene": meta.domaene,
+        "empfaenger": list(meta.empfaenger),
+    }
+    for key in PFLICHTFELDER:
+        value = (felder or {}).get(key)
+        if value:
+            head[key] = value
+    if dialog:
+        head["dialog"] = [dict(entry) for entry in dialog]
     body = yaml.safe_dump(
-        {
-            "eingereicht_von": meta.erstellt_von,
-            "rolle": rolle,
-            "eingereicht_am": meta.erstellt_am,
-            "vertraulichkeit": meta.vertraulichkeit,
-            "domaene": meta.domaene,
-            "empfaenger": list(meta.empfaenger),
-        },
-        sort_keys=False, allow_unicode=True, default_flow_style=False,
+        head, sort_keys=False, allow_unicode=True, default_flow_style=False,
     ).rstrip("\n")
     return f"{FRONTMATTER_DELIM}\n{body}\n{FRONTMATTER_DELIM}\n"
 
@@ -110,7 +139,8 @@ def _parse(raw: str, slug: str) -> Proposal:
     head, body = split_frontmatter_raw(raw)
     meta, rolle = _meta_from_head(head)
     lines = body.splitlines()
-    if head and head.get("project_name"):
+    is_legacy = bool(head and head.get("project_name"))
+    if is_legacy:
         # Altbestand mit fremdem Kopf (Marcs Format): dort steht der echte Name,
         # die Ueberschrift lautet generisch "Projektvorschlag".
         project_name = str(head["project_name"])
@@ -139,16 +169,41 @@ def _parse(raw: str, slug: str) -> Proposal:
             description_lines.append(line)
         elif section == "files" and line.strip().startswith("- "):
             files.append(line.strip()[2:].strip())
+    if not files and head and head.get("source_documents"):
+        # Altbestand mit fremdem Kopf (Marcs Format): Dateien stehen unter
+        # source_documents als Pfade, nicht im "## Hochgeladene Dateien"-Abschnitt.
+        files = [Path(str(s)).name for s in head["source_documents"] if str(s).strip()]
+    if is_legacy and not description_lines:
+        # Marcs Format hat keinen "## Beschreibung"-Unterabschnitt - die
+        # komplette PLAN.md-Sec.-2-Struktur (Zielsetzung, Business Case,
+        # Risikoanalyse, ...) steht direkt im Body. Das ganze Dokument
+        # (ohne die generische Titelzeile "# Projektvorschlag") ist die
+        # vollstaendige Projektcharter.
+        body_lines = lines[1:] if lines and lines[0].startswith("# ") else lines
+        description = "\n".join(body_lines).strip()
+    else:
+        description = "\n".join(description_lines).strip()
+    felder = {
+        key: str(head[key]).strip()
+        for key in PFLICHTFELDER
+        if head and head.get(key) not in (None, "")
+    }
+    dialog = []
+    for entry in (head or {}).get("dialog") or []:
+        if isinstance(entry, dict):
+            dialog.append({k: str(v) for k, v in entry.items()})
     return Proposal(
         slug=slug,
         project_name=project_name,
-        description="\n".join(description_lines).strip(),
+        description=description,
         submitted_at=submitted_at,
         submitted_by=submitted_by,
         status=status,
         files=files,
         meta=meta,
         rolle=rolle,
+        felder=felder,
+        dialog=dialog,
     )
 
 
@@ -222,6 +277,8 @@ def save_proposal(
     uploaded_files: list[tuple[str, bytes]],
     meta: PageMeta | None = None,
     rolle: str = "",
+    felder: dict[str, str] | None = None,
+    dialog: list[dict[str, str]] | None = None,
 ) -> Proposal:
     """Speichert einen neuen Projektvorschlag. Ruft VOR dem Aufruf already_submitted()
     auf, um Duplikate abzulehnen - diese Funktion selbst prueft das nicht erneut.
@@ -251,6 +308,8 @@ def save_proposal(
         files=[name for name, _ in uploaded_files if name],
         meta=meta,
         rolle=rolle,
+        felder=dict(felder or {}),
+        dialog=[dict(e) for e in (dialog or [])],
     )
 
     if proposal.files:
@@ -267,10 +326,36 @@ def save_proposal(
         else "*(keine Dateien hochgeladen)*"
     )
     proposal.path.write_text(
-        f"{_render_head(meta, rolle)}"
+        f"{_render_head(meta, rolle, proposal.felder, proposal.dialog)}"
         f"# {project_name}\n\n"
         f"Eingereicht am: {submitted_at}\n"
         f"Eingereicht von: {submitted_by}\n"
+        f"Status: {proposal.status}\n\n"
+        f"## Beschreibung\n\n{proposal.description}\n\n"
+        f"## Hochgeladene Dateien\n\n{files_section}\n",
+        encoding="utf-8",
+    )
+    return proposal
+
+
+def write_proposal(proposal: Proposal) -> Proposal:
+    """Schreibt einen bereits vorhandenen Vorschlag zurueck (Felder, Status, Dialog).
+
+    Anders als `save_proposal` legt das nichts Neues an und ruehrt die
+    hochgeladenen Dateien nicht an - Einreicher, Zeitpunkt und Rolle bleiben,
+    wie sie beim Einreichen festgehalten wurden (US-11).
+    """
+    files_section = (
+        "\n".join(f"- {name}" for name in proposal.files)
+        if proposal.files
+        else "*(keine Dateien hochgeladen)*"
+    )
+    proposal.path.parent.mkdir(parents=True, exist_ok=True)
+    proposal.path.write_text(
+        f"{_render_head(proposal.meta, proposal.rolle, proposal.felder, proposal.dialog)}"
+        f"# {proposal.project_name}\n\n"
+        f"Eingereicht am: {proposal.submitted_at}\n"
+        f"Eingereicht von: {proposal.submitted_by}\n"
         f"Status: {proposal.status}\n\n"
         f"## Beschreibung\n\n{proposal.description}\n\n"
         f"## Hochgeladene Dateien\n\n{files_section}\n",

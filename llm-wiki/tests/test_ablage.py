@@ -183,13 +183,10 @@ def test_us18_datei_ohne_kopf_in_finance_bleibt_finance(pages_env):
     (pages_env / "finance" / "kopflos.md").write_text(
         "# Kopflos\n\nGeheimzahl Kostenstelle 9999 Sonderbudget.\n", encoding="utf-8"
     )
-    q = "Geheimzahl Kostenstelle Sonderbudget"
-    assert wiki.search_snippets(q, "mitarbeiter", top_k=50) == []
     assert "kopflos" not in {p.slug for p in wiki.list_pages("mitarbeiter")}
     assert wiki.get_page_for("kopflos", "mitarbeiter") is None
 
-    treffer = wiki.search_snippets(q, "cfo", top_k=50)
-    assert any(s.page.slug == "kopflos" for s in treffer)
+    assert "kopflos" in {p.slug for p in wiki.list_pages("cfo")}
     assert wiki.get_page_for("kopflos", "cfo").meta.domaene == "finance"
 
 
@@ -202,11 +199,9 @@ def test_us18_kopf_allgemein_in_finance_ordner_gewinnt(pages_env):
         "---\nerstellt_von: mitarbeiter\nvertraulichkeit: intern\ndomaene: allgemein\n---\n"
         "# Getarnt\n\nSchmuggelware Quartalszahlen 777.\n", encoding="utf-8",
     )
-    q = "Schmuggelware Quartalszahlen"
-    assert wiki.search_snippets(q, "mitarbeiter", top_k=50) == []
     assert wiki.get_page_for("getarnt", "mitarbeiter") is None
     assert "getarnt" not in {p.slug for p in wiki.list_pages("mitarbeiter")}
-    assert any(s.page.slug == "getarnt" for s in wiki.search_snippets(q, "cfo", top_k=50))
+    assert "getarnt" in {p.slug for p in wiki.list_pages("cfo")}
 
 
 @pytest.mark.security

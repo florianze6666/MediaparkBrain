@@ -1,6 +1,6 @@
 ---
 project_id: BC-2026-0387.3
-project_name: "M:COMPANION | Becoming a Daily Shopping Companion"
+project_name: "COMPANION | Becoming a Daily Shopping Companion"
 program: "Company 1 – Digital Customer Experience"
 status: proposal
 start_fy: 2026
@@ -9,8 +9,8 @@ project_manager: "Digital Product Lead"
 project_sponsor: "VP Customer Experience"
 affected_countries: [CORP, DE, ES, FR, NL, PT, TR]
 source_documents:
-  - "test project data/__Project_Charter_M-Companion_anonymisiert 1.docx"
-  - "test project data/__Business_Case_M-Companion_Company1.xlsx"
+  - "test project data/Project_Charter_Product_3_TESTDATA.docx"
+  - "test project data/Business_Case_Product_3_TESTDATA_.xlsx"
 classification: internal
 ---
 
@@ -22,16 +22,16 @@ Angabe vorliegt oder eine Informationslücke besteht.
 
 ## Projektname
 
-M:COMPANION | Becoming a Daily Shopping Companion
+COMPANION | Becoming a Daily Shopping Companion
 
 ## Beschreibung des vorgeschlagenen Vorhabens
 
-Die M:Companion App ist der mobile Kontaktpunkt für Kunden. Neben Funktionen wie
+Die Companion App ist der mobile Kontaktpunkt für Kunden. Neben Funktionen wie
 Sortimentsdurchsuchung, Verfügbarkeitsprüfung, digitaler Kundenkarte, Einkaufslisten und
 Rechnungseinsicht bietet sie einen neuen Kommunikationskanal für personalisierte
 Informationen (u. a. Push-Benachrichtigungen), den es bei Company 1 bisher nicht gab.
 
-Eingesetzte Software/Lösung: native Mobile-App (M:Companion) mit Anbindung an
+Eingesetzte Software/Lösung: native Mobile-App (Companion) mit Anbindung an
 Analytics-Tooling für Push-Kommunikation und Kundenanalyse (siehe auch "Relevante
 Anbieter-/Produktinformationen" unten).
 

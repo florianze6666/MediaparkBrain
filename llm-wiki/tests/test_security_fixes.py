@@ -24,6 +24,12 @@ def sidebar_slugs(html: str) -> set[str]:
     return set(re.findall(r'href="/wiki/([a-z0-9-]+)"', html))
 
 
+def knowledge_slugs(html: str) -> set[str]:
+    """Seitenliste der Kompass-Wissensseite (/knowledge)."""
+    # /knowledge/share und /knowledge/edit sind Aktionen, keine Seiten.
+    return set(re.findall(r'href="/knowledge/([a-z0-9-]+)"', html)) - {"share", "edit"}
+
+
 def _page_form(title: str, domaene: str, vertraulichkeit: str = "intern", empfaenger: str = "",
                content: str = "Inhalt") -> dict:
     return {"title": title, "content": content, "vertraulichkeit": vertraulichkeit,
@@ -166,11 +172,13 @@ def test_can_write_ist_teilmenge_von_can_read(pages_env):
 def test_roher_cookie_ist_gast(client):
     raw = {"mpb_user": "admin"}
     assert client.get("/admin", cookies=raw).status_code == 404
-    r = client.get("/", cookies=raw)
+    # Alte Shell (jede /wiki/-Seite) zeigt Nutzernamen und Admin-Link ...
+    r = client.get("/wiki/oeffentlich", cookies=raw)
     assert r.status_code == 200
     assert "Angemeldet als: <strong>Gast (nicht angemeldet)</strong>" in r.text
     assert 'href="/admin"' not in r.text
-    assert sidebar_slugs(r.text) == {"oeffentlich"}
+    # ... die Seitenliste steht jetzt unter /knowledge, Aussage unveraendert.
+    assert knowledge_slugs(client.get("/knowledge", cookies=raw).text) == {"oeffentlich"}
     assert client.get("/wiki/budget-finance", cookies={"mpb_user": "cfo"}).status_code == 404
     assert client.post("/new", cookies={"mpb_user": "cfo"}, data=_page_form("X", "allgemein")).status_code == 403
 
@@ -186,7 +194,7 @@ def test_manipulierte_signatur_ist_gast(client):
     assert access.verify_user(bad) is None
     r = client.get("/wiki/budget-finance", cookies={"mpb_user": bad})
     assert r.status_code == 404
-    assert "Gast (nicht angemeldet)" in client.get("/", cookies={"mpb_user": bad}).text
+    assert "Gast (nicht angemeldet)" in client.get("/knowledge", cookies={"mpb_user": bad}).text
 
     # Signatur eines anderen Nutzers an "admin" haengen
     forged = f"admin.{sig}"
@@ -201,9 +209,11 @@ def test_manipulierte_signatur_ist_gast(client):
 def test_korrekt_signiert_wird_erkannt(client):
     import app.access as access
 
-    r = client.get("/", cookies=as_user("cfo"))
+    r = client.get("/wiki/oeffentlich", cookies=as_user("cfo"))
     assert "Angemeldet als: <strong>CFO / Controlling</strong>" in r.text
-    assert "budget-finance" in sidebar_slugs(r.text)
+    assert "budget-finance" in knowledge_slugs(
+        client.get("/knowledge", cookies=as_user("cfo")).text
+    )
     assert client.get("/admin", cookies=as_user("admin")).status_code == 200
 
     # Login -> signierter Cookie -> funktioniert im naechsten Request
@@ -253,27 +263,22 @@ def test_oeffentlich_in_finance_sehen_nur_finance_leser(client):
 
     wiki.save_page("finance-faq", "Finance FAQ", "Zinsinfos Sonderwort Kalkulationsbasis",
                    PageMeta(erstellt_von="cfo", vertraulichkeit="oeffentlich", domaene="finance"))
-    q = "Zinsinfos Sonderwort Kalkulationsbasis"
 
     for uid, cookies in (("gast", {}), ("mitarbeiter", as_user("mitarbeiter"))):
         assert "finance-faq" not in {p.slug for p in wiki.list_pages(uid)}, uid
         assert wiki.get_page_for("finance-faq", uid) is None, uid
-        assert wiki.search_snippets(q, uid, top_k=50) == [], uid
-        r = client.get("/", cookies=cookies)
-        assert "finance-faq" not in sidebar_slugs(r.text) and "Finance FAQ" not in r.text, uid
+        r = client.get("/knowledge", cookies=cookies)
+        assert "finance-faq" not in knowledge_slugs(r.text) and "Finance FAQ" not in r.text, uid
         r404 = client.get("/wiki/finance-faq", cookies=cookies)
         assert r404.status_code == 404, uid
         assert r404.text == client.get("/wiki/gibt-es-nicht", cookies=cookies).text
-        r = client.post("/ask", cookies=cookies, data={"question": q})
-        assert "Finance FAQ" not in r.text.split("</form>", 1)[1], uid
 
     assert "finance-faq" in {p.slug for p in wiki.list_pages("cfo")}
-    assert any(s.page.slug == "finance-faq" for s in wiki.search_snippets(q, "cfo", top_k=50))
     assert client.get("/wiki/finance-faq", cookies=as_user("cfo")).status_code == 200
 
     # Lobby: oeffentlich in allgemein sieht der Gast weiterhin, intern dort nicht
     assert client.get("/wiki/oeffentlich").status_code == 200
-    assert sidebar_slugs(client.get("/").text) == {"oeffentlich"}
+    assert knowledge_slugs(client.get("/knowledge").text) == {"oeffentlich"}
     assert client.get("/wiki/altbestand").status_code == 404
     assert access.readable_domains("gast") == ["allgemein"]
     assert access.readable_domains("mitarbeiter") == ["allgemein", "projekt"]

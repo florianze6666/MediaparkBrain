@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+{% block title %}Bewertung: {{ proposal.project_name }}{% endblock %}
+{% block content %}
+  {% if lauf and lauf.laeuft %}<meta http-equiv="refresh" content="5">{% endif %}
+  <div class="page-header">
+    <h1>Bewertung: <a href="/proposals/{{ proposal.slug }}">{{ proposal.project_name }}</a></h1>
+    <div class="page-actions">
+      <a href="/proposals/evaluate">← Alle Bewertungen</a>
+    </div>
+  </div>
+
+  {% if fehler == "laeuft" %}
+    <p class="hint error">Es läuft bereits ein Bewertungslauf{% if aktiv_fremd %} (<code>{{ aktiv_fremd }}</code>){% endif %}. Ein Lauf zugleich, weil sich die Agenten eine Wissensbasis teilen.</p>
+  {% endif %}
+
+  {% if not lauf %}
+    <p class="hint">Dieser Antrag wurde noch nicht bewertet.</p>
+  {% else %}
+    <p class="page-meta">
+      <span>Lauf <code>{{ lauf.lauf_id }}</code></span>
+      <span>gestartet {{ lauf.gestartet_am | ts }} von <strong>{{ lauf.gestartet_von | user_name }}</strong></span>
+      {% if lauf.beendet_am %}<span>beendet {{ lauf.beendet_am | ts }}</span>{% endif %}
+      <span class="badge badge-status lauf-{{ lauf.status }}">{{ lauf.status_text }}</span>
+    </p>
+    {% if lauf.antraege | length > 1 %}
+      <p class="hint">Bewertet als Projektklammer aus {{ lauf.antraege | length }} Dateien: {% for s in lauf.antraege %}<a href="/proposals/{{ s }}">{{ s }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+
+    {# ---------------- laeuft: Fortschritt je Rolle (NFR-11) ---------------- #}
+    {% if lauf.laeuft %}
+      <section class="eval-project">
+        <h2>Lauf läuft</h2>
+        <p class="hint">Die Seite lädt alle fünf Sekunden neu. Die vier Rollen laufen nacheinander.</p>
+        {% if not lauf.aktuelle_rolle %}<p>Vollständigkeitsprüfung und Vorbedingungen laufen, noch keine Rolle gestartet.</p>{% endif %}
+        <ol class="lauf-fortschritt">
+          {% for f in lauf.fortschritt %}
+          <li class="fortschritt-{{ f.zustand }}">
+            <span class="fortschritt-mark">{% if f.zustand == "fertig" %}✓{% elif f.zustand == "fehler" %}✗{% elif f.zustand == "laeuft" %}…{% else %}·{% endif %}</span>
+            {{ f.name }}
+            <span class="hint-inline">{% if f.zustand == "fertig" %}fertig{% elif f.zustand == "fehler" %}technischer Fehler{% elif f.zustand == "laeuft" %}läuft gerade{% else %}wartet{% endif %}</span>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
+    {# ---------------- Gate: Rueckfrage statt Bewertung (FR-08) ---------------- #}
+    {% if ergebnis and ergebnis.informationsanforderung %}
+      {% set ia = ergebnis.informationsanforderung %}
+      <section class="eval-project">
+        <h2>Informationsanforderung: der Antrag ist unvollständig</h2>
+        <p>{{ ia.hinweis }}</p>
+        <p class="hint">Kein Agent wurde gestartet. Vorhanden: {{ ia.vorhandene_angaben | length }} von {{ (ia.vorhandene_angaben | length) + (ia.fehlende_angaben | length) }} Mindestangaben.</p>
+        <h3>Fehlende Angaben</h3>
+        <ul>
+          {% for f in ia.fehlende_angaben %}
+          <li><strong>{{ f.angabe }}</strong> <span class="hint-inline">{{ f.grund }}{% if f.ueberschrift %} ({{ f.ueberschrift }}){% endif %}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {# ---------------- Vorbedingung verletzt (Z10) ---------------- #}
+    {% if ergebnis and ergebnis.vorbedingungen %}
+      <section class="eval-project">
+        <h2>Abbruch: Vorbedingung verletzt</h2>
+        <ul>{% for p in ergebnis.vorbedingungen.probleme %}<li>{{ p }}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+
+    {# ---------------- abgebrochen ohne Ergebnis ---------------- #}
+    {% if lauf.status == "abgebrochen" and ergebnis and not ergebnis.zusammenfassung and not ergebnis.informationsanforderung and not ergebnis.vorbedingungen %}
+      <section class="eval-project">
+        <h2>Lauf abgebrochen</h2>
+        <p class="hint error">Der Orchestrator hat kein Ergebnis hinterlassen{% if lauf.exit_code is not none %} (Exit-Code {{ lauf.exit_code }}){% endif %}.</p>
+        {% if ergebnis.log_ende %}<pre class="log-ende">{{ ergebnis.log_ende }}</pre>{% endif %}
+      </section>
+    {% endif %}
+
+    {# ---------------- fertig: Kapitel 16 darueber, Kapitel 17 je Rolle ---------------- #}
+    {% if ergebnis and ergebnis.zusammenfassung %}
+      {% set z = ergebnis.zusammenfassung %}
+      <section class="eval-project">
+        <div class="eval-project-header">
+          <h2>Zusammenführung (Kapitel 16)</h2>
+          <span class="risk-badge {{ z.gesamtscore | risk_class }}">
+            Gesamtscore: {{ z.gesamtscore | dezimal }}{% if z.gesamtscore is not none %}/10{% endif %}
+          </span>
+        </div>
+        <p class="field-hint">
+          Gesamtstatus <strong>{{ z.gesamtstatus }}</strong> ·
+          {{ z.anzahl_bewertet }} von {{ ergebnis.karten | length }} Rollen mit Score ·
+          Durchschnitt nur über gültige Scores, KEIN SCORE zählt nicht als 0.
+        </p>
+        {% if z.spanne is not none %}
+          <p><strong>Spanne der Scores:</strong> {{ z.spanne }}
+            {% if z.konflikte %} · <strong>Konflikte</strong> (Abstand ab 4):
+              {% for k in z.konflikte %}{{ k.rolle_a }} {{ k.score_a }} gegen {{ k.rolle_b }} {{ k.score_b }}{% if not loop.last %}, {% endif %}{% endfor %}
+            {% else %} · keine Rollenpaare mit Abstand ab 4{% endif %}
+          </p>
+        {% endif %}
+        {% if z.fehlende_informationen %}
+          <h3>Fehlende Informationen (16.5)</h3>
+          <ul>{% for l in z.fehlende_informationen %}<li>{{ l }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if z.technische_fehler or z.zeilenfehler %}
+          <h3>Technische Fehler</h3>
+          <ul class="fehlerliste">
+            {% for t in z.technische_fehler %}<li><strong>{{ t.rolle }}</strong>: {{ t.fehler }}</li>{% endfor %}
+            {% for zf in z.zeilenfehler %}<li><strong>{{ zf.rolle or "?" }}</strong>: 17.5 – {{ zf.fehler }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </section>
+
+      <div class="eval-roles">
+        {% for k in ergebnis.karten %}
+        {% set r = k.zeile %}
+        <div class="eval-role">
+          <div class="eval-role-header">
+            <span class="eval-role-name">{{ k.name }}</span>
+            {% if r and r.status == "BEWERTET" %}
+              <span class="risk-badge {{ r.score | risk_class }}">{{ r.score }}/10</span>
+            {% elif r %}
+              <span class="risk-badge risk-neutral">KEIN SCORE</span>
+            {% else %}
+              <span class="risk-badge risk-red">technischer Fehler</span>
+            {% endif %}
+          </div>
+          {% if r %}
+            <p class="field-hint">Status: <strong>{{ r.status }}</strong></p>
+            <p>{{ r.begruendung }}</p>
+            {% if r.fehlende_informationen %}
+              <p class="field-hint">Fehlende Informationen:</p>
+              <ul>{% for info in r.fehlende_informationen %}<li>{{ info }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if r.praezedenz %}<p><strong>Präzedenz:</strong> {{ r.praezedenz }}</p>{% endif %}
+            {% if r.entscheidungsrelevanter_hinweis %}<p class="hinweis"><strong>Entscheidungsrelevanter Hinweis:</strong> {{ r.entscheidungsrelevanter_hinweis }}</p>{% endif %}
+            {% if r.quellen %}
+              <p class="field-hint">Quellen:</p>
+              <ul class="quellen">{% for q in r.quellen %}<li><code>{{ q }}</code></li>{% endfor %}</ul>
+            {% endif %}
+          {% else %}
+            <p class="hint error">Keine gültige Bewertung dieser Rolle.</p>
+            <ul class="fehlerliste">{% for f in k.fehler %}<li>{{ f }}</li>{% endfor %}</ul>
+          {% endif %}
+          {% if k.protokoll %}
+            <details class="beleg">
+              <summary>Beleg: Essay, Zitate, Abfragen</summary>
+              {% set pr = k.protokoll %}
+              <p class="field-hint">
+                Modell {{ pr.modell }}{% if pr.prompt_version %} · Prompt-Version <code>{{ pr.prompt_version }}</code>{% endif %}
+                · {{ pr.rag_abfragen | length }} Abfragen an die Wissensbasis
+                · {{ pr.zitate | length }} Zitate
+                {% if pr.zeiten_s and pr.zeiten_s.gesamt %} · {{ pr.zeiten_s.gesamt }} s{% endif %}
+              </p>
+              {% if pr.zitate %}
+                <p class="field-hint">Zitate:</p>
+                <ul class="zitate">
+                  {% for zit in pr.zitate %}
+                  <li><blockquote>{{ zit.cited_text }}</blockquote><code>{{ zit.datei }}</code></li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              {% if pr.rag_abfragen %}
+                <p class="field-hint">Abfragen:</p>
+                <ol class="abfragen">
+                  {% for a in pr.rag_abfragen %}<li>{{ a.frage }} <span class="hint-inline">{{ a.treffer | length }} Treffer</span></li>{% endfor %}
+                </ol>
+              {% endif %}
+              {% if pr.essay %}
+                <p class="field-hint">Essay:</p>
+                <pre class="essay">{{ pr.essay }}</pre>
+              {% endif %}
+            </details>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <section class="lauf-aktionen">
+    {% if darf_starten %}
+      <form method="post" action="/proposals/{{ proposal.slug }}/evaluate" style="display:inline">
+        <button type="submit" class="btn btn-evaluate" {% if aktiv %}disabled{% endif %}>
+          {% if lauf %}Erneut bewerten{% else %}Bewertung starten{% endif %}
+        </button>
+      </form>
+      {% if aktiv %}<span class="hint-inline">gerade läuft <code>{{ aktiv }}</code></span>{% endif %}
+    {% endif %}
+  </section>
+
+  {% if laeufe | length > 1 %}
+    <h2>Frühere Läufe</h2>
+    <ul class="lauf-liste">
+      {% for l in laeufe %}
+      <li><a href="/proposals/{{ proposal.slug }}/evaluation?lauf={{ l.lauf_id }}">{{ l.gestartet_am | ts }}</a> <span class="badge badge-status lauf-{{ l.status }}">{{ l.status_text }}</span> <code>{{ l.lauf_id }}</code></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

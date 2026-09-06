@@ -105,6 +105,18 @@ def _client():
     )
 
 
+def _extra_body() -> dict:
+    """Anbieterspezifische Felder, die die OpenAI-API selbst nicht kennt.
+
+    hybridai.one verlangt zusaetzlich eine `chatbot_id` im Request-Body und
+    antwortet sonst mit 400. Andere OpenAI-kompatible Anbieter kennen das Feld
+    nicht, deshalb wird es nur mitgeschickt, wenn LLM_CHATBOT_ID gesetzt ist -
+    so bleibt der Endpoint austauschbar.
+    """
+    chatbot_id = os.environ.get("LLM_CHATBOT_ID", "").strip()
+    return {"chatbot_id": chatbot_id} if chatbot_id else {}
+
+
 def chat(system_prompt: str, user_prompt: str, max_tokens: int) -> str:
     """Ein einzelner Frage-Antwort-Durchgang - der einzige Weg nach aussen.
 
@@ -120,6 +132,7 @@ def chat(system_prompt: str, user_prompt: str, max_tokens: int) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
+        extra_body=_extra_body(),
     )
     # Ein leerer Abschluss (content=None) darf die Aufrufer nicht mit einem
     # AttributeError treffen - sie erwarten durchgaengig einen String.

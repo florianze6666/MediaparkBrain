@@ -67,31 +67,36 @@ Konzern wirklich einsetzen könnte. Drei Anforderungen, die „Enterprise" von �
 
 ## Drei Wow-Momente (Reihenfolge im Pitch)
 
+Der Rollenwechsel in der Seitenleiste ist ein Prototyp-Behelf, weil es noch kein Login gibt. Er wird
+nicht gezeigt. Im Betrieb arbeitet jeder mit seiner Rolle, und die Rechte werden dort sichtbar, wo sie
+wirken: in der Bewertung.
+
 ### Wow 1: Wissen hochladen, und es ist sofort richtig einsortiert
 
-Ein CFO zieht ein Excel in das System. Zehn Sekunden später ist es eine Wissensseite: Titel,
+Ein Controller zieht ein Excel in das System. Zehn Sekunden später ist es eine Wissensseite: Titel,
 Dokumenttyp, Verfasser, Klassifikation automatisch erkannt, Herkunftsbox mit Rolle und Zeit ganz oben,
-physisch im Ordner `finance/`. Kein Formular, kein Abtippen.
+physisch im Ordner `finance/`, den nur Finance-Leser öffnen.
 
 **Screenshot:** `screenshots/01_upload.png`, `screenshots/02_seite_mit_herkunft.png`
 
-### Wow 2: Dieselbe Frage, zwei Antworten
-
-„Budgetfreigabe Q4: Wie hoch ist das Gesamtbudget für den KI-Wissensassistenten?" Der CFO bekommt 220.000 EUR mit wörtlichem Zitat als Beleg. Der
-Mitarbeiter bekommt: „Dazu findet sich nichts." Nicht, weil die KI lügt, sondern weil sie das
-Dokument nie gesehen hat. Der Filter sitzt **vor** dem Sprachmodell, nicht danach. Dann ein Klick im
-Admin-Dashboard, und der Mitarbeiter sieht es. Sofort, protokolliert.
-
-**Screenshot:** `screenshots/03_frage_cfo.png`, `screenshots/04_frage_mitarbeiter.png`,
-`screenshots/05_admin.png`
-
-### Wow 3: Vier Experten bewerten in dreißig Sekunden
+### Wow 2: Vier Experten bewerten mit dem Wissen dieser Firma
 
 Ein Projektantrag geht rein. Betriebsrat, CFO, IT-Security und CEO bewerten ihn: Score von 0 bis 10,
-Begründung, oder „nicht bewertbar, es fehlt X". Und die Projektübersicht zeigt Antje alle Anträge mit
-Status, Dokumenten und Einreicher. Das ist der Vorstandsbericht, den sie bisher von Hand baute.
+Begründung, oder „nicht bewertbar, es fehlt X". Keine generischen Personas: Jeder Experte liest das
+Unternehmenswissen, das seine Rolle lesen darf. Der CFO belegt mit der Budgetseite, der Betriebsrat
+sieht sie nicht und sagt das. Die Rechte werden im Ergebnis sichtbar, nicht in einem Schalter.
 
-**Screenshot:** `screenshots/06_bewertung.png`, `screenshots/07_projektuebersicht.png`
+**Screenshot:** `screenshots/06_bewertung.png`
+**Ehrlichkeit:** Heute bewertet das System nur den Antragstext, ohne Wiki-Wissen und ohne Rolle
+(Lücke L-2, Backlog Paket 13). Damit die Folie 6 und 7 wahr sind, muss Paket 13 vor dem Pitch gebaut
+werden. Sonst Notiz auf Folie 6 auf „bewertet den Antrag nach dem Regelwerk" kürzen und Folie 7 streichen.
+
+### Wow 3: Antjes Vorstandsbericht auf Knopfdruck
+
+Die Projektübersicht zeigt alle Anträge mit Status, Dokumenten, Einreicher und Bewertung. Das ist der
+Bericht, den Antje jedes Quartal von Hand baute.
+
+**Screenshot:** `screenshots/07_projektuebersicht.png`
 
 ## Learnings (drei, nicht mehr)
 
@@ -112,8 +117,8 @@ Status, Dokumenten und Einreicher. Das ist der Vorstandsbericht, den sie bisher 
 | 0:35 | Mission | „Enterprise AI. Wir wollten Wissensmanagement, das ein Konzern einsetzen darf." |
 | 0:50 | Anselm-Satz | „Ich hatte ein Firmenbrain. Es scheiterte an einer Frage: Wer darf das sehen?" |
 | 1:00 | Wow 1 | Upload, Herkunft, Ordner. |
-| 1:30 | Wow 2 | Zwei Antworten. Admin-Klick. |
-| 2:05 | Wow 3 | Vier Experten. Projektübersicht. |
+| 1:30 | Wow 2 | Vier Experten mit Firmenwissen; der Betriebsrat sieht das Budget nicht und sagt das. |
+| 2:15 | Wow 3 | Projektübersicht als Vorstandsbericht. |
 | 2:35 | Learnings | Drei Sätze. |
 | 2:50 | Schluss | „Von sechs Wochen auf sechs Minuten. Und Antje hat die Belege." |
 

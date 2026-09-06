@@ -89,31 +89,36 @@ Notiz: „Das war unsere Mission. Drei Dinge, die Enterprise von Demo unterschei
 
 Headline: „Datei rein. Zehn Sekunden. Wissen."
 Screenshot `02_seite_mit_herkunft.png` als Held. Die Herkunftsbox oben ist das, was man sehen soll.
-Notiz: „Der CFO zieht ein Excel ins System. Zehn Sekunden später ist es eine Wissensseite. Titel,
+Notiz: „Ein Controller zieht ein Excel ins System. Zehn Sekunden später ist es eine Wissensseite. Titel,
 Typ, Verfasser, Klassifikation automatisch erkannt. Ganz oben: wer, in welcher Rolle, wann. Und die
-Datei liegt physisch im Ordner Finance. Der Ordner ist die Wahrheit."
+Datei liegt physisch im Ordner Finance, den nur Finance-Leser öffnen. Der Ordner ist die Wahrheit."
 
 ### Folie 6 · Wow 2 · 1:30
 
-Headline: „Dieselbe Frage. Zwei Antworten."
-Screenshot `03_frage_cfo.png` als Held.
-Notiz: „Wie hoch ist das Budget für den KI-Assistenten? Der CFO bekommt: 220.000 Euro, freigegeben durch Controlling. Mit wörtlichem Zitat als Beleg." (Klick)
+Headline: „Vier Experten. Mit dem Wissen dieser Firma."
+Screenshot `06_bewertung.png` als Held.
+Notiz: „Ein Projektantrag geht rein. Betriebsrat, CFO, IT-Security und CEO bewerten ihn. Score von null
+bis zehn, Begründung, oder: nicht bewertbar, es fehlt das. Das sind keine generischen Personas. Jeder
+Experte liest das Unternehmenswissen, das seine Rolle lesen darf: der CFO die Budgets, der Betriebsrat
+seine Protokolle. Dreißig Sekunden statt sechs Wochen."
 
-### Folie 7 · Wow 2, Teil 2 · 1:45
+### Folie 7 · Wow 2, Teil 2 · 1:55
 
-Headline gleich, Screenshot `04_frage_mitarbeiter.png` als Held.
-Notiz: „Der Mitarbeiter bekommt: Dazu findet sich nichts. Nicht, weil die KI lügt. Sie hat das
-Dokument nie gesehen. Der Filter sitzt vor dem Sprachmodell, nicht danach. Und wenn der Admin einen
-Haken setzt, sieht er es sofort. Protokolliert."
+Headline: „Der Betriebsrat sieht das Budget nicht. Und sagt das."
+Bild: Ausschnitt aus `06_bewertung.png`, nur die Betriebsrat-Karte, stark vergrößert, oder ein
+Screenshot einer Karte im Zustand „nicht bewertbar: Finanzdaten nicht zugänglich".
+Notiz: „Das ist der Enterprise-Teil. Die KI darf nicht mehr wissen als die Rolle, die sie vertritt. Was
+sie nie gesehen hat, kann sie nicht verraten. Der Filter sitzt vor dem Sprachmodell, nicht danach. Und
+wenn ein Experte Informationen braucht, die er nicht hat, sagt er es, statt zu raten. Das ist die
+Nachforderung, die Antje heute per Mail hinterhertelefoniert."
 
-### Folie 8 · Wow 3 · 2:05
+### Folie 8 · Wow 3 · 2:15
 
-Headline: „Vier Experten. Dreißig Sekunden."
-Screenshot `06_bewertung.png` als Held. Wenn Platz für einen Build ist: zuerst `07_projektuebersicht.png`
-(„Das ist Antjes Vorstandsbericht"), dann per Klick `06_bewertung.png`.
-Notiz: „Ein Antrag geht rein. Betriebsrat, CFO, IT-Security und CEO bewerten ihn. Score, Begründung,
-oder: nicht bewertbar, es fehlt das. Und die Projektübersicht zeigt Antje jeden Antrag mit Status.
-Das ist ihr Vorstandsbericht. Auf Knopfdruck."
+Headline: „Antjes Vorstandsbericht. Auf Knopfdruck."
+Screenshot `07_projektuebersicht.png` als Held.
+Notiz: „Und das hier ist die Projektübersicht: jeder Antrag mit Status, Dokumenten, Einreicher und
+Bewertung. Das ist der Bericht, den Antje jedes Quartal von Hand zusammengetragen hat. Jetzt steht er
+da, sobald die Experten fertig sind."
 
 ### Folie 9 · Learnings · 2:35
 
@@ -138,9 +143,8 @@ Claude Design und Keynote können Elemente nacheinander einblenden. Drei Stellen
 1. **Folie 5, Wow 1, in drei Stufen:** (a) nur die Headline „Datei rein." mit einem Datei-Symbol in
    Grau; (b) „Zehn Sekunden." erscheint; (c) der Screenshot fährt von unten ein, mit der Herkunftsbox
    oben. Wirkung: Der Upload wird sichtbar, ohne Video.
-2. **Folie 6 und 7, Wow 2:** Statt zwei Folien eine Folie mit zwei Zuständen. Erst die CFO-Antwort
-   (`03_frage_cfo.png`) allein. Auf Klick schiebt sich die Mitarbeiter-Antwort (`04_frage_mitarbeiter.png`)
-   von rechts darüber. Wirkung: dieselbe Frage, der Unterschied im Bild.
+2. **Folie 6, Wow 2:** Die vier Expertenkarten erscheinen nacheinander, je 0,3 Sekunden versetzt,
+   zuletzt der Gesamtscore. Wirkung: vier Perspektiven entstehen vor den Augen des Publikums.
 3. **Folie 10:** „6 Wochen" steht, Pause, der Pfeil und „6 Minuten" erscheinen in Magenta.
 
 Alle Übergänge: Auflösen oder Verschieben, 0,3 Sekunden. Keine Würfel, keine Spiegelungen.
@@ -178,14 +182,14 @@ Rechte. Sicherheit. Belege.
 # Datei rein. Zehn Sekunden. Wissen.
 [Bild: 02_seite_mit_herkunft.png]
 
-# Dieselbe Frage. Zwei Antworten.
-[Bild: 03_frage_cfo.png]
-
-# Dieselbe Frage. Zwei Antworten.
-[Bild: 04_frage_mitarbeiter.png]
-
-# Vier Experten. Dreißig Sekunden.
+# Vier Experten. Mit dem Wissen dieser Firma.
 [Bild: 06_bewertung.png]
+
+# Der Betriebsrat sieht das Budget nicht. Und sagt das.
+[Bild: Ausschnitt Betriebsrat-Karte aus 06_bewertung.png]
+
+# Antjes Vorstandsbericht. Auf Knopfdruck.
+[Bild: 07_projektuebersicht.png]
 
 # Drei Dinge, die wir gelernt haben.
 Rechte vor der Suche, nie danach. Der Ordner ist die Wahrheit. Acht Leute, ein Tag, 45 Sicherheitstests.

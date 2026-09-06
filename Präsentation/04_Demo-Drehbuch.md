@@ -13,12 +13,11 @@ des Pitches nur ein Wechsel nötig ist.
 
 | Wow | Klick | Was man sieht | Fallback |
 |-----|-------|---------------|----------|
-| 1 | Als **CFO**: „Wissen hochladen", Business-Case-Excel aus `test project data/` wählen, Domäne Finance, hochladen | Nach wenigen Sekunden die Seite mit Herkunftsbox oben, Badge, Sound | `01_upload.png`, `02_seite_mit_herkunft.png` |
-| 2 | Als **CFO**: „Frag das Wiki", Frage **wörtlich** „Budgetfreigabe Q4: Wie hoch ist das Gesamtbudget für den KI-Wissensassistenten, und wer hat es freigegeben?" | Antwort mit Zahl und Quelle „Budgetfreigabe Q4" | `03_frage_cfo.png` |
-| 2 | Rolle auf **Mitarbeiter**, dieselbe Frage | „Dazu findet sich nichts im Wiki." | `04_frage_mitarbeiter.png` |
-| 2 | Optional, wenn Zeit: als **Admin** unter `/admin` dem Mitarbeiter Finance geben, zurück zu Mitarbeiter, Frage erneut | Jetzt die Antwort, Protokollzeile im Admin | `05_admin.png` |
-| 3 | Als **CFO**: „Projektvorschläge" → „Bewerten" | Drei Anträge, vier Expertenspalten mit Score und Begründung | `06_bewertung.png` |
+| 1 | Vorher als **CFO** angemeldet (der Rollenwechsel wird nicht gezeigt): „Wissen hochladen", Business-Case-Excel aus `test project data/` wählen, Domäne Finance, hochladen | Nach wenigen Sekunden die Seite mit Herkunftsbox oben, Badge, Sound | `01_upload.png`, `02_seite_mit_herkunft.png` |
+| 2 | „Projektbewertung" (vorher einmal aufgerufen, dann ist sie schnell) | Drei Anträge, vier Expertenkarten mit Score und Begründung | `06_bewertung.png` |
 | 3 | „Dashboards" → Projektanträge | Tabelle: Titel, Dokumente, Beantragt von, Datum, Status | `07_projektuebersicht.png` |
+
+Die Frage-Antwort-Screenshots (`03`, `04`) bleiben als Reserve, falls jemand nach der Suche fragt.
 
 ## Die Frage muss genau so lauten
 

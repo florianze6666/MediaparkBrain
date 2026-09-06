@@ -16,7 +16,7 @@
   <div class="kp-paste">
     <span>Link oder Text</span>
     <div class="kp-paste-row">
-      <textarea id="kp-paste-text" rows="1" placeholder="Link oder Text hier einfügen" aria-label="Link oder Text"></textarea>
+      <textarea id="kp-paste-text" name="text" rows="1" placeholder="Link oder Text hier einfügen" aria-label="Link oder Text"></textarea>
       <button type="button" id="kp-paste-go" title="Übernehmen" aria-label="Übernehmen" onclick="kpPasteGo()" disabled>→</button>
     </div>
   </div>
@@ -45,7 +45,25 @@ const KP_MSG = {name:'Projektname erkannt', projektname:'Projektname erkannt', t
 const drop=document.getElementById('kp-drop-files');
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('is-over');}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('is-over');}));
-drop.addEventListener('drop',ev=>kpIngest({files:ev.dataTransfer.files}));
+drop.addEventListener('drop',ev=>{
+  // Das versteckte <input name="files"> fuellt der Browser nur ueber den
+  // Dateidialog, nicht beim Ablegen. Ohne diese Zuweisung liest der Prefill die
+  // Datei zwar aus, das Formular schickt beim Speichern aber keine mit - der
+  // Upload sah dann aus, als sei er still verschluckt worden.
+  const dt=ev.dataTransfer;
+  if(dt&&dt.files&&dt.files.length){
+    const inp=drop.querySelector('input[type=file]');
+    if(inp){try{inp.files=dt.files;}catch(e){}}
+    kpIngest({files:dt.files});
+    return;
+  }
+  // Kein File-Objekt: es wurde ein Link oder Text abgelegt. Der landet im
+  // Eingabefeld, damit er sichtbar ist und beim Speichern mitgeht.
+  const t=((dt&&(dt.getData('text/uri-list')||dt.getData('text/plain')))||'').trim();
+  if(!t) return;
+  kpPasteBox.value=t;kpPasteGrow();kpPasteBox.dispatchEvent(new Event('input'));
+  kpIngest({text:t});
+});
 
 // --- Link oder Text: immer sichtbar, Einfügen oder Enter startet ------------
 const kpPasteBox=document.getElementById('kp-paste-text'), kpPasteBtn=document.getElementById('kp-paste-go');
